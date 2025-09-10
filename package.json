@@ -1,0 +1,17 @@
+{
+  "name": "EchoEcho",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000"
+  },
+  "dependencies": {
+    "next": "14.x",
+    "react": "18.x",
+    "react-dom": "18.x",
+    "node-fetch": "^3.4.1",
+    "@farcaster/hub-nodejs": "^0.10.10"
+  }
+}
