@@ -11,7 +11,7 @@
     "next": "14.x",
     "react": "18.x",
     "react-dom": "18.x",
-    "node-fetch": "^3.4.1",
+    "node-fetch": "^3.3.2",
     "@farcaster/hub-nodejs": "^0.10.10"
   }
 }
