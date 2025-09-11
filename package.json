@@ -13,5 +13,8 @@
     "react-dom": "18.x",
     "node-fetch": "^3.3.2",
     "@farcaster/hub-nodejs": "^0.10.10"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
