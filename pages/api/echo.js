@@ -1,27 +1,39 @@
-import fetch from "node-fetch";
+// pages/api/echo.js
 
 export default async function handler(req, res) {
-  const NEYNAR = process.env.NEYNAR_API_KEY;
-  if (!NEYNAR) return res.status(500).json({ error: "NEYNAR_API_KEY missing" });
-  if (req.method !== "POST") return res.status(405).end();
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
 
-  const { castId } = req.body;
   try {
-    const r = await fetch("https://api.neynar.com/v2/farcaster/reaction", {
+    const { castId } = req.body;
+
+    if (!castId) {
+      return res.status(400).json({ error: "Missing castId" });
+    }
+
+    // Call Neynar API to recast
+    const resp = await fetch("https://api.neynar.com/v2/farcaster/cast/recast", {
       method: "POST",
       headers: {
-        accept: "application/json",
         "content-type": "application/json",
-        api_key: NEYNAR,
+        "api_key": process.env.NEYNAR_API_KEY, // Store in .env.local
       },
       body: JSON.stringify({
-        cast_id: castId,
-        reaction_type: "recast",
+        recaster_fid: process.env.FARCASTER_FID, // your Farcaster account ID
+        target_cast_hash: castId,
       }),
     });
-    const j = await r.json();
-    res.status(200).json(j);
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(data.message || "Echo failed");
+    }
+
+    res.status(200).json({ ok: true, result: data });
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    console.error(err);
+    res.status(500).json({ ok: false, error: err.message });
   }
 }
