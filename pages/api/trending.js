@@ -1,16 +1,26 @@
-import fetch from "node-fetch";
+// pages/api/trending.js
 
 export default async function handler(req, res) {
-  const NEYNAR = process.env.NEYNAR_API_KEY;
-  if (!NEYNAR) return res.status(500).json({ error: "NEYNAR_API_KEY missing" });
-
   try {
-    const r = await fetch("https://api.neynar.com/v2/farcaster/trending_casts", {
-      headers: { accept: "application/json", api_key: NEYNAR },
+    // Example: fetch trending casts from Neynar
+    const resp = await fetch("https://api.neynar.com/v2/farcaster/feed/trending", {
+      headers: {
+        "api_key": process.env.NEYNAR_API_KEY, // Store your key in .env.local
+      },
     });
-    const data = await r.json();
-    res.status(200).json(data);
+
+    if (!resp.ok) {
+      throw new Error(`Failed to fetch trending: ${resp.status}`);
+    }
+
+    const data = await resp.json();
+
+    // Normalize structure for frontend
+    res.status(200).json({
+      casts: data.casts || [],
+    });
   } catch (err) {
-    res.status(500).json({ error: String(err) });
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch trending" });
   }
 }
