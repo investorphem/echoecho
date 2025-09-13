@@ -1,21 +1,40 @@
-import { Html, Head, Main, NextScript } from "next/document";
+// pages/_document.js
+import Document, { Html, Head, Main, NextScript } from "next/document";
 
-export default function Document() {
-  return (
-    <Html lang="en">
-      <Head>
-        <meta name="application-name" content="EchoEcho" />
-        <meta name="description" content="Break the echo chamber: EchoEcho finds counter-narratives on Farcaster." />
-        <meta property="og:title" content="EchoEcho" />
-        <meta property="og:description" content="Find counter-narratives for trending Farcaster topics" />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://echoechos.vercel.app/icon-192.png" />
-        <link rel="icon" href="https://echoechos.vercel.app/icon-192.png" />
-      </Head>
-      <body>
-        <Main />
-        <NextScript />
-      </body>
-    </Html>
-  );
+class MyDocument extends Document {
+  render() {
+    // The miniapp embed JSON (stringified) — edit imageUrl, splashImageUrl, and url as needed
+    const miniappMeta = {
+      version: "1",
+      imageUrl: "https://echoechos.vercel.app/preview.png",
+      button: {
+        title: "Launch Echoecho",
+        action: {
+          type: "launch_miniapp",
+          url: "https://echoechos.vercel.app/",
+          name: "Echoecho",
+          splashImageUrl: "https://echoechos.vercel.app/splash.png",
+          splashBackgroundColor: "#0f172a"
+        }
+      }
+    };
+
+    return (
+      <Html>
+        <Head>
+          {/* Farcaster embed meta tags */}
+          <meta name="fc:miniapp" content={JSON.stringify(miniappMeta)} />
+          <meta name="fc:frame" content={JSON.stringify(miniappMeta)} />
+          {/* Basic mobile meta */}
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+        </Head>
+        <body>
+          <Main />
+          <NextScript />
+        </body>
+      </Html>
+    );
+  }
 }
+
+export default MyDocument;
