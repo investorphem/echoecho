@@ -1,0 +1,18 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjIxOTA1OSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEQ2OEYyMjZCQjY5ZTk4MmI3N0I0QTYxYUEwMmZhMzdhMjJCQUU2MDgifQ",
+    "payload": "eyJkb21haW4iOiJlY2hvZWNob3MudmVyY2VsLmFwcCJ9",
+    "signature": "MHhlNmNhYzk0N2FmY2M4MWQyZmY2N2E4ZjdkNTI1ZjU1OTQ3YzMxMDM2ZDI2YmE2Zjk2Zjk3NmY4OTc3ZjMwODhkN2E3OThkZTYwNDg2MDkwNzcxZTEzMjhmNTFmNmQzODQ5MzBiY2YzNGJmMzNkYTc5NmI1NjAyMjY1ZTMyOTZhNDFi"
+  },
+  "frame": {
+    "version": "1",
+    "name": "echoecho",
+    "iconUrl": "https://echoechos.vercel.app/icon.png",
+    "homeUrl": "https://echoechos.vercel.app",
+    "imageUrl": "https://echoechos.vercel.app/image.png",
+    "buttonTitle": "launch echoecho",
+    "splashImageUrl": "https://echoechos.vercel.app/splash.png",
+    "splashBackgroundColor": "#eeccff",
+    "webhookUrl": "https://echoechos.vercel.app/api/webhook"
+  }
+}
