@@ -6,7 +6,7 @@
     "homeUrl": "https://echoechos.vercel.app",
     "imageUrl": "https://echoechos.vercel.app/image.png",
     "buttonTitle": "open echo",
-    "splashImageUrl": "https://echoechos.vercel.app/icon-192.png",
+    "splashImageUrl": "https://echoechos.vercel.app/splash-200.png",
     "splashBackgroundColor": "#eeccff",
     "webhookUrl": "https://echoechos.vercel.app/api/webhook",
     "subtitle": "Break the echo chamber",
@@ -19,10 +19,10 @@
       "premium",
       "free"
     ],
-    "ogTitle": "echo-Break the echo chamber",
-    "ogDescription": "Find counter-narratives for trending Farcaster topic and worldwide trending including X , news etc"
+    "ogTitle": "echo - Break the echo chamber",
+    "ogDescription": "Find counter-narratives for trending Farcaster topic and worldwide trending including X, news etc",
+    "ogImageUrl": "https://echoechos.vercel.app/og-image.png"
   },
- {
   "accountAssociation": {
     "header": "eyJmaWQiOjIxOTA1OSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEQ2OEYyMjZCQjY5ZTk4MmI3N0I0QTYxYUEwMmZhMzdhMjJCQUU2MDgifQ",
     "payload": "eyJkb21haW4iOiJlY2hvZWNob3MudmVyY2VsLmFwcCJ9",
