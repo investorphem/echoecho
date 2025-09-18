@@ -1,0 +1,19 @@
+{
+  "miniapp": {
+    "version": "1",
+    "name": "EchoEcho",
+    "iconUrl": "https://echoechos.vercel.app/icon-192.png",
+    "homeUrl": "https://echoechos.vercel.app",
+    "imageUrl": "https://echoechos.vercel.app/echo-preview.png",
+    "buttonTitle": "Start Echoing",
+    "splashImageUrl": "https://echoechos.vercel.app/icon-192.png",
+    "splashBackgroundColor": "#111827",
+    "requiredChains": ["eip155:8453"],
+    "requiredCapabilities": [
+      "actions.signIn",
+      "wallet.getEthereumProvider",
+      "actions.addMiniApp",
+      "actions.notificationDetails"
+    ]
+  }
+}
