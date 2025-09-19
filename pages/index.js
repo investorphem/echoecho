@@ -1,8 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { createPublicClient, http, getContract, formatUnits, createWalletClient, custom, encodeFunctionData } from "viem";
 import { base } from "viem/chains";
-import { useMiniApp } from "@farcaster/miniapp-sdk";
+import dynamic from 'next/dynamic';
 import Image from "next/image";
+
+// Dynamically import MiniAppComponent with SSR disabled
+const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
 export default function Home() {
   const [trends, setTrends] = useState([]);
@@ -20,8 +23,6 @@ export default function Home() {
   const [subscription, setSubscription] = useState(null);
   const [reminderDismissed, setReminderDismissed] = useState(false);
 
-  const { context, sdk } = useMiniApp();
-
   // Memoize checkWalletConnection to prevent unnecessary re-renders
   const checkWalletConnection = useCallback(async () => {
     if (typeof window !== "undefined" && window.ethereum) {
@@ -37,30 +38,12 @@ export default function Home() {
         console.error("Wallet connection check failed:", error);
       }
     }
-  }, []); // Empty deps since no external dependencies
+  }, []);
 
   useEffect(() => {
     loadTrends();
     checkWalletConnection();
   }, [globalMode, checkWalletConnection]);
-
-  useEffect(() => {
-    if (walletConnected && walletAddress) {
-      if (!context.client.added) {
-        sdk.actions.addMiniApp();
-      } else if (context.client.notificationDetails) {
-        fetch("/api/update-notification-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userAddress: walletAddress,
-            notificationToken: context.client.notificationDetails.token,
-            notificationUrl: context.client.notificationDetails.url,
-          }),
-        }).catch((error) => console.error("Error storing notification details:", error));
-      }
-    }
-  }, [walletConnected, walletAddress, context.client.added, context.client.notificationDetails, sdk.actions]);
 
   const connectWallet = async () => {
     if (typeof window !== "undefined" && window.ethereum) {
@@ -521,6 +504,12 @@ export default function Home() {
         </div>
       </div>
 
+      {/* MiniApp Integration */}
+      <MiniAppComponent
+        walletConnected={walletConnected}
+        walletAddress={walletAddress}
+      />
+
       {/* Subscription Reminder Banner */}
       {subscription &&
         !reminderDismissed &&
@@ -953,8 +942,8 @@ export default function Home() {
           walletAddress={walletAddress}
           usdcBalance={usdcBalance}
           checkUSDCBalance={checkUSDCBalance}
-          setSubscription={setSubscription} // Pass setSubscription
-          loadUserSubscription={loadUserSubscription} // Pass loadUserSubscription
+          setSubscription={setSubscription}
+          loadUserSubscription={loadUserSubscription}
         />
       )}
 
@@ -1353,3 +1342,7 @@ const FAQView = () => {
     </div>
   );
 };
+
+export async function getStaticProps() {
+  return { props: {} };
+}
