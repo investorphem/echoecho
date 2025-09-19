@@ -1,11 +1,12 @@
 import { createPublicClient, http, isAddress } from 'viem';
 import { base } from 'viem/chains';
 import { saveNFT } from '../../lib/storage.js';
-import { create } from 'ipfs-http-client';
+import { createHelia } from 'helia';
+import { json } from '@helia/json';
 
 const publicClient = createPublicClient({
   chain: base,
-  transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org')
+  transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
 });
 
 // NFT contract on Base (replace with your contract)
@@ -15,19 +16,17 @@ const IPFS_API_SECRET = process.env.IPFS_API_SECRET;
 
 // Minimal ABI for minting
 const NFT_ABI = [
-  'function mint(address to, string uri) public returns (uint256)'
+  {
+    name: 'mint',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'uri', type: 'string' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
 ];
-
-// Initialize IPFS client (e.g., Pinata)
-const ipfs = create({
-  host: 'ipfs.pinata.cloud',
-  port: 5001,
-  protocol: 'https',
-  headers: {
-    pinata_api_key: IPFS_API_KEY,
-    pinata_secret_api_key: IPFS_API_SECRET
-  }
-});
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -56,13 +55,23 @@ export default async function handler(req, res) {
       attributes: [
         { trait_type: 'Source', value: narrative.source },
         { trait_type: 'Rarity', value: rarity },
-        { trait_type: 'Discovery Date', value: new Date().toDateString() }
-      ]
+        { trait_type: 'Discovery Date', value: new Date().toDateString() },
+      ],
     };
 
+    // Initialize Helia with Pinata pinning
+    const helia = await createHelia({
+      pinata: {
+        apiKey: IPFS_API_KEY,
+        apiSecret: IPFS_API_SECRET,
+        gateway: 'https://ipfs.io',
+      },
+    });
+    const jsonClient = json(helia);
+
     // Upload metadata to IPFS
-    const { path } = await ipfs.add(JSON.stringify(metadata));
-    const ipfsUrl = `https://ipfs.io/ipfs/${path}`;
+    const cid = await jsonClient.add(metadata);
+    const ipfsUrl = `https://ipfs.io/ipfs/${cid.toString()}`;
 
     // Note: Actual minting requires a wallet client with private key (not secure in API route)
     // For production, move minting to client-side or a secure backend service
@@ -75,7 +84,7 @@ export default async function handler(req, res) {
       address: NFT_CONTRACT,
       abi: NFT_ABI,
       functionName: 'mint',
-      args: [userAddress, ipfsUrl]
+      args: [userAddress, ipfsUrl],
     });
     const transactionHash = await walletClient.writeContract(request);
     const receipt = await publicClient.waitForTransactionReceipt({ hash: transactionHash });
@@ -91,8 +100,8 @@ export default async function handler(req, res) {
       owner: userAddress.toLowerCase(),
       metadata: {
         ...metadata,
-        image: ipfsUrl
-      }
+        image: ipfsUrl,
+      },
     };
 
     // Save to database
@@ -102,7 +111,7 @@ export default async function handler(req, res) {
       success: true,
       token: insightToken,
       transaction_hash: '0x_pending', // Placeholder; replace with real hash
-      message: 'Insight Token minting initiated! Check blockchain for confirmation.'
+      message: 'Insight Token minting initiated! Check blockchain for confirmation.',
     });
   } catch (error) {
     console.error('NFT minting error:', error);
