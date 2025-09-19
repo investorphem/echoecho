@@ -1,42 +1,30 @@
 import { createPublicClient, http, isAddress } from 'viem';
 import { base } from 'viem/chains';
-import { create } from 'ipfs-http-client';
+import { createHelia } from 'helia';
+import { json } from '@helia/json';
 import { getUserSubscription, saveNFT } from '../../lib/storage.js';
 
 const _publicClient = createPublicClient({
   chain: base,
-  transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org')
+  transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
 });
 
 // NFT contract on Base
 const NFT_CONTRACT = process.env.NFT_CONTRACT || '0xYourNFTContractAddress';
-const IPFS_API_KEY = process.env.IPFS_API_KEY;
-const IPFS_API_SECRET = process.env.IPFS_API_SECRET;
 
 // Minimal ABI for minting
 const _NFT_ABI = [
   {
     inputs: [
       { internalType: 'address', name: 'to', type: 'address' },
-      { internalType: 'string', name: 'tokenURI', type: 'string' }
+      { internalType: 'string', name: 'tokenURI', type: 'string' },
     ],
     name: 'mint',
     outputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
     stateMutability: 'nonpayable',
-    type: 'function'
-  }
+    type: 'function',
+  },
 ];
-
-// Initialize IPFS client (e.g., Pinata)
-const ipfs = create({
-  host: 'ipfs.pinata.cloud',
-  port: 5001,
-  protocol: 'https',
-  headers: {
-    pinata_api_key: IPFS_API_KEY,
-    pinata_secret_api_key: IPFS_API_SECRET
-  }
-});
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -68,6 +56,10 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: `NFT minting limit reached for ${userTier} tier` });
     }
 
+    // Initialize Helia for IPFS
+    const helia = await createHelia();
+    const ipfs = json(helia);
+
     // Create metadata
     const metadata = {
       name: `EchoEcho Insight Token`,
@@ -77,22 +69,22 @@ export default async function handler(req, res) {
         { trait_type: 'Rarity', value: rarity },
         { trait_type: 'Echo Type', value: 'Counter-Narrative' },
         { trait_type: 'Discovery Date', value: new Date().toDateString() },
-        { trait_type: 'Network', value: 'Base' }
+        { trait_type: 'Network', value: 'Base' },
       ],
       external_url: 'https://echoecho.app',
-      animation_url: null
+      animation_url: null,
     };
 
     // Upload metadata to IPFS
-    const { path } = await ipfs.add(JSON.stringify(metadata));
-    const metadataURI = `ipfs://${path}`;
+    const cid = await ipfs.add(metadata);
+    const metadataURI = `ipfs://${cid.toString()}`;
 
     // Pricing from environment variables
     const rarityPricing = {
       common: { eth: process.env.COMMON_PRICE_ETH || '0.001', usd: Number(process.env.COMMON_PRICE_USD || 2.5) },
       rare: { eth: process.env.RARE_PRICE_ETH || '0.005', usd: Number(process.env.RARE_PRICE_USD || 12.5) },
       epic: { eth: process.env.EPIC_PRICE_ETH || '0.01', usd: Number(process.env.EPIC_PRICE_USD || 25) },
-      legendary: { eth: process.env.LEGENDARY_PRICE_ETH || '0.02', usd: Number(process.env.LEGENDARY_PRICE_USD || 50) }
+      legendary: { eth: process.env.LEGENDARY_PRICE_ETH || '0.02', usd: Number(process.env.LEGENDARY_PRICE_USD || 50) },
     };
     const pricing = rarityPricing[rarity] || rarityPricing.common;
 
@@ -107,7 +99,7 @@ export default async function handler(req, res) {
       address: NFT_CONTRACT,
       abi: _NFT_ABI,
       functionName: 'mint',
-      args: [userAddress, metadataURI]
+      args: [userAddress, metadataURI],
     });
     const transactionHash = await walletClient.writeContract(request);
     const receipt = await _publicClient.waitForTransactionReceipt({ hash: transactionHash });
@@ -120,14 +112,14 @@ export default async function handler(req, res) {
       token_id: simulatedTokenId,
       network: 'base',
       metadata_uri: metadataURI,
-      metadata: { ...metadata, image: `https://ipfs.io/ipfs/${path}` },
+      metadata: { ...metadata, image: `https://ipfs.io/ipfs/${cid.toString()}` },
       transaction_hash: simulatedTxHash,
       block_number: null, // Replace with real block number
       minted_at: new Date().toISOString(),
       owner: userAddress.toLowerCase(),
       rarity,
       pricing,
-      marketplace_url: `https://opensea.io/assets/base/${NFT_CONTRACT}/${simulatedTokenId}`
+      marketplace_url: `https://opensea.io/assets/base/${NFT_CONTRACT}/${simulatedTokenId}`,
     };
 
     // Save to database
@@ -140,13 +132,13 @@ export default async function handler(req, res) {
       network: 'base',
       explorer_url: `https://basescan.org/tx/${simulatedTxHash}`,
       opensea_url: insightToken.marketplace_url,
-      message: `Insight Token #${simulatedTokenId} minting initiated on Base! Rarity: ${rarity}`
+      message: `Insight Token #${simulatedTokenId} minting initiated on Base! Rarity: ${rarity}`,
     });
   } catch (error) {
     console.error('Base NFT minting error:', error);
     return res.status(500).json({
       error: `Failed to mint NFT: ${error.message}`,
-      network: 'base'
+      network: 'base',
     });
   }
 }
