@@ -3,9 +3,9 @@ import { base } from 'viem/chains';
 import { 
   getUser, 
   createUser, 
-  updateUserTier, 
+  _updateUserTier, 
   createSubscription,
-  getUserSubscription,
+  _getUserSubscription,
   reconcileUserStatus,
   recordPayment
 } from '../../lib/storage.js';
@@ -112,7 +112,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
           success: true,
           subscription,
-          message: ` Successfully upgraded to ${tier}! Welcome to EchoEcho ${tier}!`
+          message: `🎉 Successfully upgraded to ${tier}! Welcome to EchoEcho ${tier}!`
         });
       } catch (error) {
         console.error('Error creating subscription:', error);
