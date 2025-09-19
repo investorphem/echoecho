@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { createPublicClient, http, getContract, formatUnits, createWalletClient, custom, encodeFunctionData } from "viem";
 import { base } from "viem/chains";
 import { useMiniApp } from "@farcaster/miniapp-sdk";
-import Image from "next/image"; // Added for image optimization
+import Image from "next/image";
 
 export default function Home() {
   const [trends, setTrends] = useState([]);
@@ -42,7 +42,7 @@ export default function Home() {
   useEffect(() => {
     loadTrends();
     checkWalletConnection();
-  }, [globalMode, checkWalletConnection]); // Added checkWalletConnection
+  }, [globalMode, checkWalletConnection]);
 
   useEffect(() => {
     if (walletConnected && walletAddress) {
@@ -242,13 +242,13 @@ export default function Home() {
       const result = await response.json();
 
       if (result.success) {
-        alert(`🎉 Insight Token minted! 
-        
-Token ID: ${result.token.id}
-Transaction: ${result.transaction_hash.slice(0, 10)}...
-Rarity: ${result.token.rarity}
-
-This counter-narrative is now part of your collection!`);
+        alert(
+          `Insight Token minted!\n\n` +
+          `Token ID: ${result.token.id}\n` +
+          `Transaction: ${result.transaction_hash.slice(0, 10)}...\n` +
+          `Rarity: ${result.token.rarity}\n\n` +
+          `This counter-narrative is now part of your collection!`
+        );
       } else {
         alert("❌ Minting failed: " + (result.error || "Unknown error"));
       }
@@ -953,6 +953,8 @@ This counter-narrative is now part of your collection!`);
           walletAddress={walletAddress}
           usdcBalance={usdcBalance}
           checkUSDCBalance={checkUSDCBalance}
+          setSubscription={setSubscription} // Pass setSubscription
+          loadUserSubscription={loadUserSubscription} // Pass loadUserSubscription
         />
       )}
 
@@ -962,7 +964,7 @@ This counter-narrative is now part of your collection!`);
 }
 
 // Premium subscription component
-const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, usdcBalance, checkUSDCBalance }) => {
+const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, usdcBalance, checkUSDCBalance, setSubscription, loadUserSubscription }) => {
   const [selectedTier, setSelectedTier] = useState("premium");
   const [paymentStatus, setPaymentStatus] = useState("none");
 
@@ -1058,7 +1060,9 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         setSubscription(result.subscription);
         setPaymentStatus("success");
         alert(
-          `🎉 ${result.message}\n\n💰 ${amount} USDC paid successfully!\n🔗 Transaction: ${txHash.slice(0, 10)}...`
+          `Success! ${result.message}\n\n` +
+          `💰 ${amount} USDC paid successfully!\n` +
+          `🔗 Transaction: ${txHash.slice(0, 10)}...`
         );
         await checkUSDCBalance(walletAddress);
         await loadUserSubscription(walletAddress);
