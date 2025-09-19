@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { createPublicClient, http, getContract, formatUnits, createWalletClient, custom, encodeFunctionData } from "viem"; // Replace ethers
-import { base } from "viem/chains"; // Use Base chain
-import { useMiniApp } from "@farcaster/miniapp-sdk"; // Farcaster MiniApp
+import { useEffect, useState, useCallback } from "react";
+import { createPublicClient, http, getContract, formatUnits, createWalletClient, custom, encodeFunctionData } from "viem";
+import { base } from "viem/chains";
+import { useMiniApp } from "@farcaster/miniapp-sdk";
+import Image from "next/image"; // Added for image optimization
 
 export default function Home() {
   const [trends, setTrends] = useState([]);
@@ -13,40 +14,16 @@ export default function Home() {
   const [walletAddress, setWalletAddress] = useState(null);
   const [usdcBalance, setUsdcBalance] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeView, setActiveView] = useState("trends"); // 'trends', 'echoes', 'topic', 'premium', 'earnings', 'faq'
-  const [userTier, setUserTier] = useState("free"); // 'free', 'premium', 'pro'
+  const [activeView, setActiveView] = useState("trends");
+  const [userTier, setUserTier] = useState("free");
   const [userEchoes, setUserEchoes] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [reminderDismissed, setReminderDismissed] = useState(false);
 
-  const { context, sdk } = useMiniApp(); // Farcaster MiniApp
+  const { context, sdk } = useMiniApp();
 
-  useEffect(() => {
-    loadTrends();
-    checkWalletConnection();
-  }, [globalMode]);
-
-  useEffect(() => {
-    if (walletConnected && walletAddress) {
-      if (!context.client.added) {
-        sdk.actions.addMiniApp(); // Prompt to add MiniApp if not added
-      } else if (context.client.notificationDetails) {
-        // Store notification details in backend
-        fetch("/api/update-notification-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userAddress: walletAddress,
-            notificationToken: context.client.notificationDetails.token,
-            notificationUrl: context.client.notificationDetails.url,
-          }),
-        }).catch((error) => console.error("Error storing notification details:", error));
-      }
-    }
-  }, [walletConnected, walletAddress, context.client.added]);
-
-  const checkWalletConnection = async () => {
-    // Check if user has wallet connected via Farcaster or Web3
+  // Memoize checkWalletConnection to prevent unnecessary re-renders
+  const checkWalletConnection = useCallback(async () => {
     if (typeof window !== "undefined" && window.ethereum) {
       try {
         const accounts = await window.ethereum.request({ method: "eth_accounts" });
@@ -60,7 +37,30 @@ export default function Home() {
         console.error("Wallet connection check failed:", error);
       }
     }
-  };
+  }, []); // Empty deps since no external dependencies
+
+  useEffect(() => {
+    loadTrends();
+    checkWalletConnection();
+  }, [globalMode, checkWalletConnection]); // Added checkWalletConnection
+
+  useEffect(() => {
+    if (walletConnected && walletAddress) {
+      if (!context.client.added) {
+        sdk.actions.addMiniApp();
+      } else if (context.client.notificationDetails) {
+        fetch("/api/update-notification-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userAddress: walletAddress,
+            notificationToken: context.client.notificationDetails.token,
+            notificationUrl: context.client.notificationDetails.url,
+          }),
+        }).catch((error) => console.error("Error storing notification details:", error));
+      }
+    }
+  }, [walletConnected, walletAddress, context.client.added, context.client.notificationDetails, sdk.actions]);
 
   const connectWallet = async () => {
     if (typeof window !== "undefined" && window.ethereum) {
@@ -82,14 +82,11 @@ export default function Home() {
 
   const checkUSDCBalance = async (address) => {
     try {
-      // Connect to Base network
       const client = createPublicClient({
         chain: base,
         transport: http("https://mainnet.base.org"),
       });
-      // USDC contract address on Base
       const usdcContractAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-      // Minimal ABI for balanceOf
       const usdcAbi = [
         {
           name: "balanceOf",
@@ -99,13 +96,11 @@ export default function Home() {
           outputs: [{ name: "", type: "uint256" }],
         },
       ];
-      // Create contract instance
       const usdcContract = getContract({
         address: usdcContractAddress,
         abi: usdcAbi,
         client,
       });
-      // Fetch balance and convert from wei (6 decimals for USDC)
       const balance = await usdcContract.read.balanceOf([address]);
       const balanceInUSDC = formatUnits(balance, 6);
       setUsdcBalance(parseFloat(balanceInUSDC));
@@ -142,7 +137,6 @@ export default function Home() {
       const data = await resp.json();
       const trendsData = data.casts || [];
 
-      // Add AI sentiment analysis to each trend
       const enrichedTrends = await Promise.all(
         trendsData.slice(0, 10).map(async (trend) => {
           try {
@@ -176,7 +170,6 @@ export default function Home() {
 
     if (globalMode) {
       try {
-        // Fetch cross-platform content
         const [twitterResp, newsResp] = await Promise.all([
           fetch("/api/cross-platform", {
             method: "POST",
@@ -195,7 +188,6 @@ export default function Home() {
 
         const allPosts = [...(twitterData.posts || []), ...(newsData.posts || [])];
 
-        // Use AI to find counter-narratives
         const counterResp = await fetch("/api/ai-analysis", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -237,13 +229,12 @@ export default function Home() {
     }
 
     try {
-      // Call the mint NFT API
       const response = await fetch("/api/mint-nft", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           narrative,
-          userAddress: walletAddress, // Use real wallet address
+          userAddress: walletAddress,
           rarity: narrative.source === "twitter" ? "rare" : "common",
         }),
       });
@@ -905,9 +896,11 @@ This counter-narrative is now part of your collection!`);
                           overflow: "hidden",
                         }}
                       >
-                        <img
+                        <Image
                           src={nft.image}
                           alt={nft.title}
+                          width={250}
+                          height={200}
                           style={{
                             width: "100%",
                             height: 200,
@@ -971,7 +964,7 @@ This counter-narrative is now part of your collection!`);
 // Premium subscription component
 const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, usdcBalance, checkUSDCBalance }) => {
   const [selectedTier, setSelectedTier] = useState("premium");
-  const [paymentStatus, setPaymentStatus] = useState("none"); // 'none', 'pending', 'success'
+  const [paymentStatus, setPaymentStatus] = useState("none");
 
   const handleUSDCPayment = async (tier) => {
     if (!walletConnected || !walletAddress) {
@@ -992,7 +985,6 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
     try {
       setPaymentStatus("pending");
 
-      // Switch to Base network
       try {
         await window.ethereum.request({
           method: "wallet_switchEthereumChain",
@@ -1015,7 +1007,6 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }
       }
 
-      // USDC contract details
       const usdcContract = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
       const subscriptionWallet = "0x4f9B9C40345258684cfe23F02FDb2B88F1d2eA62";
       const usdcAbi = [
@@ -1031,20 +1022,17 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         },
       ];
 
-      // Encode transfer data
       const data = encodeFunctionData({
         abi: usdcAbi,
         functionName: "transfer",
-        args: [subscriptionWallet, BigInt(amount * 10 ** 6)], // USDC has 6 decimals
+        args: [subscriptionWallet, BigInt(amount * 10 ** 6)],
       });
 
-      // Create wallet client
       const walletClient = createWalletClient({
         chain: base,
         transport: custom(window.ethereum),
       });
 
-      // Send transaction
       const txHash = await walletClient.sendTransaction({
         account: walletAddress,
         to: usdcContract,
@@ -1052,7 +1040,6 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         value: 0n,
       });
 
-      // Create subscription
       const subscriptionResp = await fetch("/api/user-subscription", {
         method: "POST",
         headers: { "content-type": "application/json" },
