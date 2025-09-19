@@ -77,7 +77,7 @@ export default function FAQ() {
             <p><strong>🎯 Echo Rewards:</strong> $0.01 per echo you make</p>
             <p><strong>🎨 NFT Trading:</strong> Sell your Insight Tokens on OpenSea (Base network)</p>
             <p><strong>💎 Rarity Bonuses:</strong> Legendary NFTs can sell for $50+</p>
-            <p><strong>🔗 Referral Income:</strong> 10% of referred users' subscription fees</p>
+            <p><strong>🔗 Referral Income:</strong> 10% of referred users&apos; subscription fees</p>
             <p><strong>📈 Viral Bonuses:</strong> Extra rewards when your echoes go viral</p>
             <p><strong>🏆 Pro Revenue Sharing:</strong> Pro users get 15% of platform revenue from users they refer</p>
           </div>
@@ -297,7 +297,7 @@ export default function FAQ() {
             <li>Start with Free tier to learn the system</li>
             <li>Focus on quality over quantity for better NFT rarities</li>
             <li>Share your best echoes to build a following</li>
-            <li>Upgrade to Premium once you're earning consistently</li>
+            <li>Upgrade to Premium once you&apos;re earning consistently</li>
           </ul>
         </div>
       )
