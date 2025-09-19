@@ -4,18 +4,18 @@ import { saveNFT } from '../../lib/storage.js';
 import { createHelia } from 'helia';
 import { json } from '@helia/json';
 
-const publicClient = createPublicClient({
+const _publicClient = createPublicClient({
   chain: base,
   transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
 });
 
 // NFT contract on Base (replace with your contract)
-const NFT_CONTRACT = process.env.NFT_CONTRACT || '0xea2a41c02fa86a4901826615f9796e603c6a4491';
+const _NFT_CONTRACT = process.env.NFT_CONTRACT || '0xea2a41c02fa86a4901826615f9796e603c6a4491';
 const IPFS_API_KEY = process.env.IPFS_API_KEY;
 const IPFS_API_SECRET = process.env.IPFS_API_SECRET;
 
 // Minimal ABI for minting
-const NFT_ABI = [
+const _NFT_ABI = [
   {
     name: 'mint',
     type: 'function',
@@ -80,19 +80,20 @@ export default async function handler(req, res) {
     // Example minting (uncomment for client-side or secure backend):
     /*
     const walletClient = createWalletClient({...});
-    const { request } = await publicClient.simulateContract({
-      address: NFT_CONTRACT,
-      abi: NFT_ABI,
+    const { request } = await _publicClient.simulateContract({
+      address: _NFT_CONTRACT,
+      abi: _NFT_ABI,
       functionName: 'mint',
       args: [userAddress, ipfsUrl],
     });
     const transactionHash = await walletClient.writeContract(request);
-    const receipt = await publicClient.waitForTransactionReceipt({ hash: transactionHash });
+    const receipt = await _publicClient.waitForTransactionReceipt({ hash: transactionHash });
     const tokenId = receipt.logs[0].topics[3]; // Adjust based on contract
     */
 
     const insightToken = {
       id: tokenId.toString(),
+      contract_address: _NFT_CONTRACT,
       narrative: narrative.text,
       source: narrative.source,
       rarity,
@@ -111,7 +112,7 @@ export default async function handler(req, res) {
       success: true,
       token: insightToken,
       transaction_hash: '0x_pending', // Placeholder; replace with real hash
-      message: 'Insight Token minting initiated! Check blockchain for confirmation.',
+      message: '🎉 Insight Token minting initiated! Check blockchain for confirmation.',
     });
   } catch (error) {
     console.error('NFT minting error:', error);
