@@ -12,7 +12,7 @@ const USDC_CONTRACT = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS || '0x4f9B9C40345258684cfe23F02FDb2B88F1d2eA62'; // Fallback for testing
 
 // Minimal ABI for USDC Transfer event
-const USDC_ABI = [
+const _USDC_ABI = [
   'event Transfer(address indexed from, address indexed to, uint256 value)'
 ];
 
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
           success: true,
           verified: true,
           subscription,
-          message: ` Payment verified! Your ${tier} subscription is now active!`
+          message: `🎉 Payment verified! Your ${tier} subscription is now active!`
         });
       } catch (error) {
         console.error('Payment verification error:', error);
