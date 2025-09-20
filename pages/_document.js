@@ -13,7 +13,7 @@ export default function Document() {
         <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta property="og:description" content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!" />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://echoechos.vercel.app/echo-preview.png" />
+        <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
         <meta property="og:url" content="https://echoechos.vercel.app/" />
         <meta property="og:site_name" content="EchoEcho" />
         
@@ -21,7 +21,7 @@ export default function Document() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta name="twitter:description" content="Break echo chambers with AI-powered counter-narrative discovery. Subscribe for premium features with USDC on Base network." />
-        <meta name="twitter:image" content="https://echoechos.vercel.app/echo-preview.png" />
+        <meta name="twitter:image" content="https://echoechos.vercel.app/preview.png" />
         
         {/* App Icons */}
         <link rel="icon" href="/icon-192.png" />
@@ -38,4 +38,5 @@ export default function Document() {
       </body>
     </Html>
   );
+
 }
