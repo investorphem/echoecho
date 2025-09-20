@@ -344,12 +344,12 @@ export default function Home() {
         <Head>
           <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
           <meta property="og:description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
-          <meta property="og:image" content="https://echoechos.vercel.app/splash-image.png" />
+          <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
           <meta name="fc:miniapp" content={JSON.stringify({
             version: '1',
             id: process.env.FARCASTER_MINIAPP_ID || '0199409c-b991-9a61-b1d8-fef2086f7533',
             title: 'EchoEcho',
-            image: 'https://echoechos.vercel.app/splash-image.png',
+            image: 'https://echoechos.vercel.app/preview.png',
             action: { type: 'post', url: 'https://echoechos.vercel.app/api/echo-action' }
           })} />
         </Head>
@@ -393,12 +393,12 @@ export default function Home() {
       <Head>
         <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta property="og:description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
-        <meta property="og:image" content="https://echoechos.vercel.app/embed-image.png" />
+        <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
         <meta name="fc:miniapp" content={JSON.stringify({
           version: '1',
           id: process.env.FARCASTER_MINIAPP_ID || '0199409c-b991-9a61-b1d8-fef2086f7533',
           title: 'EchoEcho',
-          image: 'https://echoechos.vercel.app/embed-image.png',
+          image: 'https://echoechos.vercel.app/preview.png',
           action: { type: 'post', url: 'https://echoechos.vercel.app/api/echo-action' },
           buttons: [
             { label: 'Echo Trend', action: { type: 'post', url: '/api/echo' } },
