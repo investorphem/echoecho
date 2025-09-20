@@ -1,11 +1,24 @@
-import { useEffect, useState, useCallback } from "react";
-import { createPublicClient, http, getContract, formatUnits, createWalletClient, custom, encodeFunctionData } from "viem";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import {
+  createPublicClient,
+  http,
+  readContract,
+  createWalletClient,
+  custom,
+  encodeFunctionData,
+  formatUnits,
+} from "viem";
 import { base } from "viem/chains";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 import Image from "next/image";
-import Head from 'next/head';
+import Head from "next/head";
 
-const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
+// Dynamically import MiniAppComponent to prevent SSR issues
+const MiniAppComponent = dynamic(() => import("../components/MiniAppComponent"), { ssr: false });
+
+// Optional: Add TypeScript types (uncomment if using TS)
+// type Trend = { text?: string; body?: string; ai_analysis?: { sentiment: string; confidence: number } };
+// type Subscription = { tier: string; expires_at: string };
 
 export default function Home() {
   const [trends, setTrends] = useState([]);
@@ -33,7 +46,6 @@ export default function Home() {
         if (accounts.length > 0) {
           setWalletConnected(true);
           setWalletAddress(accounts[0]);
-          console.log("Wallet connected, address:", accounts[0]);
           await checkUSDCBalance(accounts[0]);
           await loadUserSubscription(accounts[0]);
         } else {
@@ -66,7 +78,6 @@ export default function Home() {
         if (accounts.length > 0) {
           setWalletConnected(true);
           setWalletAddress(accounts[0]);
-          console.log("Wallet connected successfully:", accounts[0]);
           await checkUSDCBalance(accounts[0]);
           await loadUserSubscription(accounts[0]);
         }
@@ -97,12 +108,13 @@ export default function Home() {
           outputs: [{ name: "", type: "uint256" }],
         },
       ];
-      const usdcContract = getContract({
+      const balance = await readContract({
         address: usdcContractAddress,
         abi: usdcAbi,
+        functionName: "balanceOf",
+        args: [address],
         client,
       });
-      const balance = await usdcContract.read.balanceOf([address]);
       const balanceInUSDC = formatUnits(balance, 6);
       console.log("USDC balance:", balanceInUSDC);
       setUsdcBalance(parseFloat(balanceInUSDC));
@@ -140,6 +152,7 @@ export default function Home() {
     try {
       const resp = await fetch("/api/trending");
       console.log("Trends API response status:", resp.status);
+      if (!resp.ok) throw new Error(`API error: ${resp.status}`);
       const data = await resp.json();
       console.log("Trends data:", data);
       const trendsData = data.casts || [];
@@ -155,7 +168,7 @@ export default function Home() {
                 action: "analyze_sentiment",
               }),
             });
-            console.log("AI analysis response status for trend:", aiResp.status);
+            if (!aiResp.ok) throw new Error(`AI error: ${aiResp.status}`);
             const sentiment = await aiResp.json();
             return { ...trend, ai_analysis: sentiment };
           } catch (error) {
@@ -171,7 +184,6 @@ export default function Home() {
       console.error("Error loading trends:", error);
       setTrends([]);
     }
-    console.log("Setting loading to false");
     setLoading(false);
   };
 
@@ -195,8 +207,7 @@ export default function Home() {
           }),
         ]);
 
-        const twitterData = await twitterResp.json();
-        const newsData = await newsResp.json();
+        const [twitterData, newsData] = await Promise.all([twitterResp.json(), newsResp.json()]);
         console.log("Twitter data:", twitterData, "News data:", newsData);
 
         const allPosts = [...(twitterData.posts || []), ...(newsData.posts || [])];
@@ -209,7 +220,6 @@ export default function Home() {
             action: "find_counter_narratives",
           }),
         });
-
         const counterData = await counterResp.json();
         const counterPosts = counterData.counter_posts?.map((index) => allPosts[index]) || [];
         console.log("Counter-narratives:", counterPosts);
@@ -223,10 +233,8 @@ export default function Home() {
 
   const loadUserEchoes = async () => {
     console.log("Loading user echoes for address:", walletAddress);
+    if (!walletAddress) throw new Error("No wallet connected");
     try {
-      if (!walletAddress) {
-        throw new Error("No wallet connected");
-      }
       const response = await fetch(`/api/user-echoes?userAddress=${walletAddress}`);
       const data = await response.json();
       console.log("User echoes data:", data);
@@ -300,14 +308,7 @@ export default function Home() {
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return "#999";
-    switch (sentiment) {
-      case "positive":
-        return "#4ade80";
-      case "negative":
-        return "#f87171";
-      default:
-        return "#a78bfa";
-    }
+    return { positive: "#4ade80", negative: "#f87171", neutral: "#a78bfa" }[sentiment] || "#a78bfa";
   };
 
   const getSentimentGauge = (sentiment, confidence) => {
@@ -338,45 +339,64 @@ export default function Home() {
     );
   };
 
+  const filteredTrends = useMemo(
+    () =>
+      trends.filter((trend) =>
+        !searchQuery || (trend.text || trend.body || "").toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [trends, searchQuery]
+  );
+
   if (loading || !miniAppReady) {
     return (
       <>
         <Head>
+          <title>EchoEcho - AI-Powered Echo Chamber Breaker</title>
+          <meta name="description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
           <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
           <meta property="og:description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
           <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
           <meta name="fc:miniapp" content={JSON.stringify({
-            version: '1',
-            id: process.env.FARCASTER_MINIAPP_ID || '0199409c-b991-9a61-b1d8-fef2086f7533',
-            title: 'EchoEcho',
-            image: 'https://echoechos.vercel.app/preview.png',
-            action: { type: 'post', url: 'https://echoechos.vercel.app/api/echo-action' }
+            version: "1",
+            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+            title: "EchoEcho",
+            image: "https://echoechos.vercel.app/preview.png",
+            action: { type: "post", url: "https://echoechos.vercel.app/api/echo-action" },
+            buttons: [
+              { label: "Echo Trend", action: { type: "post", url: "/api/echo" } },
+              { label: "Mint NFT", action: { type: "post", url: "/api/mint-nft" } },
+            ],
           })} />
+          <link rel="icon" href="/favicon.ico" />
         </Head>
-        <div style={{
-          padding: 40,
-          textAlign: "center",
-          background: "#111827",
-          color: "#f9fafb",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center"
-        }}>
+        <div
+          style={{
+            padding: 40,
+            textAlign: "center",
+            background: "#111827",
+            color: "#f9fafb",
+            minHeight: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
           <Image src="/logo.png" alt="EchoEcho Logo" width={120} height={120} style={{ marginBottom: 20, borderRadius: 20 }} />
           <div style={{ fontSize: 24, fontWeight: "bold", marginBottom: 10 }}>🔥 EchoEcho</div>
           <div style={{ fontSize: 16, color: "#9ca3af", marginBottom: 20 }}>
             {loading ? "Loading trends..." : "Initializing Farcaster Mini App..."}
           </div>
-          <div style={{
-            width: 40,
-            height: 40,
-            border: "4px solid #3b82f6",
-            borderTop: "4px solid transparent",
-            borderRadius: "50%",
-            animation: "spin 1s linear infinite"
-          }} />
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              border: "4px solid #3b82f6",
+              borderTop: "4px solid transparent",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          />
           <style jsx>{`
             @keyframes spin {
               0% { transform: rotate(0deg); }
@@ -391,20 +411,23 @@ export default function Home() {
   return (
     <>
       <Head>
+        <title>EchoEcho - AI-Powered Echo Chamber Breaker</title>
+        <meta name="description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
         <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta property="og:description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
         <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
         <meta name="fc:miniapp" content={JSON.stringify({
-          version: '1',
-          id: process.env.FARCASTER_MINIAPP_ID || '0199409c-b991-9a61-b1d8-fef2086f7533',
-          title: 'EchoEcho',
-          image: 'https://echoechos.vercel.app/preview.png',
-          action: { type: 'post', url: 'https://echoechos.vercel.app/api/echo-action' },
+          version: "1",
+          id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+          title: "EchoEcho",
+          image: "https://echoechos.vercel.app/preview.png",
+          action: { type: "post", url: "https://echoechos.vercel.app/api/echo-action" },
           buttons: [
-            { label: 'Echo Trend', action: { type: 'post', url: '/api/echo' } },
-            { label: 'Mint NFT', action: { type: 'post', url: '/api/mint-nft' } }
-          ]
+            { label: "Echo Trend", action: { type: "post", url: "/api/echo" } },
+            { label: "Mint NFT", action: { type: "post", url: "/api/mint-nft" } },
+          ],
         })} />
+        <link rel="icon" href="/favicon.ico" />
       </Head>
       <div
         style={{
@@ -500,7 +523,6 @@ export default function Home() {
             const now = new Date();
             const expiryDate = new Date(subscription.expires_at);
             const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
-
             if (daysUntilExpiry <= 3 && daysUntilExpiry > 0) {
               return (
                 <div
@@ -626,97 +648,92 @@ export default function Home() {
 
         {activeView === "trends" && (
           <div>
-            {trends
-              .filter(
-                (trend) =>
-                  !searchQuery || (trend.text || trend.body || "").toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map((trend, i) => (
+            {filteredTrends.map((trend, i) => (
+              <div
+                key={i}
+                style={{
+                  background: "#1f2937",
+                  border: "1px solid #374151",
+                  padding: 16,
+                  marginBottom: 16,
+                  borderRadius: 12,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+                onClick={() => loadTopicDetails(trend)}
+              >
                 <div
-                  key={i}
                   style={{
-                    background: "#1f2937",
-                    border: "1px solid #374151",
-                    padding: 16,
-                    marginBottom: 16,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
+                    fontSize: 16,
+                    marginBottom: 12,
+                    lineHeight: 1.4,
                   }}
-                  onClick={() => loadTopicDetails(trend)}
                 >
-                  <div
+                  {trend.text || trend.body || "No text"}
+                </div>
+
+                {trend.ai_analysis &&
+                  getSentimentGauge(trend.ai_analysis.sentiment, trend.ai_analysis.confidence)}
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    marginTop: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEcho(trend);
+                    }}
                     style={{
-                      fontSize: 16,
-                      marginBottom: 12,
-                      lineHeight: 1.4,
+                      background: "#3b82f6",
+                      color: "white",
+                      border: "none",
+                      padding: "8px 16px",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontSize: 14,
                     }}
                   >
-                    {trend.text || trend.body || "No text"}
-                  </div>
+                    🔄 Echo It
+                  </button>
 
-                  {trend.ai_analysis &&
-                    getSentimentGauge(trend.ai_analysis.sentiment, trend.ai_analysis.confidence)}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.share?.({ text: trend.text || "Check this out!" });
+                    }}
+                    style={{
+                      background: "#6b7280",
+                      color: "white",
+                      border: "none",
+                      padding: "8px 16px",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    📤 Share
+                  </button>
 
                   <div
                     style={{
-                      display: "flex",
-                      gap: 8,
-                      marginTop: 12,
-                      alignItems: "center",
+                      background: "#374151",
+                      color: "#9ca3af",
+                      padding: "4px 8px",
+                      borderRadius: 4,
+                      fontSize: 12,
+                      marginLeft: "auto",
                     }}
                   >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEcho(trend);
-                      }}
-                      style={{
-                        background: "#3b82f6",
-                        color: "white",
-                        border: "none",
-                        padding: "8px 16px",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                        fontSize: 14,
-                      }}
-                    >
-                      🔄 Echo It
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.share?.({ text: trend.text || "Check this out!" });
-                      }}
-                      style={{
-                        background: "#6b7280",
-                        color: "white",
-                        border: "none",
-                        padding: "8px 16px",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                        fontSize: 14,
-                      }}
-                    >
-                      📤 Share
-                    </button>
-
-                    <div
-                      style={{
-                        background: "#374151",
-                        color: "#9ca3af",
-                        padding: "4px 8px",
-                        borderRadius: 4,
-                        fontSize: 12,
-                        marginLeft: "auto",
-                      }}
-                    >
-                      Click for details →
-                    </div>
+                    Click for details →
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
           </div>
         )}
 
@@ -1030,7 +1047,16 @@ export default function Home() {
   );
 }
 
-const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, usdcBalance, checkUSDCBalance, setSubscription, loadUserSubscription }) => {
+const PremiumView = ({
+  userTier,
+  setUserTier,
+  walletConnected,
+  walletAddress,
+  usdcBalance,
+  checkUSDCBalance,
+  setSubscription,
+  loadUserSubscription,
+}) => {
   const [selectedTier, setSelectedTier] = useState("premium");
   const [paymentStatus, setPaymentStatus] = useState("none");
 
@@ -1102,8 +1128,9 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         transport: custom(window.ethereum),
       });
 
+      const [account] = await walletClient.getAccounts();
       const txHash = await walletClient.sendTransaction({
-        account: walletAddress,
+        account,
         to: usdcContract,
         data,
         value: 0n,
@@ -1421,5 +1448,8 @@ const FAQView = () => {
 };
 
 export async function getStaticProps() {
-  return { props: {} };
+  return {
+    props: {},
+    revalidate: 3600, // Revalidate every hour for ISR
+  };
 }
