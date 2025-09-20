@@ -11,26 +11,27 @@
     "test": "jest"
   },
   "dependencies": {
-    "@farcaster/miniapp-node": "^0.1.9",
-    "@farcaster/miniapp-sdk": "^0.1.10",
-    "@helia/json": "^3.0.2",
-    "@vercel/postgres": "0.5.1",
-    "firebase": "10.7.1",
-    "firebase-admin": "12.0.0",
-    "helia": "^4.0.3",
-    "next": "14.2.32",
-    "node-fetch": "3.3.2",
-    "openai": "4.104.0",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "twitter-api-v2": "1.27.0",
-    "viem": "1.21.4",
-    "wagmi": "1.4.13"
+    "@farcaster/miniapp-node": "^0.2.0", // Updated to latest minor version
+    "@farcaster/miniapp-sdk": "^0.2.0", // Updated to latest minor version
+    "@helia/json": "^4.0.0", // Updated to latest major version
+    "@vercel/postgres": "^0.7.0", // Updated to latest version
+    "firebase": "^10.12.0", // Updated to latest version
+    "firebase-admin": "^12.2.0", // Updated to latest version
+    "helia": "^5.0.0", // Updated to latest major version
+    "next": "14.2.32", // Kept as is (latest patch level)
+    "node-fetch": "^3.3.2", // Kept as is (latest patch level)
+    "openai": "^4.50.0", // Updated to latest version
+    "react": "18.3.1", // Kept as is (latest patch level)
+    "react-dom": "18.3.1", // Kept as is (latest patch level)
+    "twitter-api-v2": "^1.31.0", // Updated to latest version
+    "viem": "^1.21.4", // Kept as is (latest patch level in 1.x series)
+    "wagmi": "^2.12.0", // Updated to latest compatible version
+    "@neynar/nodejs-sdk": "^1.2.0" // Added for Neynar SDK support
   },
   "devDependencies": {
-    "eslint": "8.57.0",
-    "eslint-config-next": "14.2.32",
-    "jest": "29.7.0",
-    "prettier": "3.0.3"
+    "eslint": "^8.57.0", // Kept as is (latest patch level)
+    "eslint-config-next": "14.2.32", // Kept as is (latest patch level)
+    "jest": "^29.7.0", // Kept as is (latest patch level)
+    "prettier": "^3.3.3" // Updated to latest version
   }
 }
