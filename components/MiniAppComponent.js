@@ -1,27 +1,17 @@
 // components/MiniAppComponent.js
 import { useEffect } from 'react';
-import { useMiniApp } from '@farcaster/miniapp-sdk'; // Replace with correct import if needed
 
-export default function MiniAppComponent({ walletConnected, walletAddress }) {
-  const { context, sdk } = useMiniApp(); // Ensure this is the correct hook
-
+export default function MiniAppComponent({ walletConnected, walletAddress, onMiniAppReady }) {
   useEffect(() => {
     if (walletConnected && walletAddress) {
-      if (!context.client.added) {
-        sdk.actions.addMiniApp();
-      } else if (context.client.notificationDetails) {
-        fetch("/api/update-notification-token", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userAddress: walletAddress,
-            notificationToken: context.client.notificationDetails.token,
-            notificationUrl: context.client.notificationDetails.url,
-          }),
-        }).catch((error) => console.error("Error storing notification details:", error));
-      }
+      console.log('Farcaster MiniApp logic would run here for address:', walletAddress);
+      // Placeholder for Farcaster SDK integration
+      // Example: sdk.actions.addMiniApp() or fetch("/api/update-notification-token")
+      onMiniAppReady(); // Signal splash screen to transition
+    } else {
+      onMiniAppReady(); // No wallet, proceed to main UI
     }
-  }, [walletConnected, walletAddress, context.client.added, context.client.notificationDetails, sdk.actions]);
+  }, [walletConnected, walletAddress, onMiniAppReady]);
 
   return null; // This component doesn't render anything
 }
