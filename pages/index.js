@@ -3,13 +3,14 @@ import { createPublicClient, http, getContract, formatUnits, createWalletClient,
 import { base } from "viem/chains";
 import dynamic from 'next/dynamic';
 import Image from "next/image";
+import Head from 'next/head';
 
-// Dynamically import MiniAppComponent with SSR disabled
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
 export default function Home() {
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [miniAppReady, setMiniAppReady] = useState(false);
   const [globalMode, setGlobalMode] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [counterNarratives, setCounterNarratives] = useState([]);
@@ -23,7 +24,6 @@ export default function Home() {
   const [subscription, setSubscription] = useState(null);
   const [reminderDismissed, setReminderDismissed] = useState(false);
 
-  // Memoize checkWalletConnection to prevent unnecessary re-renders
   const checkWalletConnection = useCallback(async () => {
     if (typeof window !== "undefined" && window.ethereum) {
       try {
@@ -38,6 +38,10 @@ export default function Home() {
         console.error("Wallet connection check failed:", error);
       }
     }
+  }, []);
+
+  const handleMiniAppReady = useCallback(() => {
+    setMiniAppReady(true);
   }, []);
 
   useEffect(() => {
@@ -301,25 +305,74 @@ export default function Home() {
     );
   };
 
-  if (loading) {
+  if (loading || !miniAppReady) {
     return (
-      <div
-        style={{
-          padding: 20,
+      <>
+        <Head>
+          <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
+          <meta property="og:description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
+          <meta property="og:image" content="https://echoechos.vercel.app/splash-image.png" />
+          <meta name="fc:miniapp" content={JSON.stringify({
+            version: '1',
+            id: 'echoecho-app-id', // Replace with your actual Farcaster Mini App ID
+            title: 'EchoEcho',
+            image: 'https://echoechos.vercel.app/splash-image.png',
+            action: { type: 'post', url: 'https://echoechos.vercel.app/api/echo-action' }
+          })} />
+        </Head>
+        <div style={{
+          padding: 40,
           textAlign: "center",
           background: "#111827",
           color: "#f9fafb",
           minHeight: "100vh",
-        }}
-      >
-        <div style={{ fontSize: 18, marginBottom: 10 }}>🔄 Loading...</div>
-        <div style={{ color: "#9ca3af" }}>Discovering trending conversations...</div>
-      </div>
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center"
+        }}>
+          <Image src="/logo.png" alt="EchoEcho Logo" width={120} height={120} style={{ marginBottom: 20, borderRadius: 20 }} />
+          <div style={{ fontSize: 24, fontWeight: "bold", marginBottom: 10 }}>🔥 EchoEcho</div>
+          <div style={{ fontSize: 16, color: "#9ca3af", marginBottom: 20 }}>
+            {loading ? "Loading trends..." : "Initializing Farcaster Mini App..."}
+          </div>
+          <div style={{
+            width: 40,
+            height: 40,
+            border: "4px solid #3b82f6",
+            borderTop: "4px solid transparent",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite"
+          }} />
+          <style jsx>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
+        </div>
+      </>
     );
   }
 
-  if (activeView === "topic" && selectedTopic) {
-    return (
+  return (
+    <>
+      <Head>
+        <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
+        <meta property="og:description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
+        <meta property="og:image" content="https://echoechos.vercel.app/embed-image.png" />
+        <meta name="fc:miniapp" content={JSON.stringify({
+          version: '1',
+          id: 'echoecho-app-id', // Replace with your actual Farcaster Mini App ID
+          title: 'EchoEcho',
+          image: 'https://echoechos.vercel.app/embed-image.png',
+          action: { type: 'post', url: 'https://echoechos.vercel.app/api/echo-action' },
+          buttons: [
+            { label: 'Echo Trend', action: { type: 'post', url: '/api/echo' } },
+            { label: 'Mint NFT', action: { type: 'post', url: '/api/mint-nft' } }
+          ]
+        })} />
+      </Head>
       <div
         style={{
           maxWidth: 720,
@@ -330,629 +383,620 @@ export default function Home() {
           minHeight: "100vh",
         }}
       >
-        <div style={{ marginBottom: 20 }}>
-          <button
-            onClick={() => setActiveView("trends")}
-            style={{
-              background: "none",
-              border: "1px solid #374151",
-              color: "#9ca3af",
-              padding: "8px 16px",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
-          >
-            ← Back to Trends
-          </button>
-        </div>
-
-        <h2 style={{ marginBottom: 16 }}>🎯 Topic Deep Dive</h2>
-
         <div
           style={{
-            background: "#1f2937",
-            border: "1px solid #374151",
-            padding: 16,
-            borderRadius: 12,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
             marginBottom: 20,
           }}
         >
-          <div style={{ fontSize: 16, marginBottom: 12 }}>
-            {selectedTopic.text || selectedTopic.body || "No text"}
-          </div>
-          {selectedTopic.ai_analysis &&
-            getSentimentGauge(selectedTopic.ai_analysis.sentiment, selectedTopic.ai_analysis.confidence)}
-        </div>
-
-        {globalMode && counterNarratives.length > 0 && (
           <div>
-            <h3 style={{ marginBottom: 16, color: "#60a5fa" }}>🌐 Counter-Narratives Found</h3>
-            {counterNarratives.map((narrative, i) => (
-              <div
-                key={i}
-                style={{
-                  background: "#1f2937",
-                  border: "1px solid #3b82f6",
-                  padding: 16,
-                  borderRadius: 12,
-                  marginBottom: 12,
-                }}
-              >
-                <div style={{ fontSize: 14, marginBottom: 12 }}>{narrative.text}</div>
-                <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 12 }}>
-                  Source: {narrative.source} {narrative.author && `• ${narrative.author}`}
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => handleEcho(narrative, true)}
-                    style={{
-                      background: "#3b82f6",
-                      color: "white",
-                      border: "none",
-                      padding: "8px 16px",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      fontSize: 14,
-                    }}
-                  >
-                    🌟 Echo Counter-View
-                  </button>
-                  <button
-                    onClick={() => mintInsightToken(narrative)}
-                    style={{
-                      background: "#7c3aed",
-                      color: "white",
-                      border: "none",
-                      padding: "8px 16px",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      fontSize: 14,
-                    }}
-                  >
-                    🎨 Mint Insight Token
-                  </button>
-                </div>
-              </div>
-            ))}
+            <h1 style={{ margin: 0, fontSize: 24 }}>🔥 EchoEcho</h1>
+            <p style={{ margin: "4px 0 0 0", color: "#9ca3af", fontSize: 14 }}>
+              AI-powered echo chamber breaker
+            </p>
           </div>
-        )}
-      </div>
-    );
-  }
 
-  return (
-    <div
-      style={{
-        maxWidth: 720,
-        margin: "20px auto",
-        padding: 12,
-        background: "#111827",
-        color: "#f9fafb",
-        minHeight: "100vh",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <h1 style={{ margin: 0, fontSize: 24 }}>🔥 EchoEcho</h1>
-          <p style={{ margin: "4px 0 0 0", color: "#9ca3af", fontSize: 14 }}>
-            AI-powered echo chamber breaker
-          </p>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <div
-            style={{
-              background: userTier === "free" ? "#374151" : userTier === "premium" ? "#7c3aed" : "#fbbf24",
-              color: "white",
-              padding: "6px 12px",
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: "600",
-            }}
-          >
-            {userTier === "free" ? "🆓 Free" : userTier === "premium" ? "💎 Premium" : "👑 Pro"}
-          </div>
-          <button
-            onClick={() => setActiveView("premium")}
-            style={{
-              background: "#3b82f6",
-              color: "white",
-              border: "none",
-              padding: "6px 12px",
-              borderRadius: 20,
-              fontSize: 12,
-              cursor: "pointer",
-            }}
-          >
-            💰 Upgrade
-          </button>
-          <button
-            onClick={walletConnected ? null : connectWallet}
-            style={{
-              background: walletConnected ? "#059669" : "#374151",
-              color: "white",
-              padding: "6px 12px",
-              borderRadius: 20,
-              fontSize: 12,
-              border: "none",
-              cursor: walletConnected ? "default" : "pointer",
-            }}
-          >
-            {walletConnected ? `🟢 ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : "🔴 Connect Wallet"}
-          </button>
-          {walletConnected && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <div
               style={{
-                background: "#1e40af",
+                background: userTier === "free" ? "#374151" : userTier === "premium" ? "#7c3aed" : "#fbbf24",
                 color: "white",
                 padding: "6px 12px",
                 borderRadius: 20,
                 fontSize: 12,
+                fontWeight: "600",
               }}
             >
-              💰 {usdcBalance} USDC
+              {userTier === "free" ? "🆓 Free" : userTier === "premium" ? "💎 Premium" : "👑 Pro"}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* MiniApp Integration */}
-      <MiniAppComponent
-        walletConnected={walletConnected}
-        walletAddress={walletAddress}
-      />
-
-      {/* Subscription Reminder Banner */}
-      {subscription &&
-        !reminderDismissed &&
-        (() => {
-          const now = new Date();
-          const expiryDate = new Date(subscription.expires_at);
-          const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
-
-          if (daysUntilExpiry <= 3 && daysUntilExpiry > 0) {
-            return (
+            <button
+              onClick={() => setActiveView("premium")}
+              style={{
+                background: "#3b82f6",
+                color: "white",
+                border: "none",
+                padding: "6px 12px",
+                borderRadius: 20,
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              💰 Upgrade
+            </button>
+            <button
+              onClick={walletConnected ? null : connectWallet}
+              style={{
+                background: walletConnected ? "#059669" : "#374151",
+                color: "white",
+                padding: "6px 12px",
+                borderRadius: 20,
+                fontSize: 12,
+                border: "none",
+                cursor: walletConnected ? "default" : "pointer",
+              }}
+            >
+              {walletConnected ? `🟢 ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : "🔴 Connect Wallet"}
+            </button>
+            {walletConnected && (
               <div
                 style={{
-                  background: daysUntilExpiry <= 1 ? "#dc2626" : "#f59e0b",
+                  background: "#1e40af",
                   color: "white",
-                  padding: "12px 16px",
-                  borderRadius: 8,
-                  marginBottom: 16,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
+                  padding: "6px 12px",
+                  borderRadius: 20,
+                  fontSize: 12,
                 }}
               >
-                <div>
-                  <div style={{ fontWeight: "bold", marginBottom: 4 }}>
-                    {daysUntilExpiry === 1 ? "⚠️ Last Day!" : `📅 ${daysUntilExpiry} Days Left`}
-                  </div>
-                  <div style={{ fontSize: 14 }}>
-                    Your {subscription.tier} subscription expires{" "}
-                    {daysUntilExpiry === 1 ? "tomorrow" : `in ${daysUntilExpiry} days`}. Renew now to keep premium
-                    features!
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => setActiveView("premium")}
-                    style={{
-                      background: "rgba(255,255,255,0.2)",
-                      color: "white",
-                      border: "1px solid rgba(255,255,255,0.3)",
-                      padding: "6px 12px",
-                      borderRadius: 6,
-                      fontSize: 12,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Renew
-                  </button>
-                  <button
-                    onClick={() => setReminderDismissed(true)}
-                    style={{
-                      background: "transparent",
-                      color: "white",
-                      border: "none",
-                      padding: "6px 8px",
-                      borderRadius: 6,
-                      fontSize: 16,
-                      cursor: "pointer",
-                    }}
-                  >
-                    ✕
-                  </button>
-                </div>
+                💰 {usdcBalance} USDC
               </div>
-            );
-          }
-          return null;
-        })()}
+            )}
+          </div>
+        </div>
 
-      {/* Search and Toggle */}
-      <div style={{ marginBottom: 20 }}>
-        <input
-          type="text"
-          placeholder="🔍 Search trends or topics..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "12px 16px",
-            background: "#1f2937",
-            border: "1px solid #374151",
-            borderRadius: 8,
-            color: "#f9fafb",
-            fontSize: 14,
-            marginBottom: 12,
-          }}
+        <MiniAppComponent
+          walletConnected={walletConnected}
+          walletAddress={walletAddress}
+          onMiniAppReady={handleMiniAppReady}
         />
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={globalMode}
-              onChange={(e) => setGlobalMode(e.target.checked)}
-              style={{ cursor: "pointer" }}
-            />
-            <span style={{ fontSize: 14 }}>
-              🌐 Global Echoes {globalMode ? "(X + News)" : "(Farcaster Only)"}
-            </span>
-          </label>
-        </div>
-      </div>
+        {subscription &&
+          !reminderDismissed &&
+          (() => {
+            const now = new Date();
+            const expiryDate = new Date(subscription.expires_at);
+            const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
 
-      {/* Bottom Navigation */}
-      <div
-        style={{
-          display: "flex",
-          background: "#1f2937",
-          borderRadius: 8,
-          padding: 4,
-          marginBottom: 20,
-        }}
-      >
-        {["trends", "echoes", "faq"].map((view) => (
-          <button
-            key={view}
-            onClick={() => setActiveView(view)}
-            style={{
-              flex: 1,
-              background: activeView === view ? "#3b82f6" : "transparent",
-              color: activeView === view ? "white" : "#9ca3af",
-              border: "none",
-              padding: "8px 16px",
-              borderRadius: 6,
-              cursor: "pointer",
-              fontSize: 14,
-              textTransform: "capitalize",
-            }}
-          >
-            {view === "trends" ? "🔥 Trends" : view === "echoes" ? "📜 My Echoes" : "❓ FAQ"}
-          </button>
-        ))}
-      </div>
-
-      {/* Content */}
-      {activeView === "trends" && (
-        <div>
-          {trends
-            .filter(
-              (trend) =>
-                !searchQuery || (trend.text || trend.body || "").toLowerCase().includes(searchQuery.toLowerCase())
-            )
-            .map((trend, i) => (
-              <div
-                key={i}
-                style={{
-                  background: "#1f2937",
-                  border: "1px solid #374151",
-                  padding: 16,
-                  marginBottom: 16,
-                  borderRadius: 12,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-                onClick={() => loadTopicDetails(trend)}
-              >
+            if (daysUntilExpiry <= 3 && daysUntilExpiry > 0) {
+              return (
                 <div
                   style={{
-                    fontSize: 16,
-                    marginBottom: 12,
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {trend.text || trend.body || "No text"}
-                </div>
-
-                {trend.ai_analysis &&
-                  getSentimentGauge(trend.ai_analysis.sentiment, trend.ai_analysis.confidence)}
-
-                <div
-                  style={{
+                    background: daysUntilExpiry <= 1 ? "#dc2626" : "#f59e0b",
+                    color: "white",
+                    padding: "12px 16px",
+                    borderRadius: 8,
+                    marginBottom: 16,
                     display: "flex",
-                    gap: 8,
-                    marginTop: 12,
                     alignItems: "center",
+                    justifyContent: "space-between",
                   }}
                 >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEcho(trend);
-                    }}
-                    style={{
-                      background: "#3b82f6",
-                      color: "white",
-                      border: "none",
-                      padding: "8px 16px",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      fontSize: 14,
-                    }}
-                  >
-                    🔄 Echo It
-                  </button>
+                  <div>
+                    <div style={{ fontWeight: "bold", marginBottom: 4 }}>
+                      {daysUntilExpiry === 1 ? "⚠️ Last Day!" : `📅 ${daysUntilExpiry} Days Left`}
+                    </div>
+                    <div style={{ fontSize: 14 }}>
+                      Your {subscription.tier} subscription expires{" "}
+                      {daysUntilExpiry === 1 ? "tomorrow" : `in ${daysUntilExpiry} days`}. Renew now to keep premium
+                      features!
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => setActiveView("premium")}
+                      style={{
+                        background: "rgba(255,255,255,0.2)",
+                        color: "white",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        padding: "6px 12px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Renew
+                    </button>
+                    <button
+                      onClick={() => setReminderDismissed(true)}
+                      style={{
+                        background: "transparent",
+                        color: "white",
+                        border: "none",
+                        padding: "6px 8px",
+                        borderRadius: 6,
+                        fontSize: 16,
+                        cursor: "pointer",
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigator.share?.({ text: trend.text || "Check this out!" });
-                    }}
+        <div style={{ marginBottom: 20 }}>
+          <input
+            type="text"
+            placeholder="🔍 Search trends or topics..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              background: "#1f2937",
+              border: "1px solid #374151",
+              borderRadius: 8,
+              color: "#f9fafb",
+              fontSize: 14,
+              marginBottom: 12,
+            }}
+          />
+
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={globalMode}
+                onChange={(e) => setGlobalMode(e.target.checked)}
+                style={{ cursor: "pointer" }}
+              />
+              <span style={{ fontSize: 14 }}>
+                🌐 Global Echoes {globalMode ? "(X + News)" : "(Farcaster Only)"}
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            background: "#1f2937",
+            borderRadius: 8,
+            padding: 4,
+            marginBottom: 20,
+          }}
+        >
+          {["trends", "echoes", "faq"].map((view) => (
+            <button
+              key={view}
+              onClick={() => setActiveView(view)}
+              style={{
+                flex: 1,
+                background: activeView === view ? "#3b82f6" : "transparent",
+                color: activeView === view ? "white" : "#9ca3af",
+                border: "none",
+                padding: "8px 16px",
+                borderRadius: 6,
+                cursor: "pointer",
+                fontSize: 14,
+                textTransform: "capitalize",
+              }}
+            >
+              {view === "trends" ? "🔥 Trends" : view === "echoes" ? "📜 My Echoes" : "❓ FAQ"}
+            </button>
+          ))}
+        </div>
+
+        {activeView === "trends" && (
+          <div>
+            {trends
+              .filter(
+                (trend) =>
+                  !searchQuery || (trend.text || trend.body || "").toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .map((trend, i) => (
+                <div
+                  key={i}
+                  style={{
+                    background: "#1f2937",
+                    border: "1px solid #374151",
+                    padding: 16,
+                    marginBottom: 16,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                  onClick={() => loadTopicDetails(trend)}
+                >
+                  <div
                     style={{
-                      background: "#6b7280",
-                      color: "white",
-                      border: "none",
-                      padding: "8px 16px",
-                      borderRadius: 6,
-                      cursor: "pointer",
-                      fontSize: 14,
+                      fontSize: 16,
+                      marginBottom: 12,
+                      lineHeight: 1.4,
                     }}
                   >
-                    📤 Share
-                  </button>
+                    {trend.text || trend.body || "No text"}
+                  </div>
+
+                  {trend.ai_analysis &&
+                    getSentimentGauge(trend.ai_analysis.sentiment, trend.ai_analysis.confidence)}
 
                   <div
                     style={{
-                      background: "#374151",
-                      color: "#9ca3af",
-                      padding: "4px 8px",
-                      borderRadius: 4,
-                      fontSize: 12,
-                      marginLeft: "auto",
+                      display: "flex",
+                      gap: 8,
+                      marginTop: 12,
+                      alignItems: "center",
                     }}
                   >
-                    Click for details →
-                  </div>
-                </div>
-              </div>
-            ))}
-        </div>
-      )}
-
-      {activeView === "echoes" && (
-        <div>
-          <h2 style={{ marginBottom: 20 }}>📜 Your Echo History</h2>
-
-          {userEchoes === null ? (
-            <div style={{ textAlign: "center", padding: 40 }}>
-              <button
-                onClick={loadUserEchoes}
-                style={{
-                  background: "#3b82f6",
-                  color: "white",
-                  border: "none",
-                  padding: "12px 24px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                  fontSize: 16,
-                }}
-              >
-                📊 Load My Echoes
-              </button>
-            </div>
-          ) : (
-            <div>
-              {/* Stats Overview */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                  gap: 16,
-                  marginBottom: 24,
-                }}
-              >
-                <div
-                  style={{
-                    background: "#1f2937",
-                    border: "1px solid #374151",
-                    padding: 16,
-                    borderRadius: 12,
-                    textAlign: "center",
-                  }}
-                >
-                  <div style={{ fontSize: 24, marginBottom: 8 }}>🔄</div>
-                  <div style={{ fontSize: 20, fontWeight: "bold" }}>{userEchoes.stats?.total_echoes || 0}</div>
-                  <div style={{ color: "#9ca3af", fontSize: 14 }}>Total Echoes</div>
-                </div>
-                <div
-                  style={{
-                    background: "#1f2937",
-                    border: "1px solid #374151",
-                    padding: 16,
-                    borderRadius: 12,
-                    textAlign: "center",
-                  }}
-                >
-                  <div style={{ fontSize: 24, marginBottom: 8 }}>🌟</div>
-                  <div style={{ fontSize: 20, fontWeight: "bold" }}>
-                    {userEchoes.stats?.counter_narratives || 0}
-                  </div>
-                  <div style={{ color: "#9ca3af", fontSize: 14 }}>Counter-Narratives</div>
-                </div>
-                <div
-                  style={{
-                    background: "#1f2937",
-                    border: "1px solid #374151",
-                    padding: 16,
-                    borderRadius: 12,
-                    textAlign: "center",
-                  }}
-                >
-                  <div style={{ fontSize: 24, marginBottom: 8 }}>🎨</div>
-                  <div style={{ fontSize: 20, fontWeight: "bold" }}>{userEchoes.stats?.nfts_minted || 0}</div>
-                  <div style={{ color: "#9ca3af", fontSize: 14 }}>NFTs Minted</div>
-                </div>
-              </div>
-
-              {/* Recent Echoes */}
-              <div style={{ marginBottom: 32 }}>
-                <h3 style={{ marginBottom: 16, color: "#60a5fa" }}>🔄 Recent Echoes</h3>
-                {userEchoes.echoes?.length > 0 ? (
-                  userEchoes.echoes.map((echo, i) => (
-                    <div
-                      key={i}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEcho(trend);
+                      }}
                       style={{
-                        background: "#1f2937",
-                        border: "1px solid #374151",
-                        padding: 16,
-                        borderRadius: 12,
-                        marginBottom: 12,
+                        background: "#3b82f6",
+                        color: "white",
+                        border: "none",
+                        padding: "8px 16px",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        fontSize: 14,
                       }}
                     >
-                      <div style={{ fontSize: 16, marginBottom: 8 }}>{echo.original_cast}</div>
-                      <div
+                      🔄 Echo It
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.share?.({ text: trend.text || "Check this out!" });
+                      }}
+                      style={{
+                        background: "#6b7280",
+                        color: "white",
+                        border: "none",
+                        padding: "8px 16px",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        fontSize: 14,
+                      }}
+                    >
+                      📤 Share
+                    </button>
+
+                    <div
+                      style={{
+                        background: "#374151",
+                        color: "#9ca3af",
+                        padding: "4px 8px",
+                        borderRadius: 4,
+                        fontSize: 12,
+                        marginLeft: "auto",
+                      }}
+                    >
+                      Click for details →
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {activeView === "topic" && selectedTopic && (
+          <div
+            style={{
+              maxWidth: 720,
+              margin: "20px auto",
+              padding: 12,
+              background: "#111827",
+              color: "#f9fafb",
+              minHeight: "100vh",
+            }}
+          >
+            <div style={{ marginBottom: 20 }}>
+              <button
+                onClick={() => setActiveView("trends")}
+                style={{
+                  background: "none",
+                  border: "1px solid #374151",
+                  color: "#9ca3af",
+                  padding: "8px 16px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                ← Back to Trends
+              </button>
+            </div>
+
+            <h2 style={{ marginBottom: 16 }}>🎯 Topic Deep Dive</h2>
+
+            <div
+              style={{
+                background: "#1f2937",
+                border: "1px solid #374151",
+                padding: 16,
+                borderRadius: 12,
+                marginBottom: 20,
+              }}
+            >
+              <div style={{ fontSize: 16, marginBottom: 12 }}>
+                {selectedTopic.text || selectedTopic.body || "No text"}
+              </div>
+              {selectedTopic.ai_analysis &&
+                getSentimentGauge(selectedTopic.ai_analysis.sentiment, selectedTopic.ai_analysis.confidence)}
+            </div>
+
+            {globalMode && counterNarratives.length > 0 && (
+              <div>
+                <h3 style={{ marginBottom: 16, color: "#60a5fa" }}>🌐 Counter-Narratives Found</h3>
+                {counterNarratives.map((narrative, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      background: "#1f2937",
+                      border: "1px solid #3b82f6",
+                      padding: 16,
+                      borderRadius: 12,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <div style={{ fontSize: 14, marginBottom: 12 }}>{narrative.text}</div>
+                    <div style={{ fontSize: 12, color: "#9ca3af", marginBottom: 12 }}>
+                      Source: {narrative.source} {narrative.author && `• ${narrative.author}`}
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        onClick={() => handleEcho(narrative, true)}
                         style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          color: "#9ca3af",
-                          fontSize: 12,
+                          background: "#3b82f6",
+                          color: "white",
+                          border: "none",
+                          padding: "8px 16px",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                          fontSize: 14,
                         }}
                       >
-                        <span>
-                          {echo.type === "counter_narrative" ? "🌟 Counter-Narrative" : "🔄 Standard Echo"}
-                          {echo.source && ` • ${echo.source}`}
-                        </span>
-                        <span>{new Date(echo.echoed_at).toLocaleDateString()}</span>
-                      </div>
+                        🌟 Echo Counter-View
+                      </button>
+                      <button
+                        onClick={() => mintInsightToken(narrative)}
+                        style={{
+                          background: "#7c3aed",
+                          color: "white",
+                          border: "none",
+                          padding: "8px 16px",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                          fontSize: 14,
+                        }}
+                      >
+                        🎨 Mint Insight Token
+                      </button>
                     </div>
-                  ))
-                ) : (
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeView === "echoes" && (
+          <div>
+            <h2 style={{ marginBottom: 20 }}>📜 Your Echo History</h2>
+
+            {userEchoes === null ? (
+              <div style={{ textAlign: "center", padding: 40 }}>
+                <button
+                  onClick={loadUserEchoes}
+                  style={{
+                    background: "#3b82f6",
+                    color: "white",
+                    border: "none",
+                    padding: "12px 24px",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    fontSize: 16,
+                  }}
+                >
+                  📊 Load My Echoes
+                </button>
+              </div>
+            ) : (
+              <div>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                    gap: 16,
+                    marginBottom: 24,
+                  }}
+                >
                   <div
                     style={{
                       background: "#1f2937",
-                      border: "1px dashed #374151",
-                      padding: 20,
+                      border: "1px solid #374151",
+                      padding: 16,
                       borderRadius: 12,
-                      color: "#9ca3af",
                       textAlign: "center",
                     }}
                   >
-                    No echoes yet. Start echoing to build your history!
+                    <div style={{ fontSize: 24, marginBottom: 8 }}>🔄</div>
+                    <div style={{ fontSize: 20, fontWeight: "bold" }}>{userEchoes.stats?.total_echoes || 0}</div>
+                    <div style={{ color: "#9ca3af", fontSize: 14 }}>Total Echoes</div>
                   </div>
-                )}
-              </div>
-
-              {/* NFT Collection */}
-              <div>
-                <h3 style={{ marginBottom: 16, color: "#7c3aed" }}>🎨 Your Insight Token Collection</h3>
-                {userEchoes.nfts?.length > 0 ? (
                   <div
                     style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
-                      gap: 16,
+                      background: "#1f2937",
+                      border: "1px solid #374151",
+                      padding: 16,
+                      borderRadius: 12,
+                      textAlign: "center",
                     }}
                   >
-                    {userEchoes.nfts.map((nft, i) => (
+                    <div style={{ fontSize: 24, marginBottom: 8 }}>🌟</div>
+                    <div style={{ fontSize: 20, fontWeight: "bold" }}>
+                      {userEchoes.stats?.counter_narratives || 0}
+                    </div>
+                    <div style={{ color: "#9ca3af", fontSize: 14 }}>Counter-Narratives</div>
+                  </div>
+                  <div
+                    style={{
+                      background: "#1f2937",
+                      border: "1px solid #374151",
+                      padding: 16,
+                      borderRadius: 12,
+                      textAlign: "center",
+                    }}
+                  >
+                    <div style={{ fontSize: 24, marginBottom: 8 }}>🎨</div>
+                    <div style={{ fontSize: 20, fontWeight: "bold" }}>{userEchoes.stats?.nfts_minted || 0}</div>
+                    <div style={{ color: "#9ca3af", fontSize: 14 }}>NFTs Minted</div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 32 }}>
+                  <h3 style={{ marginBottom: 16, color: "#60a5fa" }}>🔄 Recent Echoes</h3>
+                  {userEchoes.echoes?.length > 0 ? (
+                    userEchoes.echoes.map((echo, i) => (
                       <div
                         key={i}
                         style={{
                           background: "#1f2937",
-                          border: "1px solid #7c3aed",
+                          border: "1px solid #374151",
+                          padding: 16,
                           borderRadius: 12,
-                          overflow: "hidden",
+                          marginBottom: 12,
                         }}
                       >
-                        <Image
-                          src={nft.image}
-                          alt={nft.title}
-                          width={250}
-                          height={200}
+                        <div style={{ fontSize: 16, marginBottom: 8 }}>{echo.original_cast}</div>
+                        <div
                           style={{
-                            width: "100%",
-                            height: 200,
-                            objectFit: "cover",
-                            background: "#374151",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            color: "#9ca3af",
+                            fontSize: 12,
                           }}
-                        />
-                        <div style={{ padding: 16 }}>
-                          <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>{nft.title}</div>
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              fontSize: 12,
-                              color: "#9ca3af",
-                            }}
-                          >
-                            <span>Rarity: {nft.rarity}</span>
-                            <span>{new Date(nft.minted_at).toLocaleDateString()}</span>
-                          </div>
+                        >
+                          <span>
+                            {echo.type === "counter_narrative" ? "🌟 Counter-Narrative" : "🔄 Standard Echo"}
+                            {echo.source && ` • ${echo.source}`}
+                          </span>
+                          <span>{new Date(echo.echoed_at).toLocaleDateString()}</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div
-                    style={{
-                      background: "#1f2937",
-                      border: "1px dashed #374151",
-                      padding: 20,
-                      borderRadius: 12,
-                      color: "#9ca3af",
-                      textAlign: "center",
-                    }}
-                  >
-                    No Insight Tokens yet. Discover and mint counter-narratives to start your collection!
-                  </div>
-                )}
+                    ))
+                  ) : (
+                    <div
+                      style={{
+                        background: "#1f2937",
+                        border: "1px dashed #374151",
+                        padding: 20,
+                        borderRadius: 12,
+                        color: "#9ca3af",
+                        textAlign: "center",
+                      }}
+                    >
+                      No echoes yet. Start echoing to build your history!
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h3 style={{ marginBottom: 16, color: "#7c3aed" }}>🎨 Your Insight Token Collection</h3>
+                  {userEchoes.nfts?.length > 0 ? (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+                        gap: 16,
+                      }}
+                    >
+                      {userEchoes.nfts.map((nft, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            background: "#1f2937",
+                            border: "1px solid #7c3aed",
+                            borderRadius: 12,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <Image
+                            src={nft.image}
+                            alt={nft.title}
+                            width={250}
+                            height={200}
+                            style={{
+                              width: "100%",
+                              height: 200,
+                              objectFit: "cover",
+                              background: "#374151",
+                            }}
+                          />
+                          <div style={{ padding: 16 }}>
+                            <div style={{ fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>{nft.title}</div>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                fontSize: 12,
+                                color: "#9ca3af",
+                              }}
+                            >
+                              <span>Rarity: {nft.rarity}</span>
+                              <span>{new Date(nft.minted_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        background: "#1f2937",
+                        border: "1px dashed #374151",
+                        padding: 20,
+                        borderRadius: 12,
+                        color: "#9ca3af",
+                        textAlign: "center",
+                      }}
+                    >
+                      No Insight Tokens yet. Discover and mint counter-narratives to start your collection!
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
 
-      {activeView === "premium" && (
-        <PremiumView
-          userTier={userTier}
-          setUserTier={setUserTier}
-          walletConnected={walletConnected}
-          walletAddress={walletAddress}
-          usdcBalance={usdcBalance}
-          checkUSDCBalance={checkUSDCBalance}
-          setSubscription={setSubscription}
-          loadUserSubscription={loadUserSubscription}
-        />
-      )}
+        {activeView === "premium" && (
+          <PremiumView
+            userTier={userTier}
+            setUserTier={setUserTier}
+            walletConnected={walletConnected}
+            walletAddress={walletAddress}
+            usdcBalance={usdcBalance}
+            checkUSDCBalance={checkUSDCBalance}
+            setSubscription={setSubscription}
+            loadUserSubscription={loadUserSubscription}
+          />
+        )}
 
-      {activeView === "faq" && <FAQView />}
-    </div>
+        {activeView === "faq" && <FAQView />}
+      </div>
+    </>
   );
 }
 
-// Premium subscription component
 const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, usdcBalance, checkUSDCBalance, setSubscription, loadUserSubscription }) => {
   const [selectedTier, setSelectedTier] = useState("premium");
   const [paymentStatus, setPaymentStatus] = useState("none");
@@ -1081,7 +1125,6 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
           marginBottom: 32,
         }}
       >
-        {/* Premium Tier */}
         <div
           style={{
             background: selectedTier === "premium" ? "linear-gradient(135deg, #7c3aed, #a855f7)" : "#1f2937",
@@ -1141,7 +1184,6 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
           )}
         </div>
 
-        {/* Pro Tier */}
         <div
           style={{
             background: selectedTier === "pro" ? "linear-gradient(135deg, #fbbf24, #f59e0b)" : "#1f2937",
@@ -1238,7 +1280,6 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
   );
 };
 
-// FAQ component with inline content
 const FAQView = () => {
   const [openSections, setOpenSections] = useState({});
 
