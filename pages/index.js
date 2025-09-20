@@ -25,53 +25,67 @@ export default function Home() {
   const [reminderDismissed, setReminderDismissed] = useState(false);
 
   const checkWalletConnection = useCallback(async () => {
+    console.log("Checking wallet connection...");
     if (typeof window !== "undefined" && window.ethereum) {
       try {
         const accounts = await window.ethereum.request({ method: "eth_accounts" });
+        console.log("Wallet accounts:", accounts);
         if (accounts.length > 0) {
           setWalletConnected(true);
           setWalletAddress(accounts[0]);
+          console.log("Wallet connected, address:", accounts[0]);
           await checkUSDCBalance(accounts[0]);
           await loadUserSubscription(accounts[0]);
+        } else {
+          console.log("No wallet accounts found");
         }
       } catch (error) {
         console.error("Wallet connection check failed:", error);
       }
+    } else {
+      console.log("No Ethereum provider detected");
     }
   }, []);
 
   const handleMiniAppReady = useCallback(() => {
+    console.log("MiniApp ready triggered");
     setMiniAppReady(true);
   }, []);
 
   useEffect(() => {
+    console.log("useEffect: Loading trends and checking wallet...");
     loadTrends();
     checkWalletConnection();
   }, [globalMode, checkWalletConnection]);
 
   const connectWallet = async () => {
+    console.log("Connecting wallet...");
     if (typeof window !== "undefined" && window.ethereum) {
       try {
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
         if (accounts.length > 0) {
           setWalletConnected(true);
           setWalletAddress(accounts[0]);
+          console.log("Wallet connected successfully:", accounts[0]);
           await checkUSDCBalance(accounts[0]);
           await loadUserSubscription(accounts[0]);
         }
       } catch (error) {
+        console.error("Wallet connection failed:", error);
         alert("❌ Failed to connect wallet: " + error.message);
       }
     } else {
+      console.log("No Ethereum provider available");
       alert("Please install a Web3 wallet like MetaMask or use Farcaster app!");
     }
   };
 
   const checkUSDCBalance = async (address) => {
+    console.log("Checking USDC balance for address:", address);
     try {
       const client = createPublicClient({
         chain: base,
-        transport: http("https://mainnet.base.org"),
+        transport: http(process.env.BASE_RPC_URL || "https://mainnet.base.org"),
       });
       const usdcContractAddress = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
       const usdcAbi = [
@@ -90,6 +104,7 @@ export default function Home() {
       });
       const balance = await usdcContract.read.balanceOf([address]);
       const balanceInUSDC = formatUnits(balance, 6);
+      console.log("USDC balance:", balanceInUSDC);
       setUsdcBalance(parseFloat(balanceInUSDC));
     } catch (error) {
       console.error("USDC balance check failed:", error);
@@ -98,6 +113,7 @@ export default function Home() {
   };
 
   const loadUserSubscription = async (address) => {
+    console.log("Loading user subscription for address:", address);
     try {
       const resp = await fetch("/api/user-subscription", {
         method: "POST",
@@ -108,6 +124,7 @@ export default function Home() {
         }),
       });
       const data = await resp.json();
+      console.log("Subscription data:", data);
       if (data.user) {
         setUserTier(data.user.tier);
         setSubscription(data.subscription);
@@ -118,10 +135,13 @@ export default function Home() {
   };
 
   const loadTrends = async () => {
+    console.log("Loading trends...");
     setLoading(true);
     try {
       const resp = await fetch("/api/trending");
+      console.log("Trends API response status:", resp.status);
       const data = await resp.json();
+      console.log("Trends data:", data);
       const trendsData = data.casts || [];
 
       const enrichedTrends = await Promise.all(
@@ -135,23 +155,28 @@ export default function Home() {
                 action: "analyze_sentiment",
               }),
             });
+            console.log("AI analysis response status for trend:", aiResp.status);
             const sentiment = await aiResp.json();
             return { ...trend, ai_analysis: sentiment };
-          } catch {
+          } catch (error) {
+            console.error("AI analysis failed for trend:", error);
             return { ...trend, ai_analysis: { sentiment: "neutral", confidence: 0.5 } };
           }
         })
       );
 
+      console.log("Enriched trends:", enrichedTrends);
       setTrends(enrichedTrends);
     } catch (error) {
       console.error("Error loading trends:", error);
       setTrends([]);
     }
+    console.log("Setting loading to false");
     setLoading(false);
   };
 
   const loadTopicDetails = async (topic) => {
+    console.log("Loading topic details for:", topic.text || topic.body);
     setSelectedTopic(topic);
     setActiveView("topic");
 
@@ -172,6 +197,7 @@ export default function Home() {
 
         const twitterData = await twitterResp.json();
         const newsData = await newsResp.json();
+        console.log("Twitter data:", twitterData, "News data:", newsData);
 
         const allPosts = [...(twitterData.posts || []), ...(newsData.posts || [])];
 
@@ -186,7 +212,7 @@ export default function Home() {
 
         const counterData = await counterResp.json();
         const counterPosts = counterData.counter_posts?.map((index) => allPosts[index]) || [];
-
+        console.log("Counter-narratives:", counterPosts);
         setCounterNarratives(counterPosts);
       } catch (error) {
         console.error("Error loading cross-platform data:", error);
@@ -196,12 +222,14 @@ export default function Home() {
   };
 
   const loadUserEchoes = async () => {
+    console.log("Loading user echoes for address:", walletAddress);
     try {
       if (!walletAddress) {
         throw new Error("No wallet connected");
       }
       const response = await fetch(`/api/user-echoes?userAddress=${walletAddress}`);
       const data = await response.json();
+      console.log("User echoes data:", data);
       setUserEchoes(data);
     } catch (error) {
       console.error("Error loading user echoes:", error);
@@ -210,6 +238,7 @@ export default function Home() {
   };
 
   const mintInsightToken = async (narrative) => {
+    console.log("Minting Insight Token for narrative:", narrative);
     if (!walletConnected || !walletAddress) {
       alert("Please connect your wallet to mint Insight Tokens!");
       return;
@@ -227,6 +256,7 @@ export default function Home() {
       });
 
       const result = await response.json();
+      console.log("Mint NFT result:", result);
 
       if (result.success) {
         alert(
@@ -246,6 +276,7 @@ export default function Home() {
   };
 
   const handleEcho = async (cast, isCounterNarrative = false) => {
+    console.log("Echoing cast:", cast, "Is counter-narrative:", isCounterNarrative);
     try {
       const resp = await fetch("/api/echo", {
         method: "POST",
@@ -253,6 +284,7 @@ export default function Home() {
         body: JSON.stringify({ castId: cast.hash || cast.id }),
       });
       const result = await resp.json();
+      console.log("Echo result:", result);
 
       if (result.ok) {
         const badge = isCounterNarrative ? " 🌟 Diverse Echo" : "";
@@ -261,6 +293,7 @@ export default function Home() {
         alert("❌ Error: " + (result.error || ""));
       }
     } catch (error) {
+      console.error("Error echoing:", error);
       alert("❌ Error echoing: " + error.message);
     }
   };
@@ -314,7 +347,7 @@ export default function Home() {
           <meta property="og:image" content="https://echoechos.vercel.app/splash-image.png" />
           <meta name="fc:miniapp" content={JSON.stringify({
             version: '1',
-            id: 'echoecho-app-id', // Replace with your actual Farcaster Mini App ID
+            id: process.env.FARCASTER_MINIAPP_ID || '0199409c-b991-9a61-b1d8-fef2086f7533',
             title: 'EchoEcho',
             image: 'https://echoechos.vercel.app/splash-image.png',
             action: { type: 'post', url: 'https://echoechos.vercel.app/api/echo-action' }
@@ -363,7 +396,7 @@ export default function Home() {
         <meta property="og:image" content="https://echoechos.vercel.app/embed-image.png" />
         <meta name="fc:miniapp" content={JSON.stringify({
           version: '1',
-          id: 'echoecho-app-id', // Replace with your actual Farcaster Mini App ID
+          id: process.env.FARCASTER_MINIAPP_ID || '0199409c-b991-9a61-b1d8-fef2086f7533',
           title: 'EchoEcho',
           image: 'https://echoechos.vercel.app/embed-image.png',
           action: { type: 'post', url: 'https://echoechos.vercel.app/api/echo-action' },
@@ -1002,6 +1035,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
   const [paymentStatus, setPaymentStatus] = useState("none");
 
   const handleUSDCPayment = async (tier) => {
+    console.log("Initiating USDC payment for tier:", tier);
     if (!walletConnected || !walletAddress) {
       alert("Please connect your Base wallet first!");
       return;
@@ -1074,6 +1108,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         data,
         value: 0n,
       });
+      console.log("Transaction hash:", txHash);
 
       const subscriptionResp = await fetch("/api/user-subscription", {
         method: "POST",
@@ -1087,6 +1122,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
       });
 
       const result = await subscriptionResp.json();
+      console.log("Subscription result:", result);
 
       if (result.success) {
         setUserTier(tier);
