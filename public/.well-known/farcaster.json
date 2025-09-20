@@ -4,7 +4,7 @@
     "name": "EchoEcho",
     "iconUrl": "https://echoechos.vercel.app/icon-192.png",
     "homeUrl": "https://echoechos.vercel.app",
-    "imageUrl": "https://echoechos.vercel.app/echo-preview.png",
+    "imageUrl": "https://echoechos.vercel.app/preview.png",
     "buttonTitle": "Start Echoing",
     "splashImageUrl": "https://echoechos.vercel.app/icon-192.png",
     "splashBackgroundColor": "#111827",
