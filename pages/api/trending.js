@@ -1,6 +1,3 @@
-import { Configuration, NeynarAPIClient } from "@neynar/nodejs-sdk";
-import { FeedType, FilterType } from "@neynar/nodejs-sdk/build/api";
-
 export default async function handler(req, res) {
   const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
   if (!NEYNAR_API_KEY) {
@@ -14,6 +11,10 @@ export default async function handler(req, res) {
   try {
     // Support optional query parameters (e.g., limit, cursor)
     const { limit = 10, cursor } = req.query;
+
+    // Dynamically import Neynar SDK
+    const { Configuration, NeynarAPIClient } = await import('@neynar/nodejs-sdk');
+    const { FeedType, FilterType } = await import('@neynar/nodejs-sdk/build/api');
 
     // Configure Neynar client
     const config = new Configuration({ apiKey: NEYNAR_API_KEY });
