@@ -1,11 +1,19 @@
 import { useEffect, useState, useCallback } from "react";
-import { createPublicClient, http, getContract, formatUnits, createWalletClient, custom, encodeFunctionData } from "viem";
+import {
+  createPublicClient,
+  http,
+  getContract,
+  formatUnits,
+  createWalletClient,
+  custom,
+  encodeFunctionData,
+} from "viem";
 import { base } from "viem/chains";
-import dynamic from 'next/dynamic';
+import dynamic from "next/dynamic";
 import Image from "next/image";
-import Head from 'next/head';
+import Head from "next/head";
 
-const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
+const MiniAppComponent = dynamic(() => import("../components/MiniAppComponent"), { ssr: false });
 
 export default function Home() {
   const [trends, setTrends] = useState([]);
@@ -57,7 +65,6 @@ export default function Home() {
     loadTrends();
     checkWalletConnection();
 
-    // Fallback timeout to set miniAppReady true if not set after 5 seconds
     const timeout = setTimeout(() => {
       if (!miniAppReady) {
         console.log("Timeout fallback: Setting miniAppReady to true");
@@ -361,11 +368,11 @@ export default function Home() {
           <meta property="og:description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
           <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
           <meta name="fc:miniapp" content={JSON.stringify({
-            version: '1',
-            id: process.env.FARCASTER_MINIAPP_ID || '0199409c-b991-9a61-b1d8-fef2086f7533',
-            title: 'EchoEcho',
-            image: 'https://echoechos.vercel.app/preview.png',
-            action: { type: 'post', url: 'https://echoechos.vercel.app/api/echo-action' }
+            version: "1",
+            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+            title: "EchoEcho",
+            image: "https://echoechos.vercel.app/preview.png",
+            action: { type: "post", url: "https://echoechos.vercel.app/api/echo-action" },
           })} />
         </Head>
         <div style={{
@@ -377,7 +384,7 @@ export default function Home() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
-          alignItems: "center"
+          alignItems: "center",
         }}>
           <Image src="/logo.png" alt="EchoEcho Logo" width={120} height={120} style={{ marginBottom: 20, borderRadius: 20 }} />
           <div style={{ fontSize: 24, fontWeight: "bold", marginBottom: 10 }}>🔥 EchoEcho</div>
@@ -390,7 +397,7 @@ export default function Home() {
             border: "4px solid #3b82f6",
             borderTop: "4px solid transparent",
             borderRadius: "50%",
-            animation: "spin 1s linear infinite"
+            animation: "spin 1s linear infinite",
           }} />
           <style jsx>{`
             @keyframes spin {
@@ -410,15 +417,15 @@ export default function Home() {
         <meta property="og:description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
         <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
         <meta name="fc:miniapp" content={JSON.stringify({
-          version: '1',
-          id: process.env.FARCASTER_MINIAPP_ID || '0199409c-b991-9a61-b1d8-fef2086f7533',
-          title: 'EchoEcho',
-          image: 'https://echoechos.vercel.app/preview.png',
-          action: { type: 'post', url: 'https://echoechos.vercel.app/api/echo-action' },
+          version: "1",
+          id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+          title: "EchoEcho",
+          image: "https://echoechos.vercel.app/preview.png",
+          action: { type: "post", url: "https://echoechos.vercel.app/api/echo-action" },
           buttons: [
-            { label: 'Echo Trend', action: { type: 'post', url: '/api/echo' } },
-            { label: 'Mint NFT', action: { type: 'post', url: '/api/mint-nft' } }
-          ]
+            { label: "Echo Trend", action: { type: "post", url: "/api/echo" } },
+            { label: "Mint NFT", action: { type: "post", url: "/api/mint-nft" } },
+          ],
         })} />
       </Head>
       <div
@@ -1045,7 +1052,16 @@ export default function Home() {
   );
 }
 
-const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, usdcBalance, checkUSDCBalance, setSubscription, loadUserSubscription }) => {
+const PremiumView = ({
+  userTier,
+  setUserTier,
+  walletConnected,
+  walletAddress,
+  usdcBalance,
+  checkUSDCBalance,
+  setSubscription,
+  loadUserSubscription,
+}) => {
   const [selectedTier, setSelectedTier] = useState("premium");
   const [paymentStatus, setPaymentStatus] = useState("none");
 
@@ -1100,7 +1116,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
           inputs: [
             { name: "_to", type: "address" },
             { name: "_value", type: "uint256" },
-          },
+          ],
           outputs: [{ type: "bool" }],
           stateMutability: "nonpayable",
         },
