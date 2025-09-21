@@ -1,12 +1,11 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   createPublicClient,
   http,
-  getContract,
-  formatUnits,
   createWalletClient,
   custom,
   encodeFunctionData,
+  formatUnits,
 } from "viem";
 import { base } from "viem/chains";
 import dynamic from "next/dynamic";
@@ -114,12 +113,12 @@ export default function Home() {
           outputs: [{ name: "", type: "uint256" }],
         },
       ];
-      const usdcContract = getContract({
+      const balance = await client.readContract({
         address: usdcContractAddress,
         abi: usdcAbi,
-        client,
+        functionName: "balanceOf",
+        args: [address],
       });
-      const balance = await usdcContract.read.balanceOf([address]);
       const balanceInUSDC = formatUnits(balance, 6);
       console.log("USDC balance:", balanceInUSDC);
       setUsdcBalance(parseFloat(balanceInUSDC));
@@ -157,6 +156,22 @@ export default function Home() {
     try {
       const resp = await fetch("/api/trending");
       console.log("Trends API response status:", resp.status);
+      if (resp.status === 402) {
+        console.warn("API 402: Payment Required - Using mock data");
+        const mockData = {
+          casts: [
+            { text: "Sample trend 1", body: "This is a mock trend", hash: "mock1" },
+            { text: "Sample trend 2", body: "Another mock trend", hash: "mock2" },
+          ],
+        };
+        setTrends(mockData.casts.map((trend) => ({
+          ...trend,
+          ai_analysis: { sentiment: "neutral", confidence: 0.5 },
+        })));
+        alert("⚠️ Trending data limited due to API plan. Upgrade your Neynar API plan at https://dev.neynar.com/pricing for full access.");
+        setLoading(false);
+        return;
+      }
       const data = await resp.json();
       console.log("Trends data:", data);
       const trendsData = data.casts || [];
@@ -360,6 +375,13 @@ export default function Home() {
     );
   };
 
+  const filteredTrends = useMemo(() => {
+    return trends.filter(
+      (trend) =>
+        !searchQuery || (trend.text || trend.body || "").toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [trends, searchQuery]);
+
   if (loading || !miniAppReady) {
     return (
       <>
@@ -367,38 +389,45 @@ export default function Home() {
           <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
           <meta property="og:description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
           <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
-          <meta name="fc:miniapp" content={JSON.stringify({
-            version: "1",
-            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
-            title: "EchoEcho",
-            image: "https://echoechos.vercel.app/preview.png",
-            action: { type: "post", url: "https://echoechos.vercel.app/api/echo-action" },
-          })} />
+          <meta
+            name="fc:miniapp"
+            content={JSON.stringify({
+              version: "1",
+              id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+              title: "EchoEcho",
+              image: "https://echoechos.vercel.app/preview.png",
+              action: { type: "post", url: "https://echoechos.vercel.app/api/echo-action" },
+            })}
+          />
         </Head>
-        <div style={{
-          padding: 40,
-          textAlign: "center",
-          background: "#111827",
-          color: "#f9fafb",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-        }}>
+        <div
+          style={{
+            padding: 40,
+            textAlign: "center",
+            background: "#111827",
+            color: "#f9fafb",
+            minHeight: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
           <Image src="/logo.png" alt="EchoEcho Logo" width={120} height={120} style={{ marginBottom: 20, borderRadius: 20 }} />
           <div style={{ fontSize: 24, fontWeight: "bold", marginBottom: 10 }}>🔥 EchoEcho</div>
           <div style={{ fontSize: 16, color: "#9ca3af", marginBottom: 20 }}>
             {loading ? "Loading trends..." : "Initializing Farcaster Mini App..."}
           </div>
-          <div style={{
-            width: 40,
-            height: 40,
-            border: "4px solid #3b82f6",
-            borderTop: "4px solid transparent",
-            borderRadius: "50%",
-            animation: "spin 1s linear infinite",
-          }} />
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              border: "4px solid #3b82f6",
+              borderTop: "4px solid transparent",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+            }}
+          />
           <style jsx>{`
             @keyframes spin {
               0% { transform: rotate(0deg); }
@@ -416,17 +445,20 @@ export default function Home() {
         <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta property="og:description" content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster." />
         <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
-        <meta name="fc:miniapp" content={JSON.stringify({
-          version: "1",
-          id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
-          title: "EchoEcho",
-          image: "https://echoechos.vercel.app/preview.png",
-          action: { type: "post", url: "https://echoechos.vercel.app/api/echo-action" },
-          buttons: [
-            { label: "Echo Trend", action: { type: "post", url: "/api/echo" } },
-            { label: "Mint NFT", action: { type: "post", url: "/api/mint-nft" } },
-          ],
-        })} />
+        <meta
+          name="fc:miniapp"
+          content={JSON.stringify({
+            version: "1",
+            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+            title: "EchoEcho",
+            image: "https://echoechos.vercel.app/preview.png",
+            action: { type: "post", url: "https://echoechos.vercel.app/api/echo-action" },
+            buttons: [
+              { label: "Echo Trend", action: { type: "post", url: "/api/echo" } },
+              { label: "Mint NFT", action: { type: "post", url: "/api/mint-nft" } },
+            ],
+          })}
+        />
       </Head>
       <div
         style={{
@@ -648,97 +680,92 @@ export default function Home() {
 
         {activeView === "trends" && (
           <div>
-            {trends
-              .filter(
-                (trend) =>
-                  !searchQuery || (trend.text || trend.body || "").toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map((trend, i) => (
+            {filteredTrends.map((trend, i) => (
+              <div
+                key={i}
+                style={{
+                  background: "#1f2937",
+                  border: "1px solid #374151",
+                  padding: 16,
+                  marginBottom: 16,
+                  borderRadius: 12,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                }}
+                onClick={() => loadTopicDetails(trend)}
+              >
                 <div
-                  key={i}
                   style={{
-                    background: "#1f2937",
-                    border: "1px solid #374151",
-                    padding: 16,
-                    marginBottom: 16,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease",
+                    fontSize: 16,
+                    marginBottom: 12,
+                    lineHeight: 1.4,
                   }}
-                  onClick={() => loadTopicDetails(trend)}
                 >
-                  <div
+                  {trend.text || trend.body || "No text"}
+                </div>
+
+                {trend.ai_analysis &&
+                  getSentimentGauge(trend.ai_analysis.sentiment, trend.ai_analysis.confidence)}
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    marginTop: 12,
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEcho(trend);
+                    }}
                     style={{
-                      fontSize: 16,
-                      marginBottom: 12,
-                      lineHeight: 1.4,
+                      background: "#3b82f6",
+                      color: "white",
+                      border: "none",
+                      padding: "8px 16px",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontSize: 14,
                     }}
                   >
-                    {trend.text || trend.body || "No text"}
-                  </div>
+                    🔄 Echo It
+                  </button>
 
-                  {trend.ai_analysis &&
-                    getSentimentGauge(trend.ai_analysis.sentiment, trend.ai_analysis.confidence)}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.share?.({ text: trend.text || "Check this out!" });
+                    }}
+                    style={{
+                      background: "#6b7280",
+                      color: "white",
+                      border: "none",
+                      padding: "8px 16px",
+                      borderRadius: 6,
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    📤 Share
+                  </button>
 
                   <div
                     style={{
-                      display: "flex",
-                      gap: 8,
-                      marginTop: 12,
-                      alignItems: "center",
+                      background: "#374151",
+                      color: "#9ca3af",
+                      padding: "4px 8px",
+                      borderRadius: 4,
+                      fontSize: 12,
+                      marginLeft: "auto",
                     }}
                   >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEcho(trend);
-                      }}
-                      style={{
-                        background: "#3b82f6",
-                        color: "white",
-                        border: "none",
-                        padding: "8px 16px",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                        fontSize: 14,
-                      }}
-                    >
-                      🔄 Echo It
-                    </button>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.share?.({ text: trend.text || "Check this out!" });
-                      }}
-                      style={{
-                        background: "#6b7280",
-                        color: "white",
-                        border: "none",
-                        padding: "8px 16px",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                        fontSize: 14,
-                      }}
-                    >
-                      📤 Share
-                    </button>
-
-                    <div
-                      style={{
-                        background: "#374151",
-                        color: "#9ca3af",
-                        padding: "4px 8px",
-                        borderRadius: 4,
-                        fontSize: 12,
-                        marginLeft: "auto",
-                      }}
-                    >
-                      Click for details →
-                    </div>
+                    Click for details →
                   </div>
                 </div>
-              ))}
+              </div>
+            ))}
           </div>
         )}
 
