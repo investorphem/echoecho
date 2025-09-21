@@ -37,59 +37,62 @@ export default function Document() {
 
         {/* Farcaster Miniapp Meta Tag */}
         <meta
-  name="fc:miniapp"
-  content={JSON.stringify({
-    version: "1", // Corrected version
-    id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
-    "imageUrl": "https://echoechos.vercel.app/preview.png",
-    "button": {
-      "title": "Launch",
-      "action": {
-        "type": "launch_frame",
-        "name": "Echoecho",
-        "url": "https://echoechos.vercel.app/",
-        "splashImageUrl": "https://echoechos.vercel.app/splash-200.png",
-        "splashBackgroundColor": "#111827",
-    },
-    buttons: [
-      {
-        label: "Echo Trend",
-        action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
-      },
-      {
-        label: "Mint NFT",
-        action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
-      },
-    ],
-  })}
-/>
-<meta
-  name="fc:frame" // Added for backward compatibility
-  content={JSON.stringify({
-    version: "1", // Corrected version
-    id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
-    "imageUrl": "https://echoechos.vercel.app/preview.png",
-    "button": {
-      "title": "Launch",
-      "action": {
-        "type": "launch_frame",
-        "name": "Echoecho",
-        "url": "https://echoechos.vercel.app/",
-        "splashImageUrl": "https://echoechos.vercel.app/splash-200.png",
-        "splashBackgroundColor": "#111827",
-    },
-    buttons: [
-      {
-        label: "Echo Trend",
-        action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
-      },
-      {
-        label: "Mint NFT",
-        action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
-      },
-    ],
-  })}
-/>
+          name="fc:miniapp"
+          content={JSON.stringify({
+            version: "1",
+            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+            imageUrl: "https://echoechos.vercel.app/preview.png",
+            button: {
+              title: "Launch",
+              action: {
+                type: "launch_frame",
+                name: "Echoecho",
+                url: "https://echoechos.vercel.app/",
+                splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
+                splashBackgroundColor: "#111827",
+              },
+            }, // ✅ closed properly
+            buttons: [
+              {
+                label: "Echo Trend",
+                action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
+              },
+              {
+                label: "Mint NFT",
+                action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
+              },
+            ],
+          })}
+        />
+
+        <meta
+          name="fc:frame" // Backward compatibility
+          content={JSON.stringify({
+            version: "1",
+            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+            imageUrl: "https://echoechos.vercel.app/preview.png",
+            button: {
+              title: "Launch",
+              action: {
+                type: "launch_frame",
+                name: "Echoecho",
+                url: "https://echoechos.vercel.app/",
+                splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
+                splashBackgroundColor: "#111827",
+              },
+            }, // ✅ closed properly
+            buttons: [
+              {
+                label: "Echo Trend",
+                action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
+              },
+              {
+                label: "Mint NFT",
+                action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
+              },
+            ],
+          })}
+        />
 
         {/* App Icons */}
         <link rel="icon" href="https://echoechos.vercel.app/icon-192.png" />
@@ -107,7 +110,3 @@ export default function Document() {
     </Html>
   );
 }
-
-
-
-
