@@ -39,13 +39,17 @@ export default function Document() {
         <meta
   name="fc:miniapp"
   content={JSON.stringify({
-    version: "v1.0.0", // Corrected version
+    version: "1", // Corrected version
     id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
-    title: "EchoEcho",
-    image: "https://echoechos.vercel.app/preview.png",
-    action: {
-      type: "post",
-      url: "https://echoechos.vercel.app/api/echo-action",
+    "imageUrl": "https://echoechos.vercel.app/preview.png",
+    "button": {
+      "title": "Launch",
+      "action": {
+        "type": "launch_frame",
+        "name": "Echoecho",
+        "url": "https://echoechos.vercel.app/",
+        "splashImageUrl": "https://echoechos.vercel.app/splash-200.png",
+        "splashBackgroundColor": "#111827",
     },
     buttons: [
       {
@@ -62,13 +66,17 @@ export default function Document() {
 <meta
   name="fc:frame" // Added for backward compatibility
   content={JSON.stringify({
-    version: "v1.0.0",
+    version: "1", // Corrected version
     id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
-    title: "EchoEcho",
-    image: "https://echoechos.vercel.app/preview.png",
-    action: {
-      type: "post",
-      url: "https://echoechos.vercel.app/api/echo-action",
+    "imageUrl": "https://echoechos.vercel.app/preview.png",
+    "button": {
+      "title": "Launch",
+      "action": {
+        "type": "launch_frame",
+        "name": "Echoecho",
+        "url": "https://echoechos.vercel.app/",
+        "splashImageUrl": "https://echoechos.vercel.app/splash-200.png",
+        "splashBackgroundColor": "#111827",
     },
     buttons: [
       {
@@ -99,6 +107,7 @@ export default function Document() {
     </Html>
   );
 }
+
 
 
 
