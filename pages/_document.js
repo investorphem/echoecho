@@ -6,27 +6,64 @@ export default function Document() {
       <Head>
         {/* App Meta Tags */}
         <meta name="application-name" content="EchoEcho" />
-        <meta name="description" content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!" />
-        <meta name="keywords" content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network" />
-        
+        <meta
+          name="description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
+        />
+        <meta
+          name="keywords"
+          content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
+        />
+
         {/* Open Graph Meta Tags for Farcaster */}
         <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
-        <meta property="og:description" content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!" />
+        <meta
+          property="og:description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
+        />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
         <meta property="og:url" content="https://echoechos.vercel.app/" />
         <meta property="og:site_name" content="EchoEcho" />
-        
+
         {/* Twitter Card Meta Tags */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
-        <meta name="twitter:description" content="Break echo chambers with AI-powered counter-narrative discovery. Subscribe for premium features with USDC on Base network." />
+        <meta
+          name="twitter:description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Subscribe for premium features with USDC on Base network."
+        />
         <meta name="twitter:image" content="https://echoechos.vercel.app/preview.png" />
-        
+
+        {/* Farcaster Miniapp Meta Tag */}
+        <meta
+          name="fc:miniapp"
+          content={JSON.stringify({
+            version: "1",
+            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533", // Use env variable or fallback
+            title: "EchoEcho",
+            image: "https://echoechos.vercel.app/preview.png",
+            action: {
+              type: "post",
+              url: "https://echoechos.vercel.app/api/echo-action", // Endpoint for Farcaster action
+            },
+            buttons: [
+              {
+                label: "Echo Trend",
+                action: { type: "post", url: "/api/echo" },
+              },
+              {
+                label: "Mint NFT",
+                action: { type: "post", url: "/api/mint-nft" },
+              },
+            ],
+          })}
+        />
+
         {/* App Icons */}
         <link rel="icon" href="/icon-192.png" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
-        
+
         {/* Performance Optimizations */}
         <link rel="preconnect" href="https://mainnet.base.org" />
         <link rel="preconnect" href="https://api.neynar.com" />
@@ -38,5 +75,4 @@ export default function Document() {
       </body>
     </Html>
   );
-
 }
