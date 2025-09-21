@@ -139,6 +139,12 @@ export default function Home() {
           action: "get_subscription",
         }),
       });
+      if (!resp.ok) {
+        console.error("Subscription fetch failed:", resp.status, await resp.text());
+        setUserTier("free"); // Fallback to free tier on failure
+        setSubscription(null);
+        return;
+      }
       const data = await resp.json();
       console.log("Subscription data:", data);
       if (data.user) {
@@ -147,6 +153,8 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Failed to load user subscription:", error);
+      setUserTier("free"); // Fallback on error
+      setSubscription(null);
     }
   };
 
@@ -265,6 +273,11 @@ export default function Home() {
         throw new Error("No wallet connected");
       }
       const response = await fetch(`/api/user-echoes?userAddress=${walletAddress}`);
+      if (!response.ok) {
+        console.error("User echoes fetch failed:", response.status, await response.text());
+        setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
+        return;
+      }
       const data = await response.json();
       console.log("User echoes data:", data);
       setUserEchoes(data);
