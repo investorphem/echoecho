@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { sdk } from "@farcaster/frame-sdk";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 export default function App({ Component, pageProps }) {
   useEffect(() => {
