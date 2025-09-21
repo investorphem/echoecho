@@ -50,11 +50,11 @@ export default function Document() {
             buttons: [
               {
                 label: "Echo Trend",
-                action: { type: "post", url: "/api/echo" },
+                action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
               },
               {
                 label: "Mint NFT",
-                action: { type: "post", url: "/api/mint-nft" },
+                action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
               },
             ],
           })}
@@ -76,4 +76,5 @@ export default function Document() {
     </Html>
   );
 }
+
 
