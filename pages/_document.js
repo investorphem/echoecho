@@ -37,28 +37,51 @@ export default function Document() {
 
         {/* Farcaster Miniapp Meta Tag */}
         <meta
-          name="fc:miniapp"
-          content={JSON.stringify({
-            version: "1",
-            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533", // Use env variable or fallback
-            title: "EchoEcho",
-            image: "https://echoechos.vercel.app/preview.png",
-            action: {
-              type: "post",
-              url: "https://echoechos.vercel.app/api/echo-action", // Endpoint for Farcaster action
-            },
-            buttons: [
-              {
-                label: "Echo Trend",
-                action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
-              },
-              {
-                label: "Mint NFT",
-                action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
-              },
-            ],
-          })}
-        />
+  name="fc:miniapp"
+  content={JSON.stringify({
+    version: "v1.0.0", // Corrected version
+    id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+    title: "EchoEcho",
+    image: "https://echoechos.vercel.app/preview.png",
+    action: {
+      type: "post",
+      url: "https://echoechos.vercel.app/api/echo-action",
+    },
+    buttons: [
+      {
+        label: "Echo Trend",
+        action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
+      },
+      {
+        label: "Mint NFT",
+        action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
+      },
+    ],
+  })}
+/>
+<meta
+  name="fc:frame" // Added for backward compatibility
+  content={JSON.stringify({
+    version: "v1.0.0",
+    id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+    title: "EchoEcho",
+    image: "https://echoechos.vercel.app/preview.png",
+    action: {
+      type: "post",
+      url: "https://echoechos.vercel.app/api/echo-action",
+    },
+    buttons: [
+      {
+        label: "Echo Trend",
+        action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
+      },
+      {
+        label: "Mint NFT",
+        action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
+      },
+    ],
+  })}
+/>
 
         {/* App Icons */}
         <link rel="icon" href="https://echoechos.vercel.app/icon-192.png" />
@@ -76,5 +99,6 @@ export default function Document() {
     </Html>
   );
 }
+
 
 
