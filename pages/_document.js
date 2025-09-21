@@ -61,8 +61,8 @@ export default function Document() {
         />
 
         {/* App Icons */}
-        <link rel="icon" href="/icon-192.png" />
-        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <link rel="icon" href="https://echoechos.vercel.app/icon-192.png" />
+        <link rel="apple-touch-icon" href="https://echoechos.vercel.app/icon-192.png" />
 
         {/* Performance Optimizations */}
         <link rel="preconnect" href="https://mainnet.base.org" />
@@ -76,3 +76,4 @@ export default function Document() {
     </Html>
   );
 }
+
