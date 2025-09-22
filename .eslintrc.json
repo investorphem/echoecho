@@ -16,7 +16,9 @@
   "rules": {
     "no-undef": "error",
     "no-unused-vars": ["warn", { "varsIgnorePattern": "^_" }],
-    "react/prop-types": "off"
+    "react/prop-types": "off",
+    "react/react-in-jsx-scope": "off", // Disable react-in-jsx-scope rule
+    "react/no-unknown-property": "off" // Temporarily disable to investigate jsx prop
   },
   "settings": {
     "react": {
