@@ -1,4 +1,4 @@
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http, formatUnits } from 'viem';
 import { base } from 'viem/chains';
 
 export default async function handler(req, res) {
