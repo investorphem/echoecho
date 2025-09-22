@@ -1,8 +1,9 @@
-import { sql } from '@vercel/postgres';
+import { neon } from '@neondatabase/serverless';
 import { createPublicClient, http, formatUnits } from 'viem';
 import { base } from 'viem/chains';
 
-// Initialize viem public client
+const sql = neon(process.env.DATABASE_URL);
+
 const publicClient = createPublicClient({
   chain: base,
   transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
@@ -10,7 +11,7 @@ const publicClient = createPublicClient({
 
 // USDC contract on Base
 const USDC_CONTRACT = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-const SUBSCRIPTION_WALLET = process.env.SUBSCRIPTION_WALLET || '0x4f9B9C40345258684cfe23F02FDb2B88F1d2eA62'; // Fallback for testing
+const SUBSCRIPTION_WALLET = process.env.SUBSCRIPTION_WALLET || '0x4f9B9C40345258684cfe23F02FDb2B88F1d2eA62';
 
 // Minimal ABI for USDC balanceOf and transfer events
 const USDC_ABI = [
@@ -52,7 +53,7 @@ export default async function handler(req, res) {
     if (action === 'get_subscription') {
       try {
         // Fetch user subscription
-        const { rows: subscriptions } = await sql`
+        const subscriptions = await sql`
           SELECT * FROM subscriptions
           WHERE wallet_address = ${userKey}
           ORDER BY created_at DESC
@@ -67,7 +68,6 @@ export default async function handler(req, res) {
           const expiresAt = new Date(sub.expires_at);
           const now = new Date();
 
-          // Check if subscription is still active
           if (expiresAt > now) {
             tier = sub.tier;
             subscription = {
@@ -78,7 +78,6 @@ export default async function handler(req, res) {
             };
           } else {
             console.log('Subscription expired for:', userKey);
-            // Optionally, update user tier to 'free' in the database
             await sql`
               UPDATE subscriptions
               SET tier = 'free'
@@ -146,7 +145,7 @@ export default async function handler(req, res) {
         }
 
         // Check if user has an existing active subscription
-        const { rows: existingSubs } = await sql`
+        const existingSubs = await sql`
           SELECT * FROM subscriptions
           WHERE wallet_address = ${userKey}
           AND expires_at > NOW()
@@ -161,7 +160,7 @@ export default async function handler(req, res) {
         // Create subscription
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 30); // 30-day subscription
-        const { rows: newSub } = await sql`
+        const newSub = await sql`
           INSERT INTO subscriptions (wallet_address, tier, transaction_hash, created_at, expires_at)
           VALUES (${userKey}, ${tier}, ${transactionHash}, NOW(), ${expiresAt.toISOString()})
           RETURNING *
@@ -263,3 +262,5 @@ export default async function handler(req, res) {
   console.warn('Invalid method:', req.method);
   return res.status(405).json({ error: 'Method not allowed' });
 }
+
+// ... rest of the code (check_usdc_balance, etc.)
