@@ -2,6 +2,7 @@ import { sql } from '@vercel/postgres';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
+    console.log('Invalid method:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -25,9 +26,10 @@ export default async function handler(req, res) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
+    console.log('Database schema initialized successfully');
     return res.status(200).json({ success: true, message: 'Database schema initialized' });
   } catch (error) {
-    console.error('Error initializing database:', error);
+    console.error('Error initializing database:', error.message);
     return res.status(500).json({ error: 'Failed to initialize database', details: error.message });
   }
 }
