@@ -1,0 +1,41 @@
+{
+  "frame": {
+    "name": "echoecho",
+    "version": "1",
+    "iconUrl": "https://echoechos.vercel.app/icon-192.png",
+    "homeUrl": "https://echoechos.vercel.app/",
+    "imageUrl": "https://echoechos.vercel.app/preview.png",
+    "buttonTitle": "open echo",
+    "splashImageUrl": "https://echoechos.vercel.app/splash-200.png",
+    "splashBackgroundColor": "#eeccff",
+    "webhookUrl": "https://echoechos.vercel.app/webhook",
+    "subtitle": "Break the echo chamber",
+    "description": "Break the echo chamber: EchoEcho finds counter-narratives on Farcaster",
+    "screenshotUrls": [
+      "https://echoechos.vercel.app/preview.png"
+    ],
+    "primaryCategory": "productivity",
+    "tags": [
+      "trending",
+      "topcast",
+      "echo",
+      "premium",
+      "free"
+    ],
+    "heroImageUrl": "https://echoechos.vercel.app/preview.png",
+    "ogTitle": "echo-Break the echo chamber",
+    "ogDescription": "Find counter-narratives for trending Farcaster topic and worldwide trending including X , news etc",
+    "ogImageUrl": "https://echoechos.vercel.app/preview.png",
+    "castShareUrl": "https://echoechos.vercel.app/preview.png"
+  },
+  "accountAssociation": {
+    "header": "eyJmaWQiOjIxOTA1OSwidHlwZSI6ImN1c3RvZHkiLCJrZXkiOiIweEQ2OEYyMjZCQjY5ZTk4MmI3N0I0QTYxYUEwMmZhMzdhMjJCQUU2MDgifQ",
+    "payload": "eyJkb21haW4iOiJlY2hvZWNob3MudmVyY2VsLmFwcCJ9",
+    "signature": "MHhlNmNhYzk0N2FmY2M4MWQyZmY2N2E4ZjdkNTI1ZjU1OTQ3YzMxMDM2ZDI2YmE2Zjk2Zjk3NmY4OTc3ZjMwODhkN2E3OThkZTYwNDg2MDkwNzcxZTEzMjhmNTFmNmQzODQ5MzBiY2YzNGJmMzNkYTc5NmI1NjAyMjY1ZTMyOTZhNDFi"
+  },
+  "baseBuilder": {
+    "allowedAddresses": [
+      "0x3c124419324680A3557F1741c1ed18e2154691b5"
+    ]
+  }
+}
