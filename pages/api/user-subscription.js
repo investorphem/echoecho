@@ -12,7 +12,7 @@ import {
 
 const publicClient = createPublicClient({
   chain: base,
-  transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org')
+  transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
 });
 
 // USDC contract on Base
@@ -22,15 +22,22 @@ const SUBSCRIPTION_WALLET = process.env.SUBSCRIPTION_WALLET || '0x4f9B9C40345258
 // Minimal ABI for USDC balanceOf and transfer events
 const USDC_ABI = [
   'function balanceOf(address) view returns (uint256)',
-  'event Transfer(address indexed from, address indexed to, uint256 value)'
+  'event Transfer(address indexed from, address indexed to, uint256 value)',
 ];
 
 export default async function handler(req, res) {
+  if (!process.env.BASE_RPC_URL) {
+    console.error('BASE_RPC_URL is not set');
+    return res.status(500).json({ error: 'Server configuration error: BASE_RPC_URL missing' });
+  }
+
   if (req.method === 'POST') {
     const { walletAddress, action } = req.body;
+    console.log('Subscription request:', { walletAddress, action });
 
-    if (!walletAddress) {
-      return res.status(400).json({ error: 'Wallet address required' });
+    if (!walletAddress || !walletAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+      console.warn('Invalid or missing walletAddress:', walletAddress);
+      return res.status(400).json({ error: 'Valid wallet address required' });
     }
 
     const userKey = walletAddress.toLowerCase();
@@ -39,9 +46,11 @@ export default async function handler(req, res) {
       try {
         // Reconcile user status and check for expired subscriptions
         const { tier, subscription } = await reconcileUserStatus(userKey);
-        
+        console.log('Reconciled user status:', { userKey, tier, subscription });
+
         let user = await getUser(userKey);
         if (!user) {
+          console.log('Creating new user for:', userKey);
           user = await createUser(userKey, { tier });
         }
 
@@ -49,21 +58,28 @@ export default async function handler(req, res) {
           user: {
             ...user,
             tier,
-            walletAddress: userKey
+            walletAddress: userKey,
           },
-          subscription
+          subscription,
         });
       } catch (error) {
-        console.error('Error getting subscription:', error);
-        return res.status(500).json({ error: 'Failed to get subscription' });
+        console.error('Error getting subscription:', error.message);
+        return res.status(500).json({ error: 'Failed to get subscription', details: error.message });
       }
     }
 
     if (action === 'create_subscription') {
       const { tier, transactionHash } = req.body;
-      
+      console.log('Create subscription request:', { userKey, tier, transactionHash });
+
       if (!['premium', 'pro'].includes(tier)) {
+        console.warn('Invalid subscription tier:', tier);
         return res.status(400).json({ error: 'Invalid subscription tier' });
+      }
+
+      if (!transactionHash || !transactionHash.match(/^0x[a-fA-F0-9]{64}$/)) {
+        console.warn('Invalid or missing transactionHash:', transactionHash);
+        return res.status(400).json({ error: 'Valid transaction hash required' });
       }
 
       try {
@@ -73,16 +89,18 @@ export default async function handler(req, res) {
         // Verify the transaction on-chain
         const receipt = await publicClient.getTransactionReceipt({ hash: transactionHash });
         if (!receipt || receipt.status !== 'success') {
+          console.warn('Invalid or failed transaction:', transactionHash);
           return res.status(400).json({ error: 'Invalid or failed transaction' });
         }
 
         // Check for USDC Transfer event
         const transferEvent = receipt.logs.find(log => 
           log.address.toLowerCase() === USDC_CONTRACT.toLowerCase() &&
-          log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef' // Transfer event topic
+          log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
         );
 
         if (!transferEvent) {
+          console.warn('No USDC transfer found in transaction:', transactionHash);
           return res.status(400).json({ error: 'No USDC transfer found in transaction' });
         }
 
@@ -94,78 +112,85 @@ export default async function handler(req, res) {
           to.toLowerCase() !== `0x${SUBSCRIPTION_WALLET.toLowerCase().slice(2).padStart(64, '0')}` ||
           value < amount
         ) {
+          console.warn('Invalid USDC transfer details:', { from, to, value, expectedAmount: amount });
           return res.status(400).json({ error: 'Invalid USDC transfer details' });
         }
 
         // Ensure user exists
         let user = await getUser(userKey);
         if (!user) {
+          console.log('Creating new user for:', userKey);
           user = await createUser(userKey);
         }
 
         // Create subscription with persistence
         const subscription = await createSubscription(userKey, tier, transactionHash);
-        
+        console.log('Subscription created:', subscription);
+
         // Record payment
         await recordPayment(userKey, transactionHash, pricing[tier], tier);
+        console.log('Payment recorded for:', userKey);
 
         return res.status(200).json({
           success: true,
           subscription,
-          message: `🎉 Successfully upgraded to ${tier}! Welcome to EchoEcho ${tier}!`
+          message: `🎉 Successfully upgraded to ${tier}! Welcome to EchoEcho ${tier}!`,
         });
       } catch (error) {
-        console.error('Error creating subscription:', error);
-        return res.status(500).json({ error: 'Failed to create subscription' });
+        console.error('Error creating subscription:', error.message);
+        return res.status(500).json({ error: 'Failed to create subscription', details: error.message });
       }
     }
 
     if (action === 'check_usdc_balance') {
       try {
-        // Query USDC contract on Base
         const balance = await publicClient.readContract({
           address: USDC_CONTRACT,
           abi: USDC_ABI,
           functionName: 'balanceOf',
-          args: [walletAddress]
+          args: [userKey],
         });
 
-        const formattedBalance = Number(formatUnits(balance, 6)); // USDC has 6 decimals
+        const formattedBalance = Number(formatUnits(balance, 6));
+        console.log('USDC balance for', userKey, ':', formattedBalance);
 
         return res.status(200).json({
           balance: formattedBalance,
           formatted: `${formattedBalance} USDC`,
           network: 'base',
-          contract: USDC_CONTRACT
+          contract: USDC_CONTRACT,
         });
       } catch (error) {
-        console.error('Failed to check USDC balance:', error);
+        console.error('Failed to check USDC balance:', error.message);
         return res.status(500).json({ 
-          error: 'Failed to check USDC balance: ' + error.message 
+          error: 'Failed to check USDC balance',
+          details: error.message,
         });
       }
     }
+
+    console.warn('Invalid action:', action);
+    return res.status(400).json({ error: 'Invalid action' });
   }
 
   if (req.method === 'GET') {
-    // Get subscription pricing and info
     return res.status(200).json({
       pricing: {
         premium: 7,
-        pro: 25
+        pro: 25,
       },
       features: {
         free: {
           daily_echoes: 5,
           cross_platform: false,
           nft_rarities: ['common'],
-          analytics: false
+          analytics: false,
         },
         premium: {
           daily_echoes: 'unlimited',
           cross_platform: true,
           nft_rarities: ['common', 'rare', 'epic'],
-          analytics: true
+          analytics: true,
         },
         pro: {
           daily_echoes: 'unlimited',
@@ -173,16 +198,17 @@ export default async function handler(req, res) {
           nft_rarities: ['common', 'rare', 'epic', 'legendary'],
           analytics: true,
           api_access: true,
-          revenue_sharing: true
-        }
+          revenue_sharing: true,
+        },
       },
       payment_info: {
         network: 'base',
         usdc_contract: USDC_CONTRACT,
-        subscription_wallet: SUBSCRIPTION_WALLET
-      }
+        subscription_wallet: SUBSCRIPTION_WALLET,
+      },
     });
   }
 
-  res.status(405).json({ error: 'Method not allowed' });
+  console.warn('Invalid method:', req.method);
+  return res.status(405).json({ error: 'Method not allowed' });
 }
