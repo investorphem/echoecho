@@ -1,15 +1,8 @@
+import { sql } from '@vercel/postgres';
 import { createPublicClient, http, formatUnits } from 'viem';
 import { base } from 'viem/chains';
-import { 
-  getUser, 
-  createUser, 
-  _updateUserTier, 
-  createSubscription,
-  _getUserSubscription,
-  reconcileUserStatus,
-  recordPayment
-} from '../../lib/storage.js';
 
+// Initialize viem public client
 const publicClient = createPublicClient({
   chain: base,
   transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
@@ -21,8 +14,22 @@ const SUBSCRIPTION_WALLET = process.env.SUBSCRIPTION_WALLET || '0x4f9B9C40345258
 
 // Minimal ABI for USDC balanceOf and transfer events
 const USDC_ABI = [
-  'function balanceOf(address) view returns (uint256)',
-  'event Transfer(address indexed from, address indexed to, uint256 value)',
+  {
+    name: 'balanceOf',
+    type: 'function',
+    inputs: [{ name: 'account', type: 'address' }],
+    outputs: [{ name: 'balance', type: 'uint256' }],
+    stateMutability: 'view',
+  },
+  {
+    name: 'Transfer',
+    type: 'event',
+    inputs: [
+      { name: 'from', type: 'address', indexed: true },
+      { name: 'to', type: 'address', indexed: true },
+      { name: 'value', type: 'uint256', indexed: false },
+    ],
+  },
 ];
 
 export default async function handler(req, res) {
@@ -32,8 +39,8 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { walletAddress, action } = req.body;
-    console.log('Subscription request:', { walletAddress, action });
+    const { walletAddress, action, tier, transactionHash } = req.body;
+    console.log('Subscription request:', { walletAddress, action, tier, transactionHash });
 
     if (!walletAddress || !walletAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
       console.warn('Invalid or missing walletAddress:', walletAddress);
@@ -44,34 +51,55 @@ export default async function handler(req, res) {
 
     if (action === 'get_subscription') {
       try {
-        // Reconcile user status and check for expired subscriptions
-        const { tier, subscription } = await reconcileUserStatus(userKey);
-        console.log('Reconciled user status:', { userKey, tier, subscription });
+        // Fetch user subscription
+        const { rows: subscriptions } = await sql`
+          SELECT * FROM subscriptions
+          WHERE wallet_address = ${userKey}
+          ORDER BY created_at DESC
+          LIMIT 1
+        `;
 
-        let user = await getUser(userKey);
-        if (!user) {
-          console.log('Creating new user for:', userKey);
-          user = await createUser(userKey, { tier });
+        let tier = 'free';
+        let subscription = null;
+
+        if (subscriptions.length > 0) {
+          const sub = subscriptions[0];
+          const expiresAt = new Date(sub.expires_at);
+          const now = new Date();
+
+          // Check if subscription is still active
+          if (expiresAt > now) {
+            tier = sub.tier;
+            subscription = {
+              tier: sub.tier,
+              transaction_hash: sub.transaction_hash,
+              created_at: sub.created_at,
+              expires_at: sub.expires_at,
+            };
+          } else {
+            console.log('Subscription expired for:', userKey);
+            // Optionally, update user tier to 'free' in the database
+            await sql`
+              UPDATE subscriptions
+              SET tier = 'free'
+              WHERE wallet_address = ${userKey}
+            `;
+          }
         }
 
+        console.log('User subscription:', { userKey, tier, subscription });
+
         return res.status(200).json({
-          user: {
-            ...user,
-            tier,
-            walletAddress: userKey,
-          },
+          user: { tier, walletAddress: userKey },
           subscription,
         });
       } catch (error) {
-        console.error('Error getting subscription:', error.message);
+        console.error('Error getting subscription:', error);
         return res.status(500).json({ error: 'Failed to get subscription', details: error.message });
       }
     }
 
     if (action === 'create_subscription') {
-      const { tier, transactionHash } = req.body;
-      console.log('Create subscription request:', { userKey, tier, transactionHash });
-
       if (!['premium', 'pro'].includes(tier)) {
         console.warn('Invalid subscription tier:', tier);
         return res.status(400).json({ error: 'Invalid subscription tier' });
@@ -94,9 +122,10 @@ export default async function handler(req, res) {
         }
 
         // Check for USDC Transfer event
-        const transferEvent = receipt.logs.find(log => 
-          log.address.toLowerCase() === USDC_CONTRACT.toLowerCase() &&
-          log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+        const transferEvent = receipt.logs.find(
+          (log) =>
+            log.address.toLowerCase() === USDC_CONTRACT.toLowerCase() &&
+            log.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
         );
 
         if (!transferEvent) {
@@ -106,7 +135,7 @@ export default async function handler(req, res) {
 
         const [, from, to] = transferEvent.topics;
         const value = BigInt(transferEvent.data);
-        
+
         if (
           from.toLowerCase() !== `0x${userKey.slice(2).padStart(64, '0')}` ||
           to.toLowerCase() !== `0x${SUBSCRIPTION_WALLET.toLowerCase().slice(2).padStart(64, '0')}` ||
@@ -116,20 +145,42 @@ export default async function handler(req, res) {
           return res.status(400).json({ error: 'Invalid USDC transfer details' });
         }
 
-        // Ensure user exists
-        let user = await getUser(userKey);
-        if (!user) {
-          console.log('Creating new user for:', userKey);
-          user = await createUser(userKey);
+        // Check if user has an existing active subscription
+        const { rows: existingSubs } = await sql`
+          SELECT * FROM subscriptions
+          WHERE wallet_address = ${userKey}
+          AND expires_at > NOW()
+          LIMIT 1
+        `;
+
+        if (existingSubs.length > 0) {
+          console.warn('Active subscription already exists for:', userKey);
+          return res.status(400).json({ error: 'User already has an active subscription' });
         }
 
-        // Create subscription with persistence
-        const subscription = await createSubscription(userKey, tier, transactionHash);
-        console.log('Subscription created:', subscription);
+        // Create subscription
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 30); // 30-day subscription
+        const { rows: newSub } = await sql`
+          INSERT INTO subscriptions (wallet_address, tier, transaction_hash, created_at, expires_at)
+          VALUES (${userKey}, ${tier}, ${transactionHash}, NOW(), ${expiresAt.toISOString()})
+          RETURNING *
+        `;
 
         // Record payment
-        await recordPayment(userKey, transactionHash, pricing[tier], tier);
-        console.log('Payment recorded for:', userKey);
+        await sql`
+          INSERT INTO payments (wallet_address, transaction_hash, amount, tier, created_at)
+          VALUES (${userKey}, ${transactionHash}, ${pricing[tier]}, ${tier}, NOW())
+        `;
+
+        const subscription = {
+          tier: newSub[0].tier,
+          transaction_hash: newSub[0].transaction_hash,
+          created_at: newSub[0].created_at,
+          expires_at: newSub[0].expires_at,
+        };
+
+        console.log('Subscription created:', subscription);
 
         return res.status(200).json({
           success: true,
@@ -137,7 +188,7 @@ export default async function handler(req, res) {
           message: `🎉 Successfully upgraded to ${tier}! Welcome to EchoEcho ${tier}!`,
         });
       } catch (error) {
-        console.error('Error creating subscription:', error.message);
+        console.error('Error creating subscription:', error);
         return res.status(500).json({ error: 'Failed to create subscription', details: error.message });
       }
     }
@@ -161,8 +212,8 @@ export default async function handler(req, res) {
           contract: USDC_CONTRACT,
         });
       } catch (error) {
-        console.error('Failed to check USDC balance:', error.message);
-        return res.status(500).json({ 
+        console.error('Failed to check USDC balance:', error);
+        return res.status(500).json({
           error: 'Failed to check USDC balance',
           details: error.message,
         });
