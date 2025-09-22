@@ -21,21 +21,40 @@ const queryClient = new QueryClient();
 export default function MyApp({ Component, pageProps }) {
   useEffect(() => {
     console.log('Initializing Farcaster SDK in _app.js...');
-    sdk.connectAsync()
-      .then(async () => {
-        const user = await sdk.user.getAsync();
-        console.log('User FID:', user.fid);
-        await sdk.actions.ready();
-        console.log('Farcaster Mini App ready');
-        if (sdk.wallet.isConnected()) {
-          console.log('Wallet connected:', sdk.wallet.address());
-        } else {
-          console.warn('Wallet not connected');
-        }
-      })
-      .catch((error) => {
-        console.error('Farcaster SDK Error:', error);
-      });
+    if (!sdk) {
+      console.error('Farcaster SDK not loaded');
+      return;
+    }
+
+    // Attempt to initialize SDK (adjust based on actual SDK API)
+    try {
+      // Check if sdk.init or similar method exists instead of connectAsync
+      if (typeof sdk.init === 'function') {
+        sdk.init()
+          .then(async () => {
+            try {
+              const user = await sdk.user?.get?.();
+              console.log('User FID:', user?.fid || 'Unknown');
+              await sdk.actions?.ready?.();
+              console.log('Farcaster Mini App ready');
+              if (sdk.wallet?.isConnected?.()) {
+                console.log('Wallet connected:', sdk.wallet.address());
+              } else {
+                console.warn('Wallet not connected');
+              }
+            } catch (error) {
+              console.error('Farcaster SDK initialization error:', error);
+            }
+          })
+          .catch((error) => {
+            console.error('Farcaster SDK init error:', error);
+          });
+      } else {
+        console.warn('Farcaster SDK init method not found, skipping initialization');
+      }
+    } catch (error) {
+      console.error('Farcaster SDK error:', error);
+    }
   }, []);
 
   return (
