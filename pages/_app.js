@@ -4,15 +4,15 @@ import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createConfig, http } from 'wagmi';
 import { base } from 'wagmi/chains';
-import { farcasterMiniApp as miniAppConnector } from '@farcaster/miniapp-wagmi-connector';
+import { farcasterFrame as miniAppConnector } from '@farcaster/frame-wagmi-connector';
 
 const config = createConfig({
   chains: [base],
   transports: {
-    [base.id]: http(),
+    [base.id]: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
   },
   connectors: [
-    miniAppConnector(),
+    miniAppConnector(), // Farcaster Mini App/Frame wallet connector
   ],
 });
 
