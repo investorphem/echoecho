@@ -4,6 +4,9 @@ const nextConfig = {
   images: {
     domains: [], // Add allowed image domains if needed
   },
+  experimental: {
+    esmExternals: 'loose', // Handle ESM packages like wagmi
+  },
   async headers() {
     return [
       {
@@ -15,8 +18,7 @@ const nextConfig = {
           },
           {
             key: 'Access-Control-Allow-Origin',
-            value: '*', 
-            // You can restrict to 'https://warpcast.com' if you prefer tighter security
+            value: '*', // Restrict to 'https://warpcast.com' for tighter security if needed
           },
         ],
       },
