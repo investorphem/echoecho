@@ -6,7 +6,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Create subscriptions table
     await sql`
       CREATE TABLE IF NOT EXISTS subscriptions (
         wallet_address VARCHAR(42) PRIMARY KEY,
@@ -16,8 +15,6 @@ export default async function handler(req, res) {
         expires_at TIMESTAMP
       )
     `;
-
-    // Create payments table
     await sql`
       CREATE TABLE IF NOT EXISTS payments (
         id SERIAL PRIMARY KEY,
@@ -28,7 +25,6 @@ export default async function handler(req, res) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
-
     return res.status(200).json({ success: true, message: 'Database schema initialized' });
   } catch (error) {
     console.error('Error initializing database:', error);
