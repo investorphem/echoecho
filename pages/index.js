@@ -32,6 +32,9 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address }),
       });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
       const data = await response.json();
       console.log('USDC balance:', data.balance);
       setUsdcBalance(parseFloat(data.balance || 0));
@@ -68,27 +71,16 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => {
-    console.log('useEffect: Loading trends and checking wallet...');
-    loadTrends();
-    if (walletConnected && walletAddress) {
-      checkUSDCBalance(walletAddress);
-      loadUserSubscription(walletAddress);
-    }
-
-    const timeout = setTimeout(() => {
-      if (!miniAppReady) {
-        console.log('Timeout fallback: Setting miniAppReady to true');
-        setMiniAppReady(true);
-      }
-    }, 5000);
-
-    return () => clearTimeout(timeout);
-  }, [globalMode, walletConnected, walletAddress, checkUSDCBalance, loadUserSubscription, miniAppReady]);
-
-  const loadTrends = async () => {
+  const loadTrends = useCallback(async () => {
     console.log('Loading trends...');
     setLoading(true);
+    if (!walletConnected || !walletAddress) {
+      console.warn('Wallet not connected, skipping trends load');
+      setTrends([]);
+      setLoading(false);
+      alert('Please connect your wallet to view trends.');
+      return;
+    }
     try {
       const resp = await fetch('/api/trending');
       console.log('Trends API response status:', resp.status);
@@ -108,6 +100,9 @@ export default function Home() {
         setLoading(false);
         return;
       }
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+      }
       const data = await resp.json();
       console.log('Trends data:', data);
       const trendsData = data.casts || [];
@@ -123,13 +118,16 @@ export default function Home() {
             const aiResp = await fetch('/api/ai-analysis', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text, action: 'analyze_sentiment' }),
+              body: JSON.stringify({ text, action: 'analyze_sentiment', userAddress: walletAddress }),
             });
-            console.log('AI analysis response status for trend:', aiResp.status);
+            if (!aiResp.ok) {
+              throw new Error(`HTTP ${aiResp.status}: ${await aiResp.text()}`);
+            }
             const sentiment = await aiResp.json();
+            console.log('AI analysis for trend:', sentiment);
             return { ...trend, ai_analysis: sentiment };
-          } catch {
-            console.error('AI analysis failed for trend with text:', text);
+          } catch (error) {
+            console.error('AI analysis failed for trend with text:', text, error);
             return { ...trend, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
           }
         })
@@ -140,60 +138,82 @@ export default function Home() {
     } catch (error) {
       console.error('Error loading trends:', error);
       setTrends([]);
+      alert('Failed to load trends. Please try again.');
     }
-    console.log('Setting loading to false');
     setLoading(false);
-  };
+  }, [walletConnected, walletAddress]);
 
-  const loadTopicDetails = async (topic) => {
+  const loadTopicDetails = useCallback(async (topic) => {
     console.log('Loading topic details for:', topic.text || topic.body);
     setSelectedTopic(topic);
     setActiveView('topic');
 
-    if (globalMode) {
-      try {
-        const [twitterResp, newsResp] = await Promise.all([
-          fetch('/api/cross-platform', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic: topic.text || topic.body, source: 'twitter' }),
-          }),
-          fetch('/api/cross-platform', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ topic: topic.text || topic.body, source: 'news' }),
-          }),
-        ]);
+    if (!globalMode) {
+      setCounterNarratives([]);
+      return;
+    }
 
-        const twitterData = await twitterResp.json();
-        const newsData = await newsResp.json();
-        console.log('Twitter data:', twitterData, 'News data:', newsData);
+    if (!walletConnected || !walletAddress) {
+      console.warn('Wallet not connected, skipping counter-narratives');
+      setCounterNarratives([]);
+      alert('Please connect your wallet to view counter-narratives.');
+      return;
+    }
 
-        const allPosts = [...(twitterData.posts || []), ...(newsData.posts || [])];
-
-        const counterResp = await fetch('/api/ai-analysis', {
+    try {
+      const [twitterResp, newsResp] = await Promise.all([
+        fetch('/api/cross-platform', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ posts: allPosts, action: 'find_counter_narratives' }),
-        });
+          body: JSON.stringify({ topic: topic.text || topic.body, source: 'twitter' }),
+        }),
+        fetch('/api/cross-platform', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic: topic.text || topic.body, source: 'news' }),
+        }),
+      ]);
 
-        const counterData = await counterResp.json();
-        const counterPosts = counterData.counter_posts?.map((index) => allPosts[index]) || [];
-        console.log('Counter-narratives:', counterPosts);
-        setCounterNarratives(counterPosts);
-      } catch (error) {
-        console.error('Error loading cross-platform data:', error);
-        setCounterNarratives([]);
+      if (!twitterResp.ok || !newsResp.ok) {
+        throw new Error(`Cross-platform fetch failed: Twitter ${twitterResp.status}, News ${newsResp.status}`);
       }
+
+      const twitterData = await twitterResp.json();
+      const newsData = await newsResp.json();
+      console.log('Twitter data:', twitterData, 'News data:', newsData);
+
+      const allPosts = [...(twitterData.posts || []), ...(newsData.posts || [])];
+
+      const counterResp = await fetch('/api/ai-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ posts: allPosts, action: 'find_counter_narratives', userAddress: walletAddress }),
+      });
+
+      if (!counterResp.ok) {
+        throw new Error(`HTTP ${counterResp.status}: ${await counterResp.text()}`);
+      }
+
+      const counterData = await counterResp.json();
+      const counterPosts = counterData.counter_posts?.map((index) => allPosts[index]) || [];
+      console.log('Counter-narratives:', counterPosts);
+      setCounterNarratives(counterPosts);
+    } catch (error) {
+      console.error('Error loading cross-platform data:', error);
+      setCounterNarratives([]);
+      alert('Failed to load counter-narratives. Please try again.');
     }
-  };
+  }, [globalMode, walletConnected, walletAddress]);
 
-  const loadUserEchoes = async () => {
+  const loadUserEchoes = useCallback(async () => {
     console.log('Loading user echoes for address:', walletAddress);
+    if (!walletConnected || !walletAddress) {
+      console.warn('Wallet not connected, skipping user echoes');
+      setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
+      alert('Please connect your wallet to view echoes.');
+      return;
+    }
     try {
-      if (!walletAddress) {
-        throw new Error('No wallet connected');
-      }
       const response = await fetch(`/api/user-echoes?userAddress=${walletAddress}`);
       if (!response.ok) {
         console.error('User echoes fetch failed:', response.status, await response.text());
@@ -206,10 +226,11 @@ export default function Home() {
     } catch (error) {
       console.error('Error loading user echoes:', error);
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
+      alert('Failed to load user echoes. Please try again.');
     }
-  };
+  }, [walletConnected, walletAddress]);
 
-  const mintInsightToken = async (narrative) => {
+  const mintInsightToken = useCallback(async (narrative) => {
     console.log('Minting Insight Token for narrative:', narrative);
     if (!walletConnected || !walletAddress) {
       alert('Please connect your wallet via a Farcaster client (e.g., Warpcast) to mint Insight Tokens!');
@@ -226,6 +247,10 @@ export default function Home() {
           rarity: narrative.source === 'twitter' ? 'rare' : 'common',
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+      }
 
       const result = await response.json();
       console.log('Mint NFT result:', result);
@@ -245,9 +270,9 @@ export default function Home() {
       console.error('Minting error:', error);
       alert('❌ Error minting token: ' + error.message);
     }
-  };
+  }, [walletConnected, walletAddress]);
 
-  const handleEcho = async (cast, isCounterNarrative = false) => {
+  const handleEcho = useCallback(async (cast, isCounterNarrative = false) => {
     console.log('Echoing cast:', cast, 'Is counter-narrative:', isCounterNarrative);
     try {
       const resp = await fetch('/api/echo', {
@@ -255,6 +280,9 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ castId: cast.hash || cast.id }),
       });
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+      }
       const result = await resp.json();
       console.log('Echo result:', result);
 
@@ -262,13 +290,35 @@ export default function Home() {
         const badge = isCounterNarrative ? ' 🌟 Diverse Echo' : '';
         alert(`✅ Echoed!${badge}`);
       } else {
-        alert('❌ Error: ' + (result.error || ''));
+        alert('❌ Error: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
       console.error('Error echoing:', error);
       alert('❌ Error echoing: ' + error.message);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    console.log('useEffect: Initializing app...');
+    if (walletConnected && walletAddress) {
+      checkUSDCBalance(walletAddress);
+      loadUserSubscription(walletAddress);
+      loadTrends();
+    } else {
+      console.warn('Wallet not connected, skipping data load');
+      setTrends([]);
+      setLoading(false);
+    }
+
+    const timeout = setTimeout(() => {
+      if (!miniAppReady) {
+        console.log('Timeout fallback: Setting miniAppReady to true');
+        setMiniAppReady(true);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timeout);
+  }, [walletConnected, walletAddress, checkUSDCBalance, loadUserSubscription, loadTrends, miniAppReady]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
@@ -355,7 +405,7 @@ export default function Home() {
               animation: 'spin 1s linear infinite',
             }}
           />
-          <style className>{`
+          <style>{`
             @keyframes spin {
               0% { transform: rotate(0deg); }
               100% { transform: rotate(360deg); }
@@ -1001,6 +1051,10 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
           transactionHash: txHash,
         }),
       });
+
+      if (!subscriptionResp.ok) {
+        throw new Error(`HTTP ${subscriptionResp.status}: ${await subscriptionResp.text()}`);
+      }
 
       const result = await subscriptionResp.json();
       console.log('Subscription result:', result);
