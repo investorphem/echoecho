@@ -1,9 +1,11 @@
 import OpenAI from 'openai';
-import { getUserSubscription } from '../../lib/storage.js';
+import { neon } from '@neondatabase/serverless';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+const sql = neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
   if (!process.env.OPENAI_API_KEY) {
@@ -31,12 +33,34 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid action' });
   }
 
-  // Verify subscription
+  // Verify subscription (direct query with Neon)
+  let userTier = 'free';
+  let subscription = null;
   try {
-    const subscription = await getUserSubscription(userAddress.toLowerCase());
-    const userTier = subscription?.status === 'active' && new Date(subscription.expires_at) > new Date()
-      ? subscription.tier
-      : 'free';
+    const subscriptions = await sql`
+      SELECT * FROM subscriptions
+      WHERE wallet_address = ${userAddress.toLowerCase()}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+
+    if (subscriptions.length > 0) {
+      const sub = subscriptions[0];
+      const expiresAt = new Date(sub.expires_at);
+      const now = new Date();
+      if (expiresAt > now) {
+        userTier = sub.tier;
+        subscription = {
+          tier: sub.tier,
+          transaction_hash: sub.transaction_hash,
+          created_at: sub.created_at,
+          expires_at: sub.expires_at,
+        };
+      }
+    }
+
+    console.log('User subscription tier:', userTier);
+
     const aiLimits = { free: 10, premium: 'unlimited', pro: 'unlimited' };
     if (aiLimits[userTier] !== 'unlimited' && aiLimits[userTier] <= 0) {
       console.warn(`AI limit reached for user: ${userAddress}, tier: ${userTier}`);
