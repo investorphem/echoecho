@@ -35,12 +35,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid action' });
   }
 
-  // Define AI limits outside try block
+  // Define AI limits
   const aiLimits = { free: 10, premium: 'unlimited', pro: 'unlimited' };
 
   // Verify subscription and AI limits
   let userTier = 'free';
-  let remainingAiCalls = aiLimits.free; // Default for free tier
+  let remainingAiCalls = aiLimits.free;
   try {
     const subscriptions = await sql`
       SELECT * FROM subscriptions
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
     console.log('User subscription tier:', userTier);
 
     if (aiLimits[userTier] !== 'unlimited') {
-      // Check remaining AI calls for the user
+      // Check remaining AI calls
       const usage = await sql`
         SELECT ai_calls_used FROM user_usage
         WHERE wallet_address = ${userAddress.toLowerCase()}
@@ -80,19 +80,31 @@ export default async function handler(req, res) {
       }
 
       // Increment AI calls used
-      await sql`
-        INSERT INTO user_usage (wallet_address, usage_date, ai_calls_used)
-        VALUES (${userAddress.toLowerCase()}, CURRENT_DATE, 1)
-        ON CONFLICT (wallet_address, DATE_TRUNC('day', usage_date))
-        DO UPDATE SET ai_calls_used = user_usage.ai_calls_used + 1
-      `;
-      console.log(`AI calls remaining for ${userAddress}: ${remainingAiCalls - 1}`);
+      try {
+        await sql`
+          INSERT INTO user_usage (wallet_address, usage_date, ai_calls_used)
+          VALUES (${userAddress.toLowerCase()}, CURRENT_DATE, 1)
+          ON CONFLICT (wallet_address, usage_date)
+          DO UPDATE SET ai_calls_used = user_usage.ai_calls_used + 1
+        `;
+        console.log(`AI calls remaining for ${userAddress}: ${remainingAiCalls - 1}`);
+      } catch (dbError) {
+        console.error('Usage tracking error:', dbError.message);
+        if (dbError.code === '42P01') {
+          return res.status(500).json({
+            error: 'Database configuration error',
+            details: 'Usage tracking unavailable. Please initialize database with /api/init-db.',
+          });
+        }
+        throw dbError; // Rethrow other errors
+      }
     }
   } catch (error) {
-    console.error('Subscription or usage check error:', error.message);
+    console.error('Subscription or usage check error:', error.message, { code: error.code });
     return res.status(500).json({
       error: 'Failed to verify subscription or usage',
       details: error.message,
+      code: error.code || 'Unknown',
     });
   }
 
@@ -171,15 +183,19 @@ export default async function handler(req, res) {
     console.error('AI Analysis error:', error.message);
     if (error.status === 429 || error.message.includes('exceeded your current quota')) {
       console.warn(`OpenAI rate limit exceeded for user: ${userAddress}, action: ${action}`);
-      // Roll back AI call increment to avoid penalizing user for OpenAI rate limit
+      // Roll back AI call increment
       if (aiLimits[userTier] !== 'unlimited') {
-        await sql`
-          UPDATE user_usage
-          SET ai_calls_used = GREATEST(user_usage.ai_calls_used - 1, 0)
-          WHERE wallet_address = ${userAddress.toLowerCase()}
-          AND DATE_TRUNC('day', usage_date) = CURRENT_DATE
-        `;
-        console.log(`Rolled back AI call usage for ${userAddress}`);
+        try {
+          await sql`
+            UPDATE user_usage
+            SET ai_calls_used = GREATEST(user_usage.ai_calls_used - 1, 0)
+            WHERE wallet_address = ${userAddress.toLowerCase()}
+            AND DATE_TRUNC('day', usage_date) = CURRENT_DATE
+          `;
+          console.log(`Rolled back AI call usage for ${userAddress}`);
+        } catch (dbError) {
+          console.error('Rollback error:', dbError.message);
+        }
       }
       // Return fallback response
       if (action === 'analyze_sentiment') {
