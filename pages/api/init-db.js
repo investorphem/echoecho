@@ -16,6 +16,10 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Test database connection
+    await sql`SELECT 1 AS test`;
+    console.log('Database connection verified');
+
     // Create subscriptions table
     await sql`
       CREATE TABLE IF NOT EXISTS subscriptions (
@@ -41,9 +45,10 @@ export default async function handler(req, res) {
     `;
     console.log('Payments table initialized successfully');
 
-    // Create user_usage table for API call tracking
+    // Drop and recreate user_usage table to ensure correct schema
+    await sql`DROP TABLE IF EXISTS user_usage`;
     await sql`
-      CREATE TABLE IF NOT EXISTS user_usage (
+      CREATE TABLE user_usage (
         wallet_address VARCHAR(42) NOT NULL,
         usage_date DATE NOT NULL,
         ai_calls_used INTEGER DEFAULT 0,
@@ -53,10 +58,28 @@ export default async function handler(req, res) {
     `;
     console.log('User_usage table initialized successfully');
 
+    // Verify primary key constraint
+    const constraints = await sql`
+      SELECT constraint_name 
+      FROM information_schema.table_constraints 
+      WHERE table_name = 'user_usage' 
+      AND constraint_type = 'PRIMARY KEY';
+    `;
+    if (constraints.length === 0) {
+      console.error('Primary key constraint missing on user_usage');
+      throw new Error('Failed to create primary key on user_usage');
+    }
+    console.log('User_usage primary key verified:', constraints[0].constraint_name);
+
     console.log('Database schema initialized successfully');
     return res.status(200).json({ success: true, message: 'Database schema initialized' });
   } catch (error) {
-    console.error('Error initializing database:', error.message);
+    console.error('Error initializing database:', {
+      message: error.message,
+      code: error.code, // e.g., 42P01
+      detail: error.detail,
+      hint: error.hint,
+    });
     if (error.message.includes('connection')) {
       return res.status(500).json({
         error: 'Database connection failed',
@@ -66,6 +89,7 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: 'Failed to initialize database',
       details: error.message,
+      code: error.code || 'Unknown',
     });
   }
 }
