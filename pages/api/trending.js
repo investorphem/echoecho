@@ -1,20 +1,114 @@
-import { Configuration, NeynarAPIClient } from "@neynar/nodejs-sdk";
-import { FeedType, FilterType } from "@neynar/nodejs-sdk/build/api";
+import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk';
+import { FeedType, FilterType } from '@neynar/nodejs-sdk/build/api';
+import { neon } from '@neondatabase/serverless';
+
+const sql = neon(process.env.DATABASE_URL);
 
 export default async function handler(req, res) {
   const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
   if (!NEYNAR_API_KEY) {
-    return res.status(500).json({ error: 'NEYNAR_API_KEY missing' });
+    console.error('NEYNAR_API_KEY is not set');
+    return res.status(500).json({ error: 'Server configuration error: NEYNAR_API_KEY missing' });
   }
 
   if (req.method !== 'GET') {
+    console.warn(`Invalid method: ${req.method}`);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    // Support optional query parameters (e.g., limit, cursor)
-    const { limit = 10, cursor } = req.query;
+  // Extract userAddress from query for usage tracking (optional, sent from index.js)
+  const { limit = 10, cursor, userAddress } = req.query;
 
+  // Validate userAddress if provided
+  if (userAddress && !userAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+    console.warn('Invalid userAddress:', userAddress);
+    return res.status(400).json({ error: 'Valid userAddress required' });
+  }
+
+  // Check subscription and API limits if userAddress is provided
+  let userTier = 'free';
+  let remainingApiCalls = 10; // Default for free tier
+  if (userAddress) {
+    try {
+      const subscriptions = await sql`
+        SELECT * FROM subscriptions
+        WHERE wallet_address = ${userAddress.toLowerCase()}
+        ORDER BY created_at DESC
+        LIMIT 1
+      `;
+
+      if (subscriptions.length > 0) {
+        const sub = subscriptions[0];
+        const expiresAt = new Date(sub.expires_at);
+        const now = new Date();
+        if (expiresAt > now) {
+          userTier = sub.tier;
+        }
+      }
+
+      console.log('User subscription tier:', userTier);
+
+      const apiLimits = { free: 10, premium: 'unlimited', pro: 'unlimited' };
+      if (apiLimits[userTier] !== 'unlimited') {
+        // Check remaining API calls for the user
+        const usage = await sql`
+          SELECT trending_api_calls_used FROM user_usage
+          WHERE wallet_address = ${userAddress.toLowerCase()}
+          AND DATE_TRUNC('day', usage_date) = CURRENT_DATE
+        `;
+
+        let apiCallsUsed = usage.length > 0 ? usage[0].trending_api_calls_used : 0;
+        remainingApiCalls = apiLimits[userTier] - apiCallsUsed;
+
+        if (remainingApiCalls <= 0) {
+          console.warn(`Trending API limit reached for user: ${userAddress}, tier: ${userTier}`);
+          return res.status(429).json({
+            error: `Trending API limit reached for ${userTier} tier`,
+            details: `You have reached your daily limit of ${apiLimits[userTier]} trending API calls. Please upgrade to a higher tier.`,
+            warning: 'Trending data limited due to API plan. Upgrade your Neynar API plan at https://dev.neynar.com/pricing for full access.',
+            casts: [
+              {
+                text: 'Mock Trend 1: AI in Web3',
+                body: 'Discussing AI’s blockchain future.',
+                hash: 'mock1',
+                timestamp: new Date().toISOString(),
+              },
+              {
+                text: 'Mock Trend 2: Farcaster Updates',
+                body: 'New features released.',
+                hash: 'mock2',
+                timestamp: new Date().toISOString(),
+              },
+              {
+                text: 'Mock Trend 3: NFT Market Boom',
+                body: 'Base chain growth.',
+                hash: 'mock3',
+                timestamp: new Date().toISOString(),
+              },
+            ],
+            next_cursor: null,
+          });
+        }
+
+        // Increment API calls used
+        await sql`
+          INSERT INTO user_usage (wallet_address, usage_date, trending_api_calls_used)
+          VALUES (${userAddress.toLowerCase()}, CURRENT_DATE, 1)
+          ON CONFLICT (wallet_address, DATE_TRUNC('day', usage_date))
+          DO UPDATE SET trending_api_calls_used = user_usage.trending_api_calls_used + 1
+        `;
+        console.log(`Trending API calls remaining for ${userAddress}: ${remainingApiCalls - 1}`);
+      }
+    } catch (error) {
+      console.error('Subscription or usage check error:', error.message);
+      return res.status(500).json({
+        error: 'Failed to verify subscription or usage',
+        details: error.message,
+      });
+    }
+  }
+
+  try {
     // Configure Neynar client
     const config = new Configuration({ apiKey: NEYNAR_API_KEY });
     const client = new NeynarAPIClient(config);
@@ -33,17 +127,44 @@ export default async function handler(req, res) {
       next_cursor: trendingFeed.next?.cursor || null, // For pagination
     };
 
+    console.log('Trending feed fetched:', data);
     return res.status(200).json(data);
   } catch (error) {
-    console.error('Error fetching trending casts:', error);
-    // Fallback to mock data if SDK fails (e.g., 402 Payment Required)
-    if (error.message.includes('402') || error.message.includes('Payment Required')) {
+    console.error('Error fetching trending casts:', error.message);
+    // Handle 402 Payment Required or rate limit errors
+    if (error.status === 402 || error.message.includes('Payment Required')) {
       console.warn('Neynar trending requires payment, using mock data');
+      // Roll back API call increment to avoid penalizing user for Neynar rate limit
+      if (userAddress && apiLimits[userTier] !== 'unlimited') {
+        await sql`
+          UPDATE user_usage
+          SET trending_api_calls_used = GREATEST(user_usage.trending_api_calls_used - 1, 0)
+          WHERE wallet_address = ${userAddress.toLowerCase()}
+          AND DATE_TRUNC('day', usage_date) = CURRENT_DATE
+        `;
+        console.log(`Rolled back trending API call usage for ${userAddress}`);
+      }
       return res.status(200).json({
+        warning: 'Trending data limited due to API plan. Upgrade your Neynar API plan at https://dev.neynar.com/pricing for full access.',
         casts: [
-          { text: "Mock Trend 1: AI in Web3", body: "Discussing AI's blockchain future.", timestamp: new Date().toISOString() },
-          { text: "Mock Trend 2: Farcaster Updates", body: "New features released.", timestamp: new Date().toISOString() },
-          { text: "Mock Trend 3: NFT Market Boom", body: "Base chain growth.", timestamp: new Date().toISOString() },
+          {
+            text: 'Mock Trend 1: AI in Web3',
+            body: 'Discussing AI’s blockchain future.',
+            hash: 'mock1',
+            timestamp: new Date().toISOString(),
+          },
+          {
+            text: 'Mock Trend 2: Farcaster Updates',
+            body: 'New features released.',
+            hash: 'mock2',
+            timestamp: new Date().toISOString(),
+          },
+          {
+            text: 'Mock Trend 3: NFT Market Boom',
+            body: 'Base chain growth.',
+            hash: 'mock3',
+            timestamp: new Date().toISOString(),
+          },
         ],
         next_cursor: null,
       });
@@ -57,5 +178,5 @@ export default async function handler(req, res) {
 
 // Optional: Cache for 5 minutes using Vercel ISR
 export const config = {
-  api: { response_limit: '0' }, // Disable default body size limit
+  api: { responseLimit: false }, // Disable default response size limit
 };
