@@ -35,9 +35,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid action' });
   }
 
+  // Define AI limits outside try block
+  const aiLimits = { free: 10, premium: 'unlimited', pro: 'unlimited' };
+
   // Verify subscription and AI limits
   let userTier = 'free';
-  let remainingAiCalls = 10; // Default for free tier
+  let remainingAiCalls = aiLimits.free; // Default for free tier
   try {
     const subscriptions = await sql`
       SELECT * FROM subscriptions
@@ -57,7 +60,6 @@ export default async function handler(req, res) {
 
     console.log('User subscription tier:', userTier);
 
-    const aiLimits = { free: 10, premium: 'unlimited', pro: 'unlimited' };
     if (aiLimits[userTier] !== 'unlimited') {
       // Check remaining AI calls for the user
       const usage = await sql`
@@ -65,7 +67,7 @@ export default async function handler(req, res) {
         WHERE wallet_address = ${userAddress.toLowerCase()}
         AND DATE_TRUNC('day', usage_date) = CURRENT_DATE
       `;
-      
+
       let aiCallsUsed = usage.length > 0 ? usage[0].ai_calls_used : 0;
       remainingAiCalls = aiLimits[userTier] - aiCallsUsed;
 
