@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Extract userAddress from query for usage tracking (optional, sent from index.js)
+  // Extract userAddress from query for usage tracking (optional)
   const { limit = 10, cursor, userAddress } = req.query;
 
   // Validate userAddress if provided
@@ -25,9 +25,12 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Valid userAddress required' });
   }
 
+  // Define API limits outside try block
+  const apiLimits = { free: 10, premium: 'unlimited', pro: 'unlimited' };
+
   // Check subscription and API limits if userAddress is provided
   let userTier = 'free';
-  let remainingApiCalls = 10; // Default for free tier
+  let remainingApiCalls = apiLimits.free; // Default for free tier
   if (userAddress) {
     try {
       const subscriptions = await sql`
@@ -48,7 +51,6 @@ export default async function handler(req, res) {
 
       console.log('User subscription tier:', userTier);
 
-      const apiLimits = { free: 10, premium: 'unlimited', pro: 'unlimited' };
       if (apiLimits[userTier] !== 'unlimited') {
         // Check remaining API calls for the user
         const usage = await sql`
