@@ -33,9 +33,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid action' });
   }
 
-  // Verify subscription (direct query with Neon)
+  // Verify subscription
   let userTier = 'free';
-  let subscription = null;
   try {
     const subscriptions = await sql`
       SELECT * FROM subscriptions
@@ -50,12 +49,6 @@ export default async function handler(req, res) {
       const now = new Date();
       if (expiresAt > now) {
         userTier = sub.tier;
-        subscription = {
-          tier: sub.tier,
-          transaction_hash: sub.transaction_hash,
-          created_at: sub.created_at,
-          expires_at: sub.expires_at,
-        };
       }
     }
 
