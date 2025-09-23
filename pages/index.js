@@ -84,14 +84,15 @@ export default function Home() {
     if (!walletConnected || !walletAddress) {
       console.warn('Wallet not connected, skipping trends load');
       setTrends([]);
-      setLoading(false);
       setErrorMessage('Please connect your wallet to view trends.');
+      setLoading(false);
       return;
     }
     try {
       const resp = await fetch('/api/trending');
       console.log('Trends API response status:', resp.status);
-      if (resp.status === 402 || (await resp.clone().json()).warning) {
+      const data = await resp.json();
+      if (resp.status === 402 || data.warning) {
         console.warn('API 402 or limited: Using mock data');
         const mockData = {
           casts: [
@@ -108,9 +109,8 @@ export default function Home() {
         return;
       }
       if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+        throw new Error(`HTTP ${resp.status}: ${data.error || 'Unknown error'}`);
       }
-      const data = await resp.json();
       console.log('Trends data:', data);
       const trendsData = data.casts || [];
 
@@ -152,8 +152,9 @@ export default function Home() {
       console.error('Error loading trends:', error);
       setTrends([]);
       setErrorMessage('Failed to load trends. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, [walletConnected, walletAddress]);
 
   const loadTopicDetails = useCallback(async (topic) => {
@@ -219,7 +220,7 @@ export default function Home() {
       console.log('Counter-narratives:', counterPosts);
       setCounterNarratives(counterPosts);
     } catch (error) {
-      console.error('Error loading cross-platform data:', error);
+      console.error('Error loading counter-narratives:', error);
       setCounterNarratives([]);
       setErrorMessage('Failed to load counter-narratives. Please try again.');
     }
@@ -330,8 +331,8 @@ export default function Home() {
     } else {
       console.warn('Wallet not connected, skipping data load');
       setTrends([]);
-      setLoading(false);
       setErrorMessage('Please connect your wallet to view trends.');
+      setLoading(false);
     }
 
     const timeout = setTimeout(() => {
@@ -789,16 +790,7 @@ export default function Home() {
         )}
 
         {activeView === 'topic' && selectedTopic && (
-          <div
-            style={{
-              maxWidth: 720,
-              margin: '20px auto',
-              padding: 12,
-              background: '#111827',
-              color: '#f9fafb',
-              minHeight: '100vh',
-            }}
-          >
+          <div>
             <div style={{ marginBottom: 20 }}>
               <button
                 onClick={() => setActiveView('trends')}
