@@ -23,6 +23,8 @@ export default function Home() {
   const [userEchoes, setUserEchoes] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [reminderDismissed, setReminderDismissed] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [apiWarning, setApiWarning] = useState(null);
 
   const checkUSDCBalance = useCallback(async (address) => {
     console.log('Checking USDC balance for address:', address);
@@ -41,6 +43,7 @@ export default function Home() {
     } catch (error) {
       console.error('USDC balance check failed:', error);
       setUsdcBalance(0);
+      setErrorMessage('Failed to check USDC balance. Please try again.');
     }
   }, []);
 
@@ -56,6 +59,7 @@ export default function Home() {
         console.error('Subscription fetch failed:', resp.status, await resp.text());
         setUserTier('free');
         setSubscription(null);
+        setErrorMessage('Failed to load subscription. Defaulting to free tier.');
         return;
       }
       const data = await resp.json();
@@ -68,35 +72,38 @@ export default function Home() {
       console.error('Failed to load user subscription:', error);
       setUserTier('free');
       setSubscription(null);
+      setErrorMessage('Failed to load subscription. Defaulting to free tier.');
     }
   }, []);
 
   const loadTrends = useCallback(async () => {
     console.log('Loading trends...');
     setLoading(true);
+    setErrorMessage(null);
+    setApiWarning(null);
     if (!walletConnected || !walletAddress) {
       console.warn('Wallet not connected, skipping trends load');
       setTrends([]);
       setLoading(false);
-      alert('Please connect your wallet to view trends.');
+      setErrorMessage('Please connect your wallet to view trends.');
       return;
     }
     try {
       const resp = await fetch('/api/trending');
       console.log('Trends API response status:', resp.status);
-      if (resp.status === 402) {
-        console.warn('API 402: Payment Required - Using mock data');
+      if (resp.status === 402 || (await resp.clone().json()).warning) {
+        console.warn('API 402 or limited: Using mock data');
         const mockData = {
           casts: [
-            { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1' },
-            { text: 'Sample trend 2', body: 'Another mock trend', hash: 'mock2' },
+            { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
+            { text: 'Sample trend 2', body: 'Another mock trend', hash: 'mock2', timestamp: new Date().toISOString() },
           ],
         };
         setTrends(mockData.casts.map((trend) => ({
           ...trend,
           ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
         })));
-        alert('⚠️ Trending data limited due to API plan. Upgrade your Neynar API plan at https://dev.neynar.com/pricing for full access.');
+        setApiWarning('Trending data limited due to API plan. Upgrade your Neynar API plan at https://dev.neynar.com/pricing for full access.');
         setLoading(false);
         return;
       }
@@ -120,14 +127,20 @@ export default function Home() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ text, action: 'analyze_sentiment', userAddress: walletAddress }),
             });
+            const aiData = await aiResp.json();
             if (!aiResp.ok) {
-              throw new Error(`HTTP ${aiResp.status}: ${await aiResp.text()}`);
+              if (aiResp.status === 429) {
+                console.warn('OpenAI rate limit exceeded for trend:', text);
+                setApiWarning('AI analysis limited due to OpenAI quota. Please upgrade your plan at https://platform.openai.com/account/billing.');
+                return { ...trend, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
+              }
+              throw new Error(`HTTP ${aiResp.status}: ${aiData.error || 'Unknown error'}`);
             }
-            const sentiment = await aiResp.json();
-            console.log('AI analysis for trend:', sentiment);
-            return { ...trend, ai_analysis: sentiment };
+            console.log('AI analysis for trend:', aiData);
+            return { ...trend, ai_analysis: aiData };
           } catch (error) {
             console.error('AI analysis failed for trend with text:', text, error);
+            setApiWarning('AI analysis failed for some trends. Please try again or check OpenAI quota.');
             return { ...trend, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
           }
         })
@@ -138,7 +151,7 @@ export default function Home() {
     } catch (error) {
       console.error('Error loading trends:', error);
       setTrends([]);
-      alert('Failed to load trends. Please try again.');
+      setErrorMessage('Failed to load trends. Please try again.');
     }
     setLoading(false);
   }, [walletConnected, walletAddress]);
@@ -147,6 +160,8 @@ export default function Home() {
     console.log('Loading topic details for:', topic.text || topic.body);
     setSelectedTopic(topic);
     setActiveView('topic');
+    setErrorMessage(null);
+    setApiWarning(null);
 
     if (!globalMode) {
       setCounterNarratives([]);
@@ -156,7 +171,7 @@ export default function Home() {
     if (!walletConnected || !walletAddress) {
       console.warn('Wallet not connected, skipping counter-narratives');
       setCounterNarratives([]);
-      alert('Please connect your wallet to view counter-narratives.');
+      setErrorMessage('Please connect your wallet to view counter-narratives.');
       return;
     }
 
@@ -174,12 +189,11 @@ export default function Home() {
         }),
       ]);
 
+      const twitterData = await twitterResp.json();
+      const newsData = await newsResp.json();
       if (!twitterResp.ok || !newsResp.ok) {
         throw new Error(`Cross-platform fetch failed: Twitter ${twitterResp.status}, News ${newsResp.status}`);
       }
-
-      const twitterData = await twitterResp.json();
-      const newsData = await newsResp.json();
       console.log('Twitter data:', twitterData, 'News data:', newsData);
 
       const allPosts = [...(twitterData.posts || []), ...(newsData.posts || [])];
@@ -190,18 +204,24 @@ export default function Home() {
         body: JSON.stringify({ posts: allPosts, action: 'find_counter_narratives', userAddress: walletAddress }),
       });
 
+      const counterData = await counterResp.json();
       if (!counterResp.ok) {
-        throw new Error(`HTTP ${counterResp.status}: ${await counterResp.text()}`);
+        if (counterResp.status === 429) {
+          console.warn('OpenAI rate limit exceeded for counter-narratives');
+          setApiWarning('Counter-narratives unavailable due to OpenAI quota. Please upgrade your plan at https://platform.openai.com/account/billing.');
+          setCounterNarratives([]);
+          return;
+        }
+        throw new Error(`HTTP ${counterResp.status}: ${counterData.error || 'Unknown error'}`);
       }
 
-      const counterData = await counterResp.json();
       const counterPosts = counterData.counter_posts?.map((index) => allPosts[index]) || [];
       console.log('Counter-narratives:', counterPosts);
       setCounterNarratives(counterPosts);
     } catch (error) {
       console.error('Error loading cross-platform data:', error);
       setCounterNarratives([]);
-      alert('Failed to load counter-narratives. Please try again.');
+      setErrorMessage('Failed to load counter-narratives. Please try again.');
     }
   }, [globalMode, walletConnected, walletAddress]);
 
@@ -210,7 +230,7 @@ export default function Home() {
     if (!walletConnected || !walletAddress) {
       console.warn('Wallet not connected, skipping user echoes');
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
-      alert('Please connect your wallet to view echoes.');
+      setErrorMessage('Please connect your wallet to view echoes.');
       return;
     }
     try {
@@ -218,6 +238,7 @@ export default function Home() {
       if (!response.ok) {
         console.error('User echoes fetch failed:', response.status, await response.text());
         setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
+        setErrorMessage('Failed to load user echoes. Please try again.');
         return;
       }
       const data = await response.json();
@@ -226,14 +247,14 @@ export default function Home() {
     } catch (error) {
       console.error('Error loading user echoes:', error);
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
-      alert('Failed to load user echoes. Please try again.');
+      setErrorMessage('Failed to load user echoes. Please try again.');
     }
   }, [walletConnected, walletAddress]);
 
   const mintInsightToken = useCallback(async (narrative) => {
     console.log('Minting Insight Token for narrative:', narrative);
     if (!walletConnected || !walletAddress) {
-      alert('Please connect your wallet via a Farcaster client (e.g., Warpcast) to mint Insight Tokens!');
+      setErrorMessage('Please connect your wallet via a Farcaster client (e.g., Warpcast) to mint Insight Tokens.');
       return;
     }
 
@@ -256,6 +277,7 @@ export default function Home() {
       console.log('Mint NFT result:', result);
 
       if (result.success) {
+        setErrorMessage(null);
         alert(
           `Insight Token minted!\n\n` +
           `Token ID: ${result.token.id}\n` +
@@ -264,11 +286,11 @@ export default function Home() {
           `This counter-narrative is now part of your collection!`
         );
       } else {
-        alert('❌ Minting failed: ' + (result.error || 'Unknown error'));
+        throw new Error(result.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Minting error:', error);
-      alert('❌ Error minting token: ' + error.message);
+      setErrorMessage('Error minting token: ' + error.message);
     }
   }, [walletConnected, walletAddress]);
 
@@ -288,13 +310,14 @@ export default function Home() {
 
       if (result.ok) {
         const badge = isCounterNarrative ? ' 🌟 Diverse Echo' : '';
+        setErrorMessage(null);
         alert(`✅ Echoed!${badge}`);
       } else {
-        alert('❌ Error: ' + (result.error || 'Unknown error'));
+        throw new Error(result.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Error echoing:', error);
-      alert('❌ Error echoing: ' + error.message);
+      setErrorMessage('Error echoing: ' + error.message);
     }
   }, []);
 
@@ -308,6 +331,7 @@ export default function Home() {
       console.warn('Wallet not connected, skipping data load');
       setTrends([]);
       setLoading(false);
+      setErrorMessage('Please connect your wallet to view trends.');
     }
 
     const timeout = setTimeout(() => {
@@ -436,6 +460,66 @@ export default function Home() {
           minHeight: '100vh',
         }}
       >
+        {errorMessage && (
+          <div
+            style={{
+              background: '#dc2626',
+              color: 'white',
+              padding: '12px 16px',
+              borderRadius: 8,
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div>{errorMessage}</div>
+            <button
+              onClick={() => setErrorMessage(null)}
+              style={{
+                background: 'transparent',
+                color: 'white',
+                border: 'none',
+                padding: '6px 8px',
+                borderRadius: 6,
+                fontSize: 16,
+                cursor: 'pointer',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
+        {apiWarning && (
+          <div
+            style={{
+              background: '#f59e0b',
+              color: 'white',
+              padding: '12px 16px',
+              borderRadius: 8,
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div>{apiWarning}</div>
+            <button
+              onClick={() => setApiWarning(null)}
+              style={{
+                background: 'transparent',
+                color: 'white',
+                border: 'none',
+                padding: '6px 8px',
+                borderRadius: 6,
+                fontSize: 16,
+                cursor: 'pointer',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
             <h1 style={{ margin: 0, fontSize: 24 }}>🔥 EchoEcho</h1>
@@ -619,6 +703,20 @@ export default function Home() {
 
         {activeView === 'trends' && (
           <div>
+            {filteredTrends.length === 0 && (
+              <div
+                style={{
+                  background: '#1f2937',
+                  border: '1px dashed #374151',
+                  padding: 20,
+                  borderRadius: 12,
+                  color: '#9ca3af',
+                  textAlign: 'center',
+                }}
+              >
+                No trends available. {searchQuery ? 'Try a different search query.' : 'Connect wallet or check API status.'}
+              </div>
+            )}
             {filteredTrends.map((trend, i) => (
               <div
                 key={i}
@@ -782,6 +880,20 @@ export default function Home() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+            {globalMode && counterNarratives.length === 0 && (
+              <div
+                style={{
+                  background: '#1f2937',
+                  border: '1px dashed #374151',
+                  padding: 20,
+                  borderRadius: 12,
+                  color: '#9ca3af',
+                  textAlign: 'center',
+                }}
+              >
+                No counter-narratives found. Try enabling Global Echoes or check API status.
               </div>
             )}
           </div>
