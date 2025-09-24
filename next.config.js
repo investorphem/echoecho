@@ -5,7 +5,11 @@ const nextConfig = {
     domains: [], // Add allowed image domains if needed
   },
   experimental: {
-    esmExternals: 'loose', // Handle ESM packages like wagmi
+    esmExternals: true, // Enable full ESM support for wagmi and other packages
+  },
+  env: {
+    NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app',
+    BASE_RPC_URL: process.env.BASE_RPC_URL || 'https://mainnet.base.org',
   },
   async headers() {
     return [
@@ -18,7 +22,7 @@ const nextConfig = {
           },
           {
             key: 'Access-Control-Allow-Origin',
-            value: '*', // Restrict to 'https://warpcast.com' for tighter security if needed
+            value: 'https://warpcast.com', // Restrict to Warpcast for security
           },
         ],
       },
