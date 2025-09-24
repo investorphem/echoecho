@@ -1,12 +1,12 @@
-import { 
-  getExpiringSubscriptions, 
-  markReminderSent, 
+import { NeynarClient } from '@neynar/nodejs-sdk';
+import {
+  getExpiringSubscriptions,
+  markReminderSent,
   expireSubscription,
   getAllActiveSubscriptions,
   reconcileUserStatus,
-  getUser
+  getUser,
 } from '../../../lib/storage.js';
-import { MiniAppClient } from '@farcaster/miniapp-node'; // Added for Farcaster notifications
 
 const CRON_SECRET = process.env.CRON_SECRET;
 const NEXT_PUBLIC_URL = process.env.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app';
@@ -19,8 +19,8 @@ if (!NEXT_PUBLIC_URL) {
   throw new Error('NEXT_PUBLIC_URL environment variable must be set for notifications');
 }
 
-// Initialize Farcaster MiniApp client
-const miniAppClient = new MiniAppClient({ homeUrl: NEXT_PUBLIC_URL });
+// Initialize Neynar client
+const client = new NeynarClient({ apiKey: process.env.NEYNAR_API_KEY });
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       reminders_1d: 0,
       downgrades: 0,
       reconciliations: 0,
-      errors: []
+      errors: [],
     };
 
     // Process 3-day reminders
@@ -55,14 +55,10 @@ export default async function handler(req, res) {
           const user = await getUser(subscription.wallet_address);
           if (user?.notification_token && user?.notification_url) {
             try {
-              await miniAppClient.sendNotification({
-                token: user.notification_token,
-                url: user.notification_url,
-                notification: {
-                  title: 'EchoEcho Subscription Reminder',
-                  body: `Your ${subscription.tier} subscription expires in 3 days! Renew now at ${NEXT_PUBLIC_URL}/premium`,
-                  url: `${NEXT_PUBLIC_URL}/premium`
-                }
+              await client.casts.create({
+                text: `EchoEcho Subscription Reminder\nYour ${subscription.tier} subscription expires in 3 days! Renew now at ${NEXT_PUBLIC_URL}/premium`,
+                channelId: 'your-channel-id', // Replace with your Farcaster channel ID
+                embeds: [{ url: `${NEXT_PUBLIC_URL}/premium` }],
               });
               await markReminderSent(subscription.id, '3d');
               results.reminders_3d++;
@@ -86,14 +82,10 @@ export default async function handler(req, res) {
           const user = await getUser(subscription.wallet_address);
           if (user?.notification_token && user?.notification_url) {
             try {
-              await miniAppClient.sendNotification({
-                token: user.notification_token,
-                url: user.notification_url,
-                notification: {
-                  title: 'EchoEcho Subscription Reminder',
-                  body: `Your ${subscription.tier} subscription expires tomorrow! Renew now at ${NEXT_PUBLIC_URL}/premium`,
-                  url: `${NEXT_PUBLIC_URL}/premium`
-                }
+              await client.casts.create({
+                text: `EchoEcho Subscription Reminder\nYour ${subscription.tier} subscription expires tomorrow! Renew now at ${NEXT_PUBLIC_URL}/premium`,
+                channelId: 'your-channel-id', // Replace with your Farcaster channel ID
+                embeds: [{ url: `${NEXT_PUBLIC_URL}/premium` }],
               });
               await markReminderSent(subscription.id, '1d');
               results.reminders_1d++;
@@ -120,14 +112,10 @@ export default async function handler(req, res) {
           const user = await getUser(subscription.wallet_address);
           if (user?.notification_token && user?.notification_url) {
             try {
-              await miniAppClient.sendNotification({
-                token: user.notification_token,
-                url: user.notification_url,
-                notification: {
-                  title: 'EchoEcho Subscription Expired',
-                  body: `Your ${subscription.tier} subscription has expired and been downgraded to free. Upgrade again at ${NEXT_PUBLIC_URL}/premium`,
-                  url: `${NEXT_PUBLIC_URL}/premium`
-                }
+              await client.casts.create({
+                text: `EchoEcho Subscription Expired\nYour ${subscription.tier} subscription has expired and been downgraded to free. Upgrade again at ${NEXT_PUBLIC_URL}/premium`,
+                channelId: 'your-channel-id', // Replace with your Farcaster channel ID
+                embeds: [{ url: `${NEXT_PUBLIC_URL}/premium` }],
               });
             } catch (notificationError) {
               console.error(`Failed to send downgrade notification for ${subscription.wallet_address}:`, notificationError);
@@ -150,13 +138,13 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       timestamp: new Date().toISOString(),
-      results
+      results,
     });
   } catch (error) {
     console.error('Cron job failed:', error);
     return res.status(500).json({
       error: 'Cron job failed',
-      message: error.message || 'Unknown error'
+      message: error.message || 'Unknown error',
     });
   }
 }
