@@ -2,59 +2,46 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createConfig, http } from 'wagmi';
-import { base } from 'wagmi/chains';
-import { farcasterFrame as miniAppConnector } from '@farcaster/frame-wagmi-connector';
-
-// Define wagmi config
-const config = createConfig({
-  chains: [base],
-  transports: {
-    [base.id]: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
-  },
-  connectors: [
-    miniAppConnector(),
-  ],
-});
+import { config } from '../wagmi.config';
 
 const queryClient = new QueryClient();
 
 // Dynamically import wagmi hooks to avoid SSR
 const WagmiHooks = dynamic(
-  () => import('wagmi').then(({ useAccount, useConnect }) => {
-    return function WagmiHooksComponent({ children }) {
-      const { address, isConnected, status } = useAccount();
-      const { connect, connectors, error: connectError } = useConnect();
+  () =>
+    import('wagmi').then(({ useAccount, useConnect }) => {
+      return function WagmiHooksComponent({ children }) {
+        const { address, isConnected, status } = useAccount();
+        const { connect, connectors, error: connectError } = useConnect();
 
-      useEffect(() => {
-        console.log('Wallet connection status:', status);
-        if (isConnected) {
-          console.log('Wallet connected:', address);
-        } else {
-          console.warn('Wallet not connected, status:', status);
-          if (connectors.length > 0 && status !== 'connecting') {
-            try {
-              console.log('Attempting to connect with Farcaster wallet connector...');
-              connect({ connector: connectors[0] });
-            } catch (err) {
-              console.error('Wagmi connect error:', err.message);
+        useEffect(() => {
+          console.log('Wallet connection status:', status);
+          if (isConnected) {
+            console.log('Wallet connected:', address);
+          } else {
+            console.warn('Wallet not connected, status:', status);
+            if (connectors.length > 0 && status !== 'connecting') {
+              try {
+                console.log('Attempting to connect with injected wallet connector...');
+                connect({ connector: connectors[0] });
+              } catch (err) {
+                console.error('Wagmi connect error:', err.message);
+              }
             }
           }
-        }
 
-        if (connectError) {
-          console.error('Wagmi connection error:', connectError.message);
-        }
-      }, [address, isConnected, status, connect, connectors, connectError]);
+          if (connectError) {
+            console.error('Wagmi connection error:', connectError.message);
+          }
+        }, [address, isConnected, status, connect, connectors, connectError]);
 
-      return children;
-    };
-  }),
-  { ssr: false } // Disable SSR for this component
+        return children;
+      };
+    }),
+  { ssr: false }
 );
 
 export default function MyApp({ Component, pageProps }) {
-  // Ensure rendering only on client side
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
