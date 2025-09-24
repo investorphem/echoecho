@@ -6,8 +6,7 @@
   },
   "extends": [
     "eslint:recommended",
-    "plugin:react/recommended",
-    "plugin:@next/next/recommended"
+    "next/core-web-vitals"
   ],
   "parserOptions": {
     "ecmaVersion": 12,
@@ -15,10 +14,10 @@
   },
   "rules": {
     "no-undef": "error",
-    "no-unused-vars": ["warn", { "varsIgnorePattern": "^_" }],
+    "no-unused-vars": ["warn", { "varsIgnorePattern": "^_", "argsIgnorePattern": "^_" }],
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off",
-    "react/no-unknown-property": "error" // Enable to catch jsx prop
+    "react/no-unknown-property": ["error", { "ignore": ["jsx", "global"] }]
   },
   "settings": {
     "react": {
