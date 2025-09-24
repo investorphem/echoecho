@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useAccount, useSendTransaction } from 'wagmi';
+import { useAccount, useConnect, useSendTransaction } from 'wagmi';
+import { InjectedConnector } from 'wagmi/connectors/injected';
 import { encodeFunctionData } from 'viem';
 import { base } from 'wagmi/chains';
 import dynamic from 'next/dynamic';
@@ -9,13 +10,14 @@ import Head from 'next/head';
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
 export default function Home() {
+  const { address: walletAddress, isConnected: walletConnected } = useAccount();
+  const { connect, isPending } = useConnect({ connector: new InjectedConnector() });
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [miniAppReady, setMiniAppReady] = useState(false);
   const [globalMode, setGlobalMode] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [counterNarratives, setCounterNarratives] = useState([]);
-  const { address: walletAddress, isConnected: walletConnected } = useAccount();
   const [usdcBalance, setUsdcBalance] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeView, setActiveView] = useState('trends');
@@ -25,6 +27,17 @@ export default function Home() {
   const [reminderDismissed, setReminderDismissed] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [apiWarning, setApiWarning] = useState(null);
+  const [isFarcasterClient, setIsFarcasterClient] = useState(false);
+
+  // Detect Farcaster client (e.g., Warpcast)
+  useEffect(() => {
+    const isFarcaster = typeof window !== 'undefined' && window.location.hostname.includes('warpcast.com');
+    setIsFarcasterClient(isFarcaster);
+    if (!isFarcaster) {
+      console.warn('Non-Farcaster environment detected. Some features require Warpcast.');
+      setErrorMessage('Please use Warpcast for full Farcaster functionality.');
+    }
+  }, []);
 
   const checkUSDCBalance = useCallback(async (address) => {
     console.log('Checking USDC balance for address:', address);
@@ -89,7 +102,7 @@ export default function Home() {
       return;
     }
     try {
-      const resp = await fetch('/api/trending');
+      const resp = await fetch(`/api/trending?userAddress=${walletAddress}`);
       console.log('Trends API response status:', resp.status);
       const data = await resp.json();
       if (resp.status === 402 || data.warning) {
@@ -164,8 +177,9 @@ export default function Home() {
     setErrorMessage(null);
     setApiWarning(null);
 
-    if (!globalMode) {
+    if (!globalMode || !isFarcasterClient) {
       setCounterNarratives([]);
+      if (!isFarcasterClient) setErrorMessage('Counter-narratives require Warpcast.');
       return;
     }
 
@@ -224,14 +238,14 @@ export default function Home() {
       setCounterNarratives([]);
       setErrorMessage('Failed to load counter-narratives. Please try again.');
     }
-  }, [globalMode, walletConnected, walletAddress]);
+  }, [globalMode, walletConnected, walletAddress, isFarcasterClient]);
 
   const loadUserEchoes = useCallback(async () => {
     console.log('Loading user echoes for address:', walletAddress);
-    if (!walletConnected || !walletAddress) {
-      console.warn('Wallet not connected, skipping user echoes');
+    if (!walletConnected || !walletAddress || !isFarcasterClient) {
+      console.warn('Wallet not connected or not in Farcaster client, skipping user echoes');
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
-      setErrorMessage('Please connect your wallet to view echoes.');
+      if (!isFarcasterClient) setErrorMessage('Echo history requires Warpcast.');
       return;
     }
     try {
@@ -250,12 +264,12 @@ export default function Home() {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Failed to load user echoes. Please try again.');
     }
-  }, [walletConnected, walletAddress]);
+  }, [walletConnected, walletAddress, isFarcasterClient]);
 
   const mintInsightToken = useCallback(async (narrative) => {
     console.log('Minting Insight Token for narrative:', narrative);
-    if (!walletConnected || !walletAddress) {
-      setErrorMessage('Please connect your wallet via a Farcaster client (e.g., Warpcast) to mint Insight Tokens.');
+    if (!walletConnected || !walletAddress || !isFarcasterClient) {
+      setErrorMessage('Please connect your wallet via Warpcast to mint Insight Tokens.');
       return;
     }
 
@@ -286,6 +300,7 @@ export default function Home() {
           `Rarity: ${result.token.rarity}\n\n` +
           `This counter-narrative is now part of your collection!`
         );
+        loadUserEchoes();
       } else {
         throw new Error(result.error || 'Unknown error');
       }
@@ -293,10 +308,14 @@ export default function Home() {
       console.error('Minting error:', error);
       setErrorMessage('Error minting token: ' + error.message);
     }
-  }, [walletConnected, walletAddress]);
+  }, [walletConnected, walletAddress, isFarcasterClient, loadUserEchoes]);
 
   const handleEcho = useCallback(async (cast, isCounterNarrative = false) => {
     console.log('Echoing cast:', cast, 'Is counter-narrative:', isCounterNarrative);
+    if (!isFarcasterClient) {
+      setErrorMessage('Echoing requires Warpcast.');
+      return;
+    }
     try {
       const resp = await fetch('/api/echo', {
         method: 'POST',
@@ -313,6 +332,7 @@ export default function Home() {
         const badge = isCounterNarrative ? ' 🌟 Diverse Echo' : '';
         setErrorMessage(null);
         alert(`✅ Echoed!${badge}`);
+        loadUserEchoes();
       } else {
         throw new Error(result.error || 'Unknown error');
       }
@@ -320,17 +340,28 @@ export default function Home() {
       console.error('Error echoing:', error);
       setErrorMessage('Error echoing: ' + error.message);
     }
-  }, []);
+  }, [isFarcasterClient, loadUserEchoes]);
 
   useEffect(() => {
     console.log('useEffect: Initializing app...');
+    if (!walletConnected && !isPending && !isFarcasterClient) {
+      console.log('Attempting wallet connection in browser...');
+      try {
+        connect(); // Auto-connect in browsers
+      } catch (error) {
+        console.error('Wallet connection failed:', error);
+        setErrorMessage('Failed to connect wallet. Please try again.');
+      }
+    }
     if (walletConnected && walletAddress) {
       checkUSDCBalance(walletAddress);
       loadUserSubscription(walletAddress);
       loadTrends();
+      if (isFarcasterClient) loadUserEchoes();
     } else {
       console.warn('Wallet not connected, skipping data load');
       setTrends([]);
+      setUserEchoes(null);
       setErrorMessage('Please connect your wallet to view trends.');
       setLoading(false);
     }
@@ -343,7 +374,7 @@ export default function Home() {
     }, 5000);
 
     return () => clearTimeout(timeout);
-  }, [walletConnected, walletAddress, checkUSDCBalance, loadUserSubscription, loadTrends, miniAppReady]);
+  }, [walletConnected, walletAddress, isPending, connect, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes, miniAppReady, isFarcasterClient]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
@@ -418,7 +449,7 @@ export default function Home() {
           />
           <div style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 10 }}>🔥 EchoEcho</div>
           <div style={{ fontSize: 16, color: '#9ca3af', marginBottom: 20 }}>
-            {loading ? 'Loading trends...' : 'Initializing Farcaster Mini App...'}
+            {loading ? 'Loading trends...' : 'Initializing...'}
           </div>
           <div
             style={{
@@ -671,10 +702,12 @@ export default function Home() {
                 type="checkbox"
                 checked={globalMode}
                 onChange={(e) => setGlobalMode(e.target.checked)}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: isFarcasterClient ? 'pointer' : 'not-allowed' }}
+                disabled={!isFarcasterClient}
               />
               <span style={{ fontSize: 14 }}>
                 🌐 Global Echoes {globalMode ? '(X + News)' : '(Farcaster Only)'}
+                {!isFarcasterClient && ' (Warpcast required)'}
               </span>
             </label>
           </div>
@@ -692,12 +725,14 @@ export default function Home() {
                 border: 'none',
                 padding: '8px 16px',
                 borderRadius: 6,
-                cursor: 'pointer',
+                cursor: view === 'echoes' && !isFarcasterClient ? 'not-allowed' : 'pointer',
                 fontSize: 14,
                 textTransform: 'capitalize',
               }}
+              disabled={view === 'echoes' && !isFarcasterClient}
             >
               {view === 'trends' ? '🔥 Trends' : view === 'echoes' ? '📜 My Echoes' : '❓ FAQ'}
+              {view === 'echoes' && !isFarcasterClient && ' (Warpcast)'}
             </button>
           ))}
         </div>
@@ -748,9 +783,10 @@ export default function Home() {
                       border: 'none',
                       padding: '8px 16px',
                       borderRadius: 6,
-                      cursor: 'pointer',
+                      cursor: isFarcasterClient ? 'pointer' : 'not-allowed',
                       fontSize: 14,
                     }}
+                    disabled={!isFarcasterClient}
                   >
                     🔄 Echo It
                   </button>
@@ -849,9 +885,10 @@ export default function Home() {
                           border: 'none',
                           padding: '8px 16px',
                           borderRadius: 6,
-                          cursor: 'pointer',
+                          cursor: isFarcasterClient ? 'pointer' : 'not-allowed',
                           fontSize: 14,
                         }}
+                        disabled={!isFarcasterClient}
                       >
                         🌟 Echo Counter-View
                       </button>
@@ -863,9 +900,10 @@ export default function Home() {
                           border: 'none',
                           padding: '8px 16px',
                           borderRadius: 6,
-                          cursor: 'pointer',
+                          cursor: isFarcasterClient ? 'pointer' : 'not-allowed',
                           fontSize: 14,
                         }}
+                        disabled={!isFarcasterClient}
                       >
                         🎨 Mint Insight Token
                       </button>
@@ -885,7 +923,7 @@ export default function Home() {
                   textAlign: 'center',
                 }}
               >
-                No counter-narratives found. Try enabling Global Echoes or check API status.
+                No counter-narratives found. {isFarcasterClient ? 'Try enabling Global Echoes or check API status.' : 'Warpcast required for counter-narratives.'}
               </div>
             )}
           </div>
@@ -904,12 +942,18 @@ export default function Home() {
                     border: 'none',
                     padding: '12px 24px',
                     borderRadius: 8,
-                    cursor: 'pointer',
+                    cursor: isFarcasterClient ? 'pointer' : 'not-allowed',
                     fontSize: 16,
                   }}
+                  disabled={!isFarcasterClient}
                 >
                   📊 Load My Echoes
                 </button>
+                {!isFarcasterClient && (
+                  <div style={{ color: '#9ca3af', marginTop: 12 }}>
+                    Please use Warpcast to view echo history.
+                  </div>
+                )}
               </div>
             ) : (
               <div>
