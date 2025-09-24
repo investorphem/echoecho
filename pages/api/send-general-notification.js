@@ -1,5 +1,7 @@
-import { sendNotification } from '@farcaster/miniapp-node';
+import { NeynarClient } from '@neynar/nodejs-sdk';
 import { getAllUsersWithNotifications } from '../../lib/storage.js';
+
+const client = new NeynarClient({ apiKey: process.env.NEYNAR_API_KEY });
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -18,12 +20,10 @@ export default async function handler(req, res) {
 
     for (const user of users) {
       if (user.notification_token && user.notification_url) {
-        await sendNotification({
-          notificationId: `general-${Date.now()}-${sentCount}`,
-          title,
-          body,
-          notificationUrl: user.notification_url,
-          token: user.notification_token
+        await client.casts.create({
+          text: `${title}\n${body}`,
+          channelId: 'your-channel-id', // Replace with your Farcaster channel ID
+          embeds: [{ url: user.notification_url }],
         });
         sentCount++;
       }
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true, sent: sentCount });
   } catch (error) {
-    console.error('General notification error:', error);
-    return res.status(500).json({ error: 'Failed to send general notification' });
+    console.error('General notification error:', error.message);
+    return res.status(500).json({ error: 'Failed to send general notification', details: error.message });
   }
 }
