@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAccount, useConnect, useSendTransaction } from 'wagmi';
-import { InjectedConnector } from 'wagmi/connectors/injected';
+import { injected } from '@wagmi/core/connectors'; // Updated import
 import { encodeFunctionData } from 'viem';
 import { base } from 'wagmi/chains';
 import dynamic from 'next/dynamic';
@@ -11,7 +11,7 @@ const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'),
 
 export default function Home() {
   const { address: walletAddress, isConnected: walletConnected } = useAccount();
-  const { connect, isPending } = useConnect({ connector: new InjectedConnector() });
+  const { connect, isPending } = useConnect({ connector: injected() }); // Use injected connector
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [miniAppReady, setMiniAppReady] = useState(false);
