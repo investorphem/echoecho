@@ -1,8 +1,18 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { WagmiProvider } from 'wagmi';
+import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { config } from '../wagmi.config';
+import { injected } from '@wagmi/core/connectors/injected';
+import { base } from 'wagmi/chains';
+
+// Define wagmi config
+const config = createConfig({
+  chains: [base],
+  connectors: [injected()],
+  transports: {
+    [base.id]: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
+  },
+});
 
 const queryClient = new QueryClient();
 
