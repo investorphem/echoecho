@@ -1,19 +1,19 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAccount, useConnect, useSendTransaction } from 'wagmi';
-import { injected } from 'wagmi/connectors'; // Correct import
+import { injected } from 'wagmi/connectors';
 import { encodeFunctionData } from 'viem';
 import { base } from 'wagmi/chains';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Head from 'next/head';
-import { sdk } from '@farcaster/miniapp-sdk'; // For Farcaster wallet
+import { sdk } from '@farcaster/miniapp-sdk';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
 export default function Home() {
   const { address: walletAddress, isConnected: walletConnected } = useAccount();
   const { connect, isPending } = useConnect({ connector: injected() });
-  const [farcasterAddress, setFarcasterAddress] = useState(null); // Farcaster wallet fallback
+  const [farcasterAddress, setFarcasterAddress] = useState(null);
   const [isFarcasterClient, setIsFarcasterClient] = useState(false);
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,6 @@ export default function Home() {
       console.log('Detected Farcaster client');
       sdk.user.getAsync()
         .then((user) => {
-          // Mock ETH address from FID (for API calls)
           const mockAddress = `0x${user.fid.toString(16).padStart(40, '0')}`;
           setFarcasterAddress(mockAddress);
           console.log('Farcaster wallet (mock):', mockAddress);
@@ -54,7 +53,6 @@ export default function Home() {
     }
   }, []);
 
-  // Use Farcaster address as fallback
   const effectiveAddress = walletAddress || farcasterAddress;
   const effectiveConnected = walletConnected || !!farcasterAddress;
 
@@ -188,9 +186,10 @@ export default function Home() {
               }
               throw new Error(`HTTP ${aiResp.status}: ${aiData.error || 'Unknown error'}`);
             }
-            console.log('AI analysis for trendറ
-
-System: trend:', text, error);
+            console.log('AI analysis for trend:', text, aiData);
+            return { ...trend, ai_analysis: aiData };
+          } catch (error) {
+            console.error('AI analysis failed for trend:', text, error);
             return { ...trend, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
           }
         })
@@ -386,7 +385,7 @@ System: trend:', text, error);
     console.log('useEffect: Initializing app...');
     if (isFarcasterClient && !farcasterAddress) {
       console.log('Waiting for Farcaster wallet...');
-      return; // Wait for Farcaster address
+      return;
     }
     if (!isFarcasterClient && !walletConnected && !isPending) {
       console.log('Attempting wallet connection in browser...');
@@ -404,7 +403,7 @@ System: trend:', text, error);
       if (isFarcasterClient) loadUserEchoes();
     } else {
       console.warn('No wallet connected, loading mock trends');
-      loadTrends(); // Load mock trends for non-connected users
+      loadTrends();
     }
 
     const timeout = setTimeout(() => {
