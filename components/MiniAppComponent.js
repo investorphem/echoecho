@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 
-export default function MiniAppComponent({ walletConnected, walletAddress, onMiniAppReady }) {
+export default function MiniAppComponent({ walletConnected, walletAddress, onMiniAppReady, onFarcasterReady }) {
   useEffect(() => {
     console.log('MiniAppComponent: Initializing...');
 
@@ -11,14 +11,22 @@ export default function MiniAppComponent({ walletConnected, walletAddress, onMin
     if (isFarcasterClient) {
       console.log('Detected Farcaster client, initializing SDK...');
       try {
-        // Signal app readiness for Farcaster client
         sdk.actions.ready()
           .then(() => {
             console.log('Farcaster Mini App ready');
-            // Get user info if available
+            onMiniAppReady(); // Signal UI can render
+            onFarcasterReady?.(); // Signal Farcaster-specific setup
             sdk.user.getAsync()
-              .then((user) => console.log('Farcaster User FID:', user.fid))
-              .catch((error) => console.warn('Failed to get Farcaster user:', error.message));
+              .then((user) => {
+                console.log('Farcaster User FID:', user.fid);
+                // Optionally pass FID or mock address to parent via onFarcasterReady
+                const mockAddress = `0x${user.fid.toString(16).padStart(40, '0')}`;
+                console.log('Farcaster mock address:', mockAddress);
+              })
+              .catch((error) => {
+                console.warn('Failed to get Farcaster user:', error.message);
+                onMiniAppReady(); // Proceed anyway
+              });
           })
           .catch((error) => {
             console.error('Farcaster SDK ready failed:', error.message);
@@ -30,7 +38,6 @@ export default function MiniAppComponent({ walletConnected, walletAddress, onMin
       }
     } else {
       console.log('Non-Farcaster environment (browser), skipping SDK');
-      // Rely on wagmi for wallet connection
       if (walletConnected && walletAddress) {
         console.log('Wallet connected via Wagmi:', walletAddress);
       } else {
@@ -38,7 +45,7 @@ export default function MiniAppComponent({ walletConnected, walletAddress, onMin
       }
       onMiniAppReady(); // Proceed to UI
     }
-  }, [walletConnected, walletAddress, onMiniAppReady]);
+  }, [walletConnected, walletAddress, onMiniAppReady, onFarcasterReady]);
 
   return null; // No UI rendering
 }
