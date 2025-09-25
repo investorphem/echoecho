@@ -28,6 +28,11 @@ const nextConfig = {
       },
     ];
   },
+  webpack: (config) => {
+    // Alias to suppress @react-native-async-storage/async-storage warning
+    config.resolve.alias['@react-native-async-storage/async-storage'] = false;
+    return config;
+  },
 };
 
 module.exports = nextConfig;
