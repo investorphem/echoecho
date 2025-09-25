@@ -6,12 +6,15 @@ import { base } from 'wagmi/chains';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Head from 'next/head';
+import { sdk } from '@farcaster/miniapp-sdk'; // For Farcaster wallet
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
 export default function Home() {
   const { address: walletAddress, isConnected: walletConnected } = useAccount();
-  const { connect, isPending } = useConnect({ connector: injected() }); // Use injected connector
+  const { connect, isPending } = useConnect({ connector: injected() });
+  const [farcasterAddress, setFarcasterAddress] = useState(null); // Farcaster wallet fallback
+  const [isFarcasterClient, setIsFarcasterClient] = useState(false);
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [miniAppReady, setMiniAppReady] = useState(false);
@@ -27,19 +30,40 @@ export default function Home() {
   const [reminderDismissed, setReminderDismissed] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [apiWarning, setApiWarning] = useState(null);
-  const [isFarcasterClient, setIsFarcasterClient] = useState(false);
 
-  // Detect Farcaster client (e.g., Warpcast)
+  // Detect Farcaster and get wallet
   useEffect(() => {
     const isFarcaster = typeof window !== 'undefined' && window.location.hostname.includes('warpcast.com');
     setIsFarcasterClient(isFarcaster);
-    if (!isFarcaster) {
+    if (isFarcaster) {
+      console.log('Detected Farcaster client');
+      sdk.user.getAsync()
+        .then((user) => {
+          // Mock ETH address from FID (for API calls)
+          const mockAddress = `0x${user.fid.toString(16).padStart(40, '0')}`;
+          setFarcasterAddress(mockAddress);
+          console.log('Farcaster wallet (mock):', mockAddress);
+        })
+        .catch((error) => {
+          console.warn('Farcaster user fetch failed:', error);
+          setErrorMessage('Failed to fetch Farcaster user. Some features may be limited.');
+        });
+    } else {
       console.warn('Non-Farcaster environment detected. Some features require Warpcast.');
       setErrorMessage('Please use Warpcast for full Farcaster functionality.');
     }
   }, []);
 
+  // Use Farcaster address as fallback
+  const effectiveAddress = walletAddress || farcasterAddress;
+  const effectiveConnected = walletConnected || !!farcasterAddress;
+
   const checkUSDCBalance = useCallback(async (address) => {
+    if (!address) {
+      console.warn('No address provided for USDC balance check');
+      setUsdcBalance(0);
+      return;
+    }
     console.log('Checking USDC balance for address:', address);
     try {
       const response = await fetch('/api/check-usdc-balance', {
@@ -61,6 +85,12 @@ export default function Home() {
   }, []);
 
   const loadUserSubscription = useCallback(async (address) => {
+    if (!address) {
+      console.warn('No address for subscription load');
+      setUserTier('free');
+      setSubscription(null);
+      return;
+    }
     console.log('Loading user subscription for address:', address);
     try {
       const resp = await fetch('/api/user-subscription', {
@@ -94,15 +124,24 @@ export default function Home() {
     setLoading(true);
     setErrorMessage(null);
     setApiWarning(null);
-    if (!walletConnected || !walletAddress) {
-      console.warn('Wallet not connected, skipping trends load');
-      setTrends([]);
-      setErrorMessage('Please connect your wallet to view trends.');
+    if (!effectiveConnected || !effectiveAddress) {
+      console.warn('No wallet connected, using mock trends');
+      const mockData = {
+        casts: [
+          { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
+          { text: 'Sample trend 2', body: 'Another mock trend', hash: 'mock2', timestamp: new Date().toISOString() },
+        ],
+      };
+      setTrends(mockData.casts.map((trend) => ({
+        ...trend,
+        ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
+      })));
+      setErrorMessage('Connect a wallet for full trends. Showing sample data.');
       setLoading(false);
       return;
     }
     try {
-      const resp = await fetch(`/api/trending?userAddress=${walletAddress}`);
+      const resp = await fetch(`/api/trending?userAddress=${effectiveAddress}`);
       console.log('Trends API response status:', resp.status);
       const data = await resp.json();
       if (resp.status === 402 || data.warning) {
@@ -138,7 +177,7 @@ export default function Home() {
             const aiResp = await fetch('/api/ai-analysis', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text, action: 'analyze_sentiment', userAddress: walletAddress }),
+              body: JSON.stringify({ text, action: 'analyze_sentiment', userAddress: effectiveAddress }),
             });
             const aiData = await aiResp.json();
             if (!aiResp.ok) {
@@ -149,11 +188,9 @@ export default function Home() {
               }
               throw new Error(`HTTP ${aiResp.status}: ${aiData.error || 'Unknown error'}`);
             }
-            console.log('AI analysis for trend:', aiData);
-            return { ...trend, ai_analysis: aiData };
-          } catch (error) {
-            console.error('AI analysis failed for trend with text:', text, error);
-            setApiWarning('AI analysis failed for some trends. Please try again or check OpenAI quota.');
+            console.log('AI analysis for trendറ
+
+System: trend:', text, error);
             return { ...trend, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
           }
         })
@@ -168,7 +205,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [walletConnected, walletAddress]);
+  }, [effectiveConnected, effectiveAddress]);
 
   const loadTopicDetails = useCallback(async (topic) => {
     console.log('Loading topic details for:', topic.text || topic.body);
@@ -183,8 +220,8 @@ export default function Home() {
       return;
     }
 
-    if (!walletConnected || !walletAddress) {
-      console.warn('Wallet not connected, skipping counter-narratives');
+    if (!effectiveConnected || !effectiveAddress) {
+      console.warn('No wallet connected, skipping counter-narratives');
       setCounterNarratives([]);
       setErrorMessage('Please connect your wallet to view counter-narratives.');
       return;
@@ -216,7 +253,7 @@ export default function Home() {
       const counterResp = await fetch('/api/ai-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posts: allPosts, action: 'find_counter_narratives', userAddress: walletAddress }),
+        body: JSON.stringify({ posts: allPosts, action: 'find_counter_narratives', userAddress: effectiveAddress }),
       });
 
       const counterData = await counterResp.json();
@@ -238,18 +275,18 @@ export default function Home() {
       setCounterNarratives([]);
       setErrorMessage('Failed to load counter-narratives. Please try again.');
     }
-  }, [globalMode, walletConnected, walletAddress, isFarcasterClient]);
+  }, [globalMode, effectiveConnected, effectiveAddress, isFarcasterClient]);
 
   const loadUserEchoes = useCallback(async () => {
-    console.log('Loading user echoes for address:', walletAddress);
-    if (!walletConnected || !walletAddress || !isFarcasterClient) {
-      console.warn('Wallet not connected or not in Farcaster client, skipping user echoes');
+    console.log('Loading user echoes for address:', effectiveAddress);
+    if (!isFarcasterClient) {
+      console.warn('Not in Farcaster client, skipping user echoes');
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
-      if (!isFarcasterClient) setErrorMessage('Echo history requires Warpcast.');
+      setErrorMessage('Echo history requires Warpcast.');
       return;
     }
     try {
-      const response = await fetch(`/api/user-echoes?userAddress=${walletAddress}`);
+      const response = await fetch(`/api/user-echoes?userAddress=${effectiveAddress}`);
       if (!response.ok) {
         console.error('User echoes fetch failed:', response.status, await response.text());
         setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
@@ -264,22 +301,25 @@ export default function Home() {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Failed to load user echoes. Please try again.');
     }
-  }, [walletConnected, walletAddress, isFarcasterClient]);
+  }, [effectiveAddress, isFarcasterClient]);
 
   const mintInsightToken = useCallback(async (narrative) => {
     console.log('Minting Insight Token for narrative:', narrative);
-    if (!walletConnected || !walletAddress || !isFarcasterClient) {
-      setErrorMessage('Please connect your wallet via Warpcast to mint Insight Tokens.');
+    if (!isFarcasterClient) {
+      setErrorMessage('Please use Warpcast to mint Insight Tokens.');
       return;
     }
-
+    if (!effectiveConnected || !effectiveAddress) {
+      setErrorMessage('Please connect a wallet to mint Insight Tokens.');
+      return;
+    }
     try {
       const response = await fetch('/api/mint-nft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           narrative,
-          userAddress: walletAddress,
+          userAddress: effectiveAddress,
           rarity: narrative.source === 'twitter' ? 'rare' : 'common',
         }),
       });
@@ -308,7 +348,7 @@ export default function Home() {
       console.error('Minting error:', error);
       setErrorMessage('Error minting token: ' + error.message);
     }
-  }, [walletConnected, walletAddress, isFarcasterClient, loadUserEchoes]);
+  }, [effectiveConnected, effectiveAddress, isFarcasterClient, loadUserEchoes]);
 
   const handleEcho = useCallback(async (cast, isCounterNarrative = false) => {
     console.log('Echoing cast:', cast, 'Is counter-narrative:', isCounterNarrative);
@@ -344,26 +384,27 @@ export default function Home() {
 
   useEffect(() => {
     console.log('useEffect: Initializing app...');
-    if (!walletConnected && !isPending && !isFarcasterClient) {
+    if (isFarcasterClient && !farcasterAddress) {
+      console.log('Waiting for Farcaster wallet...');
+      return; // Wait for Farcaster address
+    }
+    if (!isFarcasterClient && !walletConnected && !isPending) {
       console.log('Attempting wallet connection in browser...');
       try {
-        connect(); // Auto-connect in browsers
+        connect();
       } catch (error) {
         console.error('Wallet connection failed:', error);
         setErrorMessage('Failed to connect wallet. Please try again.');
       }
     }
-    if (walletConnected && walletAddress) {
-      checkUSDCBalance(walletAddress);
-      loadUserSubscription(walletAddress);
+    if (effectiveConnected && effectiveAddress) {
+      checkUSDCBalance(effectiveAddress);
+      loadUserSubscription(effectiveAddress);
       loadTrends();
       if (isFarcasterClient) loadUserEchoes();
     } else {
-      console.warn('Wallet not connected, skipping data load');
-      setTrends([]);
-      setUserEchoes(null);
-      setErrorMessage('Please connect your wallet to view trends.');
-      setLoading(false);
+      console.warn('No wallet connected, loading mock trends');
+      loadTrends(); // Load mock trends for non-connected users
     }
 
     const timeout = setTimeout(() => {
@@ -374,7 +415,7 @@ export default function Home() {
     }, 5000);
 
     return () => clearTimeout(timeout);
-  }, [walletConnected, walletAddress, isPending, connect, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes, miniAppReady, isFarcasterClient]);
+  }, [effectiveConnected, effectiveAddress, isPending, connect, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes, miniAppReady, isFarcasterClient, farcasterAddress]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
@@ -588,7 +629,7 @@ export default function Home() {
             </button>
             <div
               style={{
-                background: walletConnected ? '#059669' : '#374151',
+                background: effectiveConnected ? '#059669' : '#374151',
                 color: 'white',
                 padding: '6px 12px',
                 borderRadius: 20,
@@ -596,9 +637,9 @@ export default function Home() {
                 border: 'none',
               }}
             >
-              {walletConnected ? `🟢 ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` : '🔴 No Wallet Connected'}
+              {effectiveConnected ? `🟢 ${effectiveAddress?.slice(0, 6)}...${effectiveAddress?.slice(-4)}` : '🔴 No Wallet Connected'}
             </div>
-            {walletConnected && (
+            {effectiveConnected && (
               <div
                 style={{
                   background: '#1e40af',
@@ -614,7 +655,12 @@ export default function Home() {
           </div>
         </div>
 
-        <MiniAppComponent walletConnected={walletConnected} walletAddress={walletAddress} onMiniAppReady={() => setMiniAppReady(true)} />
+        <MiniAppComponent
+          walletConnected={effectiveConnected}
+          walletAddress={effectiveAddress}
+          onMiniAppReady={() => setMiniAppReady(true)}
+          onFarcasterReady={() => console.log('Farcaster SDK ready in MiniAppComponent')}
+        />
 
         {subscription && !reminderDismissed && (() => {
           const now = new Date();
@@ -1120,8 +1166,8 @@ export default function Home() {
           <PremiumView
             userTier={userTier}
             setUserTier={setUserTier}
-            walletConnected={walletConnected}
-            walletAddress={walletAddress}
+            walletConnected={effectiveConnected}
+            walletAddress={effectiveAddress}
             usdcBalance={usdcBalance}
             checkUSDCBalance={checkUSDCBalance}
             setSubscription={setSubscription}
