@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 
-const sql = neon(process.env.DATABASE_URL);
+const sql = neon(process.env.DATABASE_URL || '');
 
 export default async function handler(req, res) {
   // Validate request method
@@ -20,45 +20,88 @@ export default async function handler(req, res) {
     await sql`SELECT 1 AS test`;
     console.log('Database connection verified');
 
+    // Create users table
+    await sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        wallet_address TEXT UNIQUE NOT NULL,
+        farcaster_fid TEXT,
+        email TEXT,
+        tier TEXT NOT NULL DEFAULT 'free',
+        created_at TIMESTAMP NOT NULL,
+        updated_at TIMESTAMP,
+        notification_token TEXT,
+        notification_url TEXT
+      )`;
+    console.log('Users table initialized successfully');
+
     // Create subscriptions table
     await sql`
       CREATE TABLE IF NOT EXISTS subscriptions (
-        wallet_address VARCHAR(42) PRIMARY KEY,
-        tier VARCHAR(20) NOT NULL,
-        transaction_hash VARCHAR(66),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        expires_at TIMESTAMP
-      )
-    `;
+        id TEXT PRIMARY KEY,
+        user_id TEXT REFERENCES users(id),
+        wallet_address TEXT NOT NULL,
+        tier TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        next_billing_at TIMESTAMP,
+        auto_renew BOOLEAN DEFAULT true,
+        last_reminder_3d_at TIMESTAMP,
+        last_reminder_1d_at TIMESTAMP,
+        transaction_hash TEXT NOT NULL
+      )`;
     console.log('Subscriptions table initialized successfully');
 
     // Create payments table
     await sql`
       CREATE TABLE IF NOT EXISTS payments (
-        id SERIAL PRIMARY KEY,
-        wallet_address VARCHAR(42) NOT NULL,
-        transaction_hash VARCHAR(66) NOT NULL,
-        amount DECIMAL NOT NULL,
-        tier VARCHAR(20) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
+        id TEXT PRIMARY KEY,
+        wallet_address TEXT NOT NULL,
+        tx_hash TEXT NOT NULL,
+        amount_usdc NUMERIC NOT NULL,
+        tier TEXT NOT NULL,
+        confirmed_at TIMESTAMP NOT NULL
+      )`;
     console.log('Payments table initialized successfully');
 
-    // Drop and recreate user_usage table to ensure correct schema
-    await sql`DROP TABLE IF EXISTS user_usage`;
+    // Create user_usage table
     await sql`
-      CREATE TABLE user_usage (
-        wallet_address VARCHAR(42) NOT NULL,
+      CREATE TABLE IF NOT EXISTS user_usage (
+        wallet_address TEXT NOT NULL,
         usage_date DATE NOT NULL,
         ai_calls_used INTEGER DEFAULT 0,
         trending_api_calls_used INTEGER DEFAULT 0,
         PRIMARY KEY (wallet_address, usage_date)
-      )
-    `;
+      )`;
     console.log('User_usage table initialized successfully');
 
-    // Verify primary key constraint
+    // Create echoes table
+    await sql`
+      CREATE TABLE IF NOT EXISTS echoes (
+        id TEXT PRIMARY KEY,
+        user_address TEXT NOT NULL,
+        cast_id TEXT NOT NULL,
+        type TEXT NOT NULL,
+        source TEXT NOT NULL,
+        echoed_at TIMESTAMP NOT NULL
+      )`;
+    console.log('Echoes table initialized successfully');
+
+    // Create nfts table
+    await sql`
+      CREATE TABLE IF NOT EXISTS nfts (
+        id TEXT PRIMARY KEY,
+        user_address TEXT NOT NULL,
+        token_id TEXT NOT NULL,
+        title TEXT,
+        rarity TEXT,
+        minted_at TIMESTAMP NOT NULL,
+        image TEXT
+      )`;
+    console.log('NFTs table initialized successfully');
+
+    // Verify primary key constraint on user_usage
     const constraints = await sql`
       SELECT constraint_name 
       FROM information_schema.table_constraints 
@@ -76,7 +119,7 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Error initializing database:', {
       message: error.message,
-      code: error.code, // e.g., 42P01
+      code: error.code,
       detail: error.detail,
       hint: error.hint,
     });
