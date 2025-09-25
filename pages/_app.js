@@ -5,10 +5,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injected } from 'wagmi/connectors'; // Correct import
 import { base } from 'wagmi/chains';
 
-// Define wagmi config
+// Detect if in Farcaster client
+const isFarcasterClient = typeof window !== 'undefined' && window.location.hostname.includes('warpcast.com');
+
+// Define wagmi config (skip injected in Farcaster)
 const config = createConfig({
   chains: [base],
-  connectors: [injected()],
+  connectors: isFarcasterClient ? [] : [injected()], // No connectors in Farcaster to avoid errors
   transports: {
     [base.id]: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
   },
@@ -26,6 +29,10 @@ const WagmiHooks = dynamic(
 
         useEffect(() => {
           console.log('Wallet connection status:', status);
+          if (isFarcasterClient) {
+            console.log('In Farcaster: Skipping wallet connect');
+            return; // No auto-connect in Farcaster
+          }
           if (isConnected) {
             console.log('Wallet connected:', address);
           } else {
