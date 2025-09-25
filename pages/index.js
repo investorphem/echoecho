@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAccount, useConnect, useSendTransaction } from 'wagmi';
-import { injected } from '@wagmi/core/connectors'; // Updated import
+import { injected } from '@wagmi/core/connectors'; // Correct import
 import { encodeFunctionData } from 'viem';
 import { base } from 'wagmi/chains';
 import dynamic from 'next/dynamic';
