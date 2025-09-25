@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { injected } from '@wagmi/core/connectors'; // Fixed import
+import { injected } from 'wagmi/connectors'; // Correct import
 import { base } from 'wagmi/chains';
 
 // Define wagmi config
