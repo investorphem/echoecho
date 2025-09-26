@@ -4,7 +4,6 @@ import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injected } from 'wagmi/connectors';
 import { base } from 'wagmi/chains';
-import Head from 'next/head';
 import { Component } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 
@@ -14,6 +13,7 @@ const getIsFarcasterClient = () => {
   const url = new URL(window.location.href);
   return (
     url.hostname.includes('warpcast.com') ||
+    url.hostname.includes('client.warpcast.com') ||
     url.searchParams.get('miniApp') === 'true' ||
     url.pathname.includes('/miniapp')
   );
@@ -84,11 +84,21 @@ const WagmiHooks = dynamic(
           console.log('Wallet connection status:', status);
           if (isFarcasterClient) {
             console.log('In Farcaster: Skipping wallet connect');
-            // Signal readiness to Warpcast
-            sdk.actions
-              .ready()
-              .then(() => console.log('Farcaster SDK signaled ready'))
-              .catch((err) => console.error('Failed to signal ready:', err));
+            // Signal readiness to Warpcast with retries
+            const signalReady = async (attempt = 1) => {
+              try {
+                await sdk.actions.ready();
+                console.log('Farcaster SDK signaled ready (attempt', attempt, ')');
+              } catch (err) {
+                console.error('Failed to signal ready (attempt', attempt, '):', err);
+                if (attempt < 3) {
+                  setTimeout(() => signalReady(attempt + 1), 1000);
+                } else {
+                  console.error('Max retries reached for ready signal');
+                }
+              }
+            };
+            signalReady();
             return;
           }
           if (isConnected) {
@@ -123,46 +133,37 @@ export default function MyApp({ Component, pageProps }) {
 
   useEffect(() => {
     setIsClient(true);
+    if (getIsFarcasterClient()) {
+      console.log('MyApp: Farcaster detected on client mount - signaling ready');
+      // Early ready signal for immediate iframe load
+      const signalReady = async (attempt = 1) => {
+        try {
+          await sdk.actions.ready();
+          console.log('MyApp: Early ready signaled (attempt', attempt, ')');
+        } catch (err) {
+          console.error('MyApp: Early ready failed (attempt', attempt, '):', err);
+          if (attempt < 3) {
+            setTimeout(() => signalReady(attempt + 1), 1000);
+          }
+        }
+      };
+      signalReady();
+    }
   }, []);
 
   return (
-    <>
-      <Head>
-        <meta
-          property="fc:miniapp"
-          content={JSON.stringify({
-            version: '1',
-            imageUrl: 'https://echoechos.vercel.app/preview.png',
-            button: {
-              title: 'Open EchoEcho',
-              action: { type: 'launch_frame', name: 'EchoEcho', url: 'https://echoechos.vercel.app' },
-            },
-          })}
-        />
-        <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
-        <meta
-          property="og:description"
-          content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster."
-        />
-        <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
-        <meta
-          httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.base.org https://*.neynar.com https://*.openai.com; img-src 'self' data: https://echoechos.vercel.app;"
-        />
-      </Head>
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
-          <ErrorBoundary>
-            {isClient ? (
-              <WagmiHooks>
-                <Component {...pageProps} />
-              </WagmiHooks>
-            ) : (
+    <WagmiProvider config={config}>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          {isClient ? (
+            <WagmiHooks>
               <Component {...pageProps} />
-            )}
-          </ErrorBoundary>
-        </QueryClientProvider>
-      </WagmiProvider>
-    </>
+            </WagmiHooks>
+          ) : (
+            <Component {...pageProps} />
+          )}
+        </ErrorBoundary>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
