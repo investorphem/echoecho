@@ -76,7 +76,7 @@ class ErrorBoundary extends Component {
 const WagmiHooks = dynamic(
   () =>
     import('wagmi').then(({ useAccount, useConnect }) => {
-      return function WagmiHooksComponent({ children, setIsReady }) {
+      return function WagmiHooksComponent({ children }) {
         const { address, isConnected, status } = useAccount();
         const { connect, connectors, error: connectError } = useConnect();
 
@@ -145,6 +145,10 @@ export default function MyApp({ Component, pageProps }) {
           content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster."
         />
         <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.base.org https://*.neynar.com https://*.openai.com; img-src 'self' data: https://echoechos.vercel.app;"
+        />
       </Head>
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
