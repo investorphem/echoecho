@@ -40,21 +40,24 @@ export default function Home() {
     setIsFarcasterClient(isFarcaster);
     if (isFarcaster) {
       console.log('Detected Farcaster client');
-      sdk.user.getAsync()
-        .then((user) => {
+      const signalReady = async (attempt = 1) => {
+        try {
+          const user = await sdk.user.getAsync();
           const mockAddress = `0x${user.fid.toString(16).padStart(40, '0')}`;
           setFarcasterAddress(mockAddress);
           console.log('Farcaster wallet (mock):', mockAddress);
-          // Signal readiness to Warpcast
-          sdk.actions
-            .ready()
-            .then(() => console.log('Farcaster SDK signaled ready in index'))
-            .catch((err) => console.error('Failed to signal ready in index:', err));
-        })
-        .catch((error) => {
-          console.warn('Farcaster user fetch failed:', error);
-          setErrorMessage('Failed to fetch Farcaster user. Some features may be limited.');
-        });
+          await sdk.actions.ready();
+          console.log('Farcaster SDK signaled ready in index');
+        } catch (error) {
+          console.warn(`Farcaster user fetch or ready signal failed (attempt ${attempt}):`, error);
+          if (attempt < 3) {
+            setTimeout(() => signalReady(attempt + 1), 1000);
+          } else {
+            setErrorMessage('Failed to initialize Farcaster. Some features may be limited.');
+          }
+        }
+      };
+      signalReady();
     } else {
       console.warn('Non-Farcaster environment detected. Some features require Warpcast.');
       setErrorMessage('Please use Warpcast for full Farcaster functionality.');
@@ -125,8 +128,8 @@ export default function Home() {
     }
   }, []);
 
-  const loadTrends = useCallback(async () => {
-    console.log('Loading trends...');
+  const loadTrends = useCallback(async (retryCount = 0) => {
+    console.log('Loading trends... Attempt:', retryCount + 1);
     setLoading(true);
     setErrorMessage(null);
     setApiWarning(null);
@@ -150,8 +153,14 @@ export default function Home() {
       const resp = await fetch(`/api/trending?userAddress=${effectiveAddress}`);
       console.log('Trends API response status:', resp.status);
       const data = await resp.json();
-      if (resp.status === 402 || data.warning) {
-        console.warn('API 402 or limited: Using mock data');
+      if (resp.status === 429) {
+        console.warn('Neynar API rate limit (429) reached');
+        if (retryCount < 2) {
+          console.log('Retrying trends fetch in 2 seconds...');
+          setTimeout(() => loadTrends(retryCount + 1), 2000);
+          return;
+        }
+        console.warn('Max retries reached, using mock data');
         const mockData = {
           casts: [
             { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
@@ -162,7 +171,23 @@ export default function Home() {
           ...trend,
           ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
         })));
-        setApiWarning('Trending data limited due to API plan. Upgrade your Neynar API plan at https://dev.neynar.com/pricing for full access.');
+        setApiWarning('Trending data unavailable due to Neynar API rate limits. Upgrade your plan at https://dev.neynar.com/pricing.');
+        setLoading(false);
+        return;
+      }
+      if (resp.status === 402 || data.warning) {
+        console.warn('Neynar API 402 or limited: Using mock data');
+        const mockData = {
+          casts: [
+            { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
+            { text: 'Sample trend 2', body: 'Another mock trend', hash: 'mock2', timestamp: new Date().toISOString() },
+          ],
+        };
+        setTrends(mockData.casts.map((trend) => ({
+          ...trend,
+          ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
+        })));
+        setApiWarning('Trending data limited due to Neynar API plan. Upgrade at https://dev.neynar.com/pricing.');
         setLoading(false);
         return;
       }
@@ -171,6 +196,9 @@ export default function Home() {
       }
       console.log('Trends data:', data);
       const trendsData = data.casts || [];
+
+      // Set loading to false before AI analysis to ensure UI renders
+      setLoading(false);
 
       const enrichedTrends = await Promise.all(
         trendsData.slice(0, 10).map(async (trend) => {
@@ -188,8 +216,8 @@ export default function Home() {
             const aiData = await aiResp.json();
             if (!aiResp.ok) {
               if (aiResp.status === 429) {
-                console.warn('OpenAI rate limit exceeded for trend:', text);
-                setApiWarning('AI analysis limited due to OpenAI quota. Please upgrade your plan at https://platform.openai.com/account/billing.');
+                console.warn('OpenAI rate limit (429) exceeded for trend:', text);
+                setApiWarning('AI analysis limited due to OpenAI quota. Upgrade at https://platform.openai.com/account/billing.');
                 return { ...trend, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
               }
               throw new Error(`HTTP ${aiResp.status}: ${aiData.error || 'Unknown error'}`);
@@ -209,7 +237,6 @@ export default function Home() {
       console.error('Error loading trends:', error);
       setTrends([]);
       setErrorMessage('Failed to load trends. Please try again.');
-    } finally {
       setLoading(false);
     }
   }, [effectiveConnected, effectiveAddress]);
@@ -230,7 +257,7 @@ export default function Home() {
     if (!effectiveConnected || !effectiveAddress) {
       console.warn('No wallet connected, skipping counter-narratives');
       setCounterNarratives([]);
-      setErrorMessage('Please connect your wallet to view counter-narratives.');
+      setErrorMessage('Please connect a wallet to view counter-narratives.');
       return;
     }
 
@@ -267,7 +294,7 @@ export default function Home() {
       if (!counterResp.ok) {
         if (counterResp.status === 429) {
           console.warn('OpenAI rate limit exceeded for counter-narratives');
-          setApiWarning('Counter-narratives unavailable due to OpenAI quota. Please upgrade your plan at https://platform.openai.com/account/billing.');
+          setApiWarning('Counter-narratives unavailable due to OpenAI quota. Upgrade at https://platform.openai.com/account/billing.');
           setCounterNarratives([]);
           return;
         }
