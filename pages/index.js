@@ -414,7 +414,7 @@ export default function Home() {
     }, 5000);
 
     return () => clearTimeout(timeout);
-  }, [effectiveConnected, effectiveAddress, isPending, connect, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes, miniAppReady, isFarcasterClient, farcasterAddress]);
+  }, [effectiveConnected, effectiveAddress, isPending, connect, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes, miniAppReady, isFarcasterClient, farcasterAddress, walletConnected]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
