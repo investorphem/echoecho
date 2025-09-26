@@ -33,7 +33,10 @@ export default function Home() {
 
   // Detect Farcaster and get wallet
   useEffect(() => {
-    const isFarcaster = typeof window !== 'undefined' && window.location.hostname.includes('warpcast.com');
+    const isFarcaster = typeof window !== 'undefined' &&
+      (window.location.hostname.includes('warpcast.com') ||
+       new URL(window.location.href).searchParams.get('miniApp') === 'true' ||
+       window.location.pathname.includes('/miniapp'));
     setIsFarcasterClient(isFarcaster);
     if (isFarcaster) {
       console.log('Detected Farcaster client');
@@ -42,6 +45,11 @@ export default function Home() {
           const mockAddress = `0x${user.fid.toString(16).padStart(40, '0')}`;
           setFarcasterAddress(mockAddress);
           console.log('Farcaster wallet (mock):', mockAddress);
+          // Signal readiness to Warpcast
+          sdk.actions
+            .ready()
+            .then(() => console.log('Farcaster SDK signaled ready in index'))
+            .catch((err) => console.error('Failed to signal ready in index:', err));
         })
         .catch((error) => {
           console.warn('Farcaster user fetch failed:', error);
@@ -389,11 +397,15 @@ export default function Home() {
     }
     if (!isFarcasterClient && !walletConnected && !isPending) {
       console.log('Attempting wallet connection in browser...');
-      try {
-        connect();
-      } catch (error) {
-        console.error('Wallet connection failed:', error);
-        setErrorMessage('Failed to connect wallet. Please try again.');
+      if (typeof window !== 'undefined' && window.ethereum) {
+        try {
+          connect();
+        } catch (error) {
+          console.error('Wallet connection failed:', error);
+          setErrorMessage('Failed to connect wallet. Please try again.');
+        }
+      } else {
+        console.log('No web3 provider detected, skipping auto-connect');
       }
     }
     if (effectiveConnected && effectiveAddress) {
@@ -410,6 +422,12 @@ export default function Home() {
       if (!miniAppReady) {
         console.log('Timeout fallback: Setting miniAppReady to true');
         setMiniAppReady(true);
+        if (isFarcasterClient) {
+          sdk.actions
+            .ready()
+            .then(() => console.log('Farcaster SDK signaled ready (timeout)'))
+            .catch((err) => console.error('Failed to signal ready (timeout):', err));
+        }
       }
     }, 5000);
 
@@ -523,6 +541,7 @@ export default function Home() {
         <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
       </Head>
       <div
+        suppressHydrationWarning
         style={{
           maxWidth: 720,
           margin: '20px auto',
@@ -838,7 +857,11 @@ export default function Home() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigator.share?.({ text: trend.text || 'Check this out!' });
+                      if (navigator.share) {
+                        navigator.share({ text: trend.text || 'Check this out!' });
+                      } else {
+                        alert('Share feature not supported in this browser. Please copy the text manually.');
+                      }
                     }}
                     style={{
                       background: '#6b7280',
@@ -1474,7 +1497,7 @@ const FAQView = () => {
     {
       question: '🔓 What premium features do I get?',
       answer:
-        'Premium: Cross-platform echoes (X + News), unlimited usage, advanced AI, premium NFTs, analytics. Pro: Everything + legendary NFTs, API access, revenue sharing, priority support.',
+        'Premium: Cross-platform echoes (X + News), unlimited usage, premium NFTs, analytics. Pro: Everything + legendary NFTs, API access, revenue sharing, priority support.',
     },
     {
       question: '❓ How do I get started?',
