@@ -35,23 +35,19 @@ export default function Document() {
         />
         <meta name="twitter:image" content="https://echoechos.vercel.app/preview.png" />
 
-        {/* Farcaster Miniapp Meta Tag */}
+        {/* Farcaster Mini App Meta Tag */}
         <meta
           name="fc:miniapp"
           content={JSON.stringify({
             version: "1",
-            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+            name: "EchoEcho",
+            iconUrl: "https://echoechos.vercel.app/icon-192.png",
+            homeUrl: "https://echoechos.vercel.app/",
             imageUrl: "https://echoechos.vercel.app/preview.png",
-            button: {
-              title: "Launch",
-              action: {
-                type: "launch_frame",
-                name: "Echoecho",
-                url: "https://echoechos.vercel.app/",
-                splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
-                splashBackgroundColor: "#111827",
-              },
-            }, // ✅ closed properly
+            buttonTitle: "Launch",
+            splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
+            splashBackgroundColor: "#111827",
+            action: { type: "launch_miniapp", url: "https://echoechos.vercel.app/" },
             buttons: [
               {
                 label: "Echo Trend",
@@ -65,22 +61,16 @@ export default function Document() {
           })}
         />
 
+        {/* Farcaster Frame for Backward Compatibility */}
         <meta
-          name="fc:frame" // Backward compatibility
+          name="fc:frame"
           content={JSON.stringify({
             version: "1",
-            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
             imageUrl: "https://echoechos.vercel.app/preview.png",
-            button: {
-              title: "Launch",
-              action: {
-                type: "launch_frame",
-                name: "Echoecho",
-                url: "https://echoechos.vercel.app/",
-                splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
-                splashBackgroundColor: "#111827",
-              },
-            }, // ✅ closed properly
+            buttonTitle: "Launch",
+            splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
+            splashBackgroundColor: "#111827",
+            action: { type: "launch_frame", url: "https://echoechos.vercel.app/" },
             buttons: [
               {
                 label: "Echo Trend",
@@ -92,6 +82,12 @@ export default function Document() {
               },
             ],
           })}
+        />
+
+        {/* Content Security Policy */}
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.base.org https://*.neynar.com https://*.openai.com https://echoechos.vercel.app; img-src 'self' data: https://echoechos.vercel.app;"
         />
 
         {/* App Icons */}
