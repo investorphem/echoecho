@@ -44,8 +44,7 @@ export default function Document() {
             iconUrl: "https://echoechos.vercel.app/icon-192.png",
             homeUrl: "https://echoechos.vercel.app/",
             imageUrl: "https://echoechos.vercel.app/preview.png",
-            "button": {
-      "title": "Open Echo",
+            buttonTitle: "Open Echo",
             splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
             splashBackgroundColor: "#111827",
             action: { type: "launch_miniapp", url: "https://echoechos.vercel.app/" },
@@ -68,8 +67,7 @@ export default function Document() {
           content={JSON.stringify({
             version: "1",
             imageUrl: "https://echoechos.vercel.app/preview.png",
-            "button": {
-      "title": "Open Echo",
+            buttonTitle: "Open Echo",
             splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
             splashBackgroundColor: "#111827",
             action: { type: "launch_frame", url: "https://echoechos.vercel.app/" },
