@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injected } from 'wagmi/connectors';
 import { base } from 'wagmi/chains';
 import { Component } from 'react';
-import { sdk } from '@farcaster/miniapp-sdk';
 
 // Improved Farcaster detection
 const getIsFarcasterClient = () => {
@@ -84,22 +83,7 @@ const WagmiHooks = dynamic(
           console.log('Wallet connection status:', status);
           if (isFarcasterClient) {
             console.log('In Farcaster: Skipping wallet connect');
-            // Signal readiness to Warpcast with retries
-            const signalReady = async (attempt = 1) => {
-              try {
-                await sdk.actions.ready();
-                console.log('Farcaster SDK signaled ready (attempt', attempt, ')');
-              } catch (err) {
-                console.error('Failed to signal ready (attempt', attempt, '):', err);
-                if (attempt < 3) {
-                  setTimeout(() => signalReady(attempt + 1), 1000);
-                } else {
-                  console.error('Max retries reached for ready signal');
-                }
-              }
-            };
-            signalReady();
-            return;
+            return; // No wallet logic or ready() in Farcaster
           }
           if (isConnected) {
             console.log('Wallet connected:', address);
@@ -131,24 +115,37 @@ const WagmiHooks = dynamic(
 export default function MyApp({ Component, pageProps }) {
   const [isClient, setIsClient] = useState(false);
 
+  // Dedicated useEffect for Farcaster ready() call
+  useEffect(() => {
+    if (getIsFarcasterClient()) {
+      console.log('MyApp: Farcaster detected - attempting to call sdk.actions.ready()');
+      // Dynamic import to ensure SDK is loaded
+      import('@farcaster/miniapp-sdk')
+        .then(({ sdk }) => {
+          const callReady = async (attempt = 1) => {
+            try {
+              await sdk.actions.ready();
+              console.log('MyApp: sdk.actions.ready() succeeded (attempt', attempt, ')');
+            } catch (err) {
+              console.error('MyApp: sdk.actions.ready() failed (attempt', attempt, '):', err);
+              if (attempt < 3) {
+                setTimeout(() => callReady(attempt + 1), 1000);
+              } else {
+                console.error('MyApp: Max retries reached for ready()');
+              }
+            }
+          };
+          callReady();
+        })
+        .catch(err => {
+          console.error('MyApp: Failed to import Farcaster SDK:', err);
+        });
+    }
+  }, []); // Empty dependency array: Run once on mount
+
+  // Separate useEffect for client mount
   useEffect(() => {
     setIsClient(true);
-    if (getIsFarcasterClient()) {
-      console.log('MyApp: Farcaster detected on client mount - signaling ready');
-      // Early ready signal for immediate iframe load
-      const signalReady = async (attempt = 1) => {
-        try {
-          await sdk.actions.ready();
-          console.log('MyApp: Early ready signaled (attempt', attempt, ')');
-        } catch (err) {
-          console.error('MyApp: Early ready failed (attempt', attempt, '):', err);
-          if (attempt < 3) {
-            setTimeout(() => signalReady(attempt + 1), 1000);
-          }
-        }
-      };
-      signalReady();
-    }
   }, []);
 
   return (
