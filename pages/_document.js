@@ -1,7 +1,42 @@
 import { Html, Head, Main, NextScript } from "next/document";
 
-// Pre-stringified JSON for the Farcaster Mini App embed
-      <meta
+export default function Document() {
+  return (
+    <Html lang="en">
+      <Head>
+        {/* App Meta Tags */}
+        <meta name="application-name" content="EchoEcho" />
+        <meta
+          name="description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
+        />
+        <meta
+          name="keywords"
+          content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
+        />
+
+        {/* Open Graph Meta Tags for Farcaster */}
+        <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
+        <meta
+          property="og:description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
+        <meta property="og:url" content="https://echoechos.vercel.app/" />
+        <meta property="og:site_name" content="EchoEcho" />
+
+        {/* Twitter Card Meta Tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
+        <meta
+          name="twitter:description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Subscribe for premium features with USDC on Base network."
+        />
+        <meta name="twitter:image" content="https://echoechos.vercel.app/preview.png" />
+
+        {/* Farcaster Miniapp Meta Tag */}
+        <meta
           name="fc:miniapp"
           content={JSON.stringify({
             version: "1",
@@ -57,53 +92,6 @@ import { Html, Head, Main, NextScript } from "next/document";
               },
             ],
           })}
-        />
-
-export default function Document() {
-  return (
-    <Html lang="en">
-      <Head>
-        {/* App Meta Tags */}
-        <meta name="application-name" content="EchoEcho" />
-        <meta
-          name="description"
-          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
-        />
-        <meta
-          name="keywords"
-          content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
-        />
-
-        {/* Open Graph Meta Tags for Farcaster */}
-        <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
-        <meta
-          property="og:description"
-          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
-        />
-        <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
-        <meta property="og:url" content="https://echoechos.vercel.app/" />
-        <meta property="og:site_name" content="EchoEcho" />
-
-        {/* Twitter Card Meta Tags */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
-        <meta
-          name="twitter:description"
-          content="Break echo chambers with AI-powered counter-narrative discovery. Subscribe for premium features with USDC on Base network."
-        />
-        <meta name="twitter:image" content="https://echoechos.vercel.app/preview.png" />
-
-        {/* Farcaster Mini App Meta Tag */}
-        <meta
-          name="fc:miniapp"
-          content={fcMiniAppContent}
-        />
-
-        {/* Farcaster Frame for Backward Compatibility */}
-        <meta
-          name="fc:frame"
-          content={fcFrameContent}
         />
 
         {/* Content Security Policy */}
