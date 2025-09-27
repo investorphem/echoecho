@@ -1,10 +1,63 @@
 import { Html, Head, Main, NextScript } from "next/document";
 
 // Pre-stringified JSON for the Farcaster Mini App embed
-const fcMiniAppContent = '{"version":"1","name":"EchoEcho","iconUrl":"https://echoechos.vercel.app/icon-192.png","homeUrl":"https://echoechos.vercel.app/","imageUrl":"https://echoechos.vercel.app/preview.png","buttonTitle":"Open Echo","splashImageUrl":"https://echoechos.vercel.app/splash-200.png","splashBackgroundColor":"#111827","action":{"type":"launch_miniapp","url":"https://echoechos.vercel.app/"},"buttons":[{"label":"Echo Trend","action":{"type":"post","url":"https://echoechos.vercel.app/api/echo"}},{"label":"Mint NFT","action":{"type":"post","url":"https://echoechos.vercel.app/api/mint-nft"}}]}';
+      <meta
+          name="fc:miniapp"
+          content={JSON.stringify({
+            version: "1",
+            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+            imageUrl: "https://echoechos.vercel.app/preview.png",
+            button: {
+              title: "Launch",
+              action: {
+                type: "launch_frame",
+                name: "Echoecho",
+                url: "https://echoechos.vercel.app/",
+                splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
+                splashBackgroundColor: "#111827",
+              },
+            }, // ✅ closed properly
+            buttons: [
+              {
+                label: "Echo Trend",
+                action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
+              },
+              {
+                label: "Mint NFT",
+                action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
+              },
+            ],
+          })}
+        />
 
-// Pre-stringified JSON for the Farcaster Frame (for backward compatibility)
-const fcFrameContent = '{"version":"1","imageUrl":"https://echoechos.vercel.app/preview.png","buttonTitle":"Open Echo","splashImageUrl":"https://echoechos.vercel.app/splash-200.png","splashBackgroundColor":"#111827","action":{"type":"launch_frame","url":"https://echoechos.vercel.app/"},"buttons":[{"label":"Echo Trend","action":{"type":"post","url":"https://echoechos.vercel.app/api/echo"}},{"label":"Mint NFT","action":{"type":"post","url":"https://echoechos.vercel.app/api/mint-nft"}}]}';
+        <meta
+          name="fc:frame" // Backward compatibility
+          content={JSON.stringify({
+            version: "1",
+            id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
+            imageUrl: "https://echoechos.vercel.app/preview.png",
+            button: {
+              title: "Launch",
+              action: {
+                type: "launch_frame",
+                name: "Echoecho",
+                url: "https://echoechos.vercel.app/",
+                splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
+                splashBackgroundColor: "#111827",
+              },
+            }, // ✅ closed properly
+            buttons: [
+              {
+                label: "Echo Trend",
+                action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
+              },
+              {
+                label: "Mint NFT",
+                action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
+              },
+            ],
+          })}
+        />
 
 export default function Document() {
   return (
