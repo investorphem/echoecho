@@ -29,41 +29,55 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [apiWarning, setApiWarning] = useState(null);
 
-  // Detect Farcaster and get wallet
+  // Enhanced Farcaster detection
   useEffect(() => {
-    const isFarcaster = typeof window !== 'undefined' &&
-      (window.location.hostname.includes('warpcast.com') ||
-       window.location.hostname.includes('client.warpcast.com') ||
-       new URL(window.location.href).searchParams.get('miniApp') === 'true' ||
-       window.location.pathname.includes('/miniapp'));
-    setIsFarcasterClient(isFarcaster);
-    if (isFarcaster) {
-      console.log('Detected Farcaster client');
-      import('@farcaster/miniapp-sdk').then(({ sdk }) => {
-        const getUser = async (attempt = 1) => {
-          try {
-            const user = await sdk.user.getAsync();
-            const mockAddress = `0x${user.fid.toString(16).padStart(40, '0')}`;
-            setFarcasterAddress(mockAddress);
-            console.log('Farcaster wallet (mock):', mockAddress);
-          } catch (error) {
-            console.warn(`Farcaster user fetch failed (attempt ${attempt}):`, error);
-            if (attempt < 3) {
-              setTimeout(() => getUser(attempt + 1), 1000);
-            } else {
-              setErrorMessage('Failed to initialize Farcaster. Some features may be limited.');
+    const detectFarcaster = async () => {
+      const isFarcaster = typeof window !== 'undefined' && (
+        // Broader hostname checks for Warpcast
+        window.location.hostname.includes('warpcast.com') ||
+        window.location.hostname.includes('client.warpcast.com') ||
+        window.location.hostname.includes('localhost') || // For local testing
+        new URLSearchParams(window.location.search).get('miniApp') === 'true' ||
+        window.location.pathname.includes('/miniapp') ||
+        // Check for Farcaster-specific headers or window properties
+        window.farcaster || navigator.userAgent.includes('Farcaster')
+      );
+
+      console.log('Farcaster detection result:', isFarcaster, 'Host:', window.location.hostname, 'Path:', window.location.pathname, 'Params:', window.location.search);
+      setIsFarcasterClient(isFarcaster);
+
+      if (isFarcaster) {
+        console.log('Detected Farcaster client, attempting SDK import...');
+        try {
+          const { sdk } = await import('@farcaster/miniapp-sdk');
+          const getUser = async (attempt = 1) => {
+            try {
+              const user = await sdk.user.getAsync();
+              const mockAddress = `0x${user.fid.toString(16).padStart(40, '0')}`;
+              setFarcasterAddress(mockAddress);
+              console.log('Farcaster wallet (mock):', mockAddress);
+            } catch (error) {
+              console.warn(`Farcaster user fetch failed (attempt ${attempt}):`, error);
+              if (attempt < 3) {
+                setTimeout(() => getUser(attempt + 1), 1000);
+              } else {
+                setErrorMessage('Failed to connect Farcaster wallet. Some features may be limited.');
+              }
             }
-          }
-        };
-        getUser();
-      }).catch(err => {
-        console.error('Failed to import Farcaster SDK:', err);
-        setErrorMessage('Failed to initialize Farcaster SDK. Some features may be limited.');
-      });
-    } else {
-      console.warn('Non-Farcaster environment detected. Some features require Warpcast.');
-      setErrorMessage('Please use Warpcast for full Farcaster functionality.');
-    }
+          };
+          getUser();
+        } catch (err) {
+          console.error('Failed to import Farcaster SDK:', err);
+          setErrorMessage('Failed to initialize Farcaster SDK. Some features may be limited.');
+          setIsFarcasterClient(false); // Fallback to browser mode if SDK fails
+        }
+      } else {
+        console.warn('Non-Farcaster environment detected. Some features require Warpcast.');
+        setErrorMessage('Please use Warpcast for full Farcaster functionality.');
+      }
+    };
+
+    detectFarcaster();
   }, []);
 
   const effectiveAddress = walletAddress || farcasterAddress;
