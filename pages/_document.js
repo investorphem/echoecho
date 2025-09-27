@@ -43,7 +43,7 @@ export default function Document() {
             id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
             imageUrl: "https://echoechos.vercel.app/preview.png",
             button: {
-              title: "Launch",
+              title: "Open Echoecho",
               action: {
                 type: "launch_frame",
                 name: "Echoecho",
@@ -72,7 +72,7 @@ export default function Document() {
             id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
             imageUrl: "https://echoechos.vercel.app/preview.png",
             button: {
-              title: "Launch",
+              title: "Open Echoecho",
               action: {
                 type: "launch_frame",
                 name: "Echoecho",
