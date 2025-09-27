@@ -6,7 +6,6 @@ import { base } from 'wagmi/chains';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Head from 'next/head';
-import { sdk } from '@farcaster/miniapp-sdk';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
@@ -17,7 +16,6 @@ export default function Home() {
   const [isFarcasterClient, setIsFarcasterClient] = useState(false);
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [miniAppReady, setMiniAppReady] = useState(false);
   const [globalMode, setGlobalMode] = useState(false);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [counterNarratives, setCounterNarratives] = useState([]);
@@ -35,29 +33,33 @@ export default function Home() {
   useEffect(() => {
     const isFarcaster = typeof window !== 'undefined' &&
       (window.location.hostname.includes('warpcast.com') ||
+       window.location.hostname.includes('client.warpcast.com') ||
        new URL(window.location.href).searchParams.get('miniApp') === 'true' ||
        window.location.pathname.includes('/miniapp'));
     setIsFarcasterClient(isFarcaster);
     if (isFarcaster) {
       console.log('Detected Farcaster client');
-      const signalReady = async (attempt = 1) => {
-        try {
-          const user = await sdk.user.getAsync();
-          const mockAddress = `0x${user.fid.toString(16).padStart(40, '0')}`;
-          setFarcasterAddress(mockAddress);
-          console.log('Farcaster wallet (mock):', mockAddress);
-          await sdk.actions.ready();
-          console.log('Farcaster SDK signaled ready in index');
-        } catch (error) {
-          console.warn(`Farcaster user fetch or ready signal failed (attempt ${attempt}):`, error);
-          if (attempt < 3) {
-            setTimeout(() => signalReady(attempt + 1), 1000);
-          } else {
-            setErrorMessage('Failed to initialize Farcaster. Some features may be limited.');
+      import('@farcaster/miniapp-sdk').then(({ sdk }) => {
+        const getUser = async (attempt = 1) => {
+          try {
+            const user = await sdk.user.getAsync();
+            const mockAddress = `0x${user.fid.toString(16).padStart(40, '0')}`;
+            setFarcasterAddress(mockAddress);
+            console.log('Farcaster wallet (mock):', mockAddress);
+          } catch (error) {
+            console.warn(`Farcaster user fetch failed (attempt ${attempt}):`, error);
+            if (attempt < 3) {
+              setTimeout(() => getUser(attempt + 1), 1000);
+            } else {
+              setErrorMessage('Failed to initialize Farcaster. Some features may be limited.');
+            }
           }
-        }
-      };
-      signalReady();
+        };
+        getUser();
+      }).catch(err => {
+        console.error('Failed to import Farcaster SDK:', err);
+        setErrorMessage('Failed to initialize Farcaster SDK. Some features may be limited.');
+      });
     } else {
       console.warn('Non-Farcaster environment detected. Some features require Warpcast.');
       setErrorMessage('Please use Warpcast for full Farcaster functionality.');
@@ -196,10 +198,10 @@ export default function Home() {
       }
       console.log('Trends data:', data);
       const trendsData = data.casts || [];
+      setTrends(trendsData);
+      setLoading(false); // Unblock UI before AI analysis
 
-      // Set loading to false before AI analysis to ensure UI renders
-      setLoading(false);
-
+      // AI analysis in parallel, non-blocking
       const enrichedTrends = await Promise.all(
         trendsData.slice(0, 10).map(async (trend) => {
           const text = trend.text || trend.body || '';
@@ -444,22 +446,7 @@ export default function Home() {
       console.warn('No wallet connected, loading mock trends');
       loadTrends();
     }
-
-    const timeout = setTimeout(() => {
-      if (!miniAppReady) {
-        console.log('Timeout fallback: Setting miniAppReady to true');
-        setMiniAppReady(true);
-        if (isFarcasterClient) {
-          sdk.actions
-            .ready()
-            .then(() => console.log('Farcaster SDK signaled ready (timeout)'))
-            .catch((err) => console.error('Failed to signal ready (timeout):', err));
-        }
-      }
-    }, 5000);
-
-    return () => clearTimeout(timeout);
-  }, [effectiveConnected, effectiveAddress, isPending, connect, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes, miniAppReady, isFarcasterClient, farcasterAddress, walletConnected]);
+  }, [effectiveConnected, effectiveAddress, isPending, connect, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes, isFarcasterClient, farcasterAddress, walletConnected]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
@@ -501,7 +488,7 @@ export default function Home() {
     );
   }, [trends, searchQuery]);
 
-  if (loading || !miniAppReady) {
+  if (loading) {
     return (
       <>
         <Head>
@@ -534,7 +521,7 @@ export default function Home() {
           />
           <div style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 10 }}>🔥 EchoEcho</div>
           <div style={{ fontSize: 16, color: '#9ca3af', marginBottom: 20 }}>
-            {loading ? 'Loading trends...' : 'Initializing...'}
+            Loading trends...
           </div>
           <div
             style={{
@@ -703,7 +690,7 @@ export default function Home() {
         <MiniAppComponent
           walletConnected={effectiveConnected}
           walletAddress={effectiveAddress}
-          onMiniAppReady={() => setMiniAppReady(true)}
+          onMiniAppReady={() => console.log('MiniAppComponent ready')}
           onFarcasterReady={() => console.log('Farcaster SDK ready in MiniAppComponent')}
         />
 
