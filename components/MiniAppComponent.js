@@ -1,5 +1,4 @@
 import { useEffect } from 'react';
-import dynamic from 'next/dynamic';
 
 // Dynamically import the Farcaster SDK to avoid SSR issues
 const loadFarcasterSDK = () => import('@farcaster/miniapp-sdk');
