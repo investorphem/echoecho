@@ -11,7 +11,10 @@
     "test": "jest"
   },
   "dependencies": {
+    "@coinbase/onchainkit": "^0.29.0",
+    "@farcaster/frame-wagmi-connector": "^0.3.1",
     "@farcaster/miniapp-sdk": "^0.1.10",
+    "@farcaster/quick-auth": "^0.2.0",
     "@neondatabase/serverless": "^0.9.5",
     "@neynar/nodejs-sdk": "^2.46.0",
     "@tanstack/react-query": "^5.59.13",
@@ -33,12 +36,19 @@
     "wagmi": "^2.17.0"
   },
   "devDependencies": {
-    "eslint": "^8.57.0",
+    "eslint": "^9.12.0",
     "eslint-config-next": "^14.2.15",
     "jest": "^29.7.0",
     "prettier": "^3.6.2"
   },
   "engines": {
     "node": "22.x"
+  },
+  "resolutions": {
+    "inflight": false,
+    "node-domexception": false,
+    "@libp2p/mplex": false,
+    "@humanwhocodes/object-schema": "@eslint/object-schema",
+    "@humanwhocodes/config-array": "@eslint/config-array"
   }
 }
