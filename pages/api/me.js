@@ -1,7 +1,5 @@
 // pages/api/me.js
-import { createClient } from '@farcaster/quick-auth';  // npm install @farcaster/quick-auth
-
-const client = createClient();
+import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -15,11 +13,13 @@ export default async function handler(req, res) {
     }
 
     const token = authHeader.substring(7);
-    const verified = await client.verifyToken(token);
+    // Replace with your Farcaster app's public key or verification logic
+    // See Farcaster docs for public key: https://docs.farcaster.xyz/miniapp/auth
+    const publicKey = process.env.FARCASTER_PUBLIC_KEY; // Set in .env.local
+    const verified = jwt.verify(token, publicKey, { algorithms: ['ES256'] });
 
     if (verified) {
-      // Fetch additional user data from Neynar API or Hubs if needed
-      res.status(200).json({ fid: verified.fid, username: verified.username });
+      res.status(200).json({ fid: verified.fid, username: verified.username || 'unknown' });
     } else {
       res.status(401).json({ error: 'Invalid token' });
     }
