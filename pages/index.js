@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAccount, useConnect, useSendTransaction } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { base } from 'wagmi/chains';
+import { encodeFunctionData } from 'viem'; // Added to fix no-undef error
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Head from 'next/head';
@@ -1318,7 +1319,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <div style={{ fontSize: 18, fontWeight: 'bold' }}>
-                {tier === 'premium' ? '💎 Premium' : '👑 Pro'}
+                {tier === 'premium' ? '💎 Premium' : '👑 Pro'} {tier === userTier && '(Current)'}
               </div>
               <div style={{ fontSize: 14, color: '#9ca3af' }}>
                 {tier === 'premium' ? '$7 USDC/month' : '$25 USDC/month'}
@@ -1352,11 +1353,11 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
           borderRadius: 8,
           width: '100%',
           fontSize: 16,
-          cursor: paymentStatus === 'pending' ? 'not-allowed' : 'pointer',
+          cursor: paymentStatus === 'pending' || selectedTier === userTier ? 'not-allowed' : 'pointer',
         }}
-        disabled={paymentStatus === 'pending'}
+        disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
