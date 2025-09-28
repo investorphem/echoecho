@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@coinbase/onchainkit": "^0.29.0",
-    "@farcaster/frame-wagmi-connector": "^0.3.1",
+    "@farcaster/miniapp-wagmi-connector": "^0.3.0",
     "@farcaster/miniapp-sdk": "^0.1.10",
     "@farcaster/quick-auth": "^0.2.0",
     "@neondatabase/serverless": "^0.9.5",
