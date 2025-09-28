@@ -1,8 +1,4 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useAccount, useConnect, useSendTransaction } from 'wagmi';
-import { injected } from 'wagmi/connectors';
-import { base } from 'wagmi/chains';
-import { encodeFunctionData } from 'viem'; // Added to fix no-undef error
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Head from 'next/head';
@@ -10,9 +6,6 @@ import Head from 'next/head';
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
 export default function Home() {
-  const { address: walletAddress, isConnected: walletConnected } = useAccount();
-  const { connect, isPending } = useConnect({ connector: injected() });
-  const { sendTransaction } = useSendTransaction();
   const [farcasterAddress, setFarcasterAddress] = useState(null);
   const [isFarcasterClient, setIsFarcasterClient] = useState(false);
   const [trends, setTrends] = useState([]);
@@ -39,7 +32,8 @@ export default function Home() {
       console.log('Farcaster wallet (mock) set:', mockAddress);
     } else {
       console.warn('Farcaster SDK failed to fetch user FID');
-      setErrorMessage('Failed to connect Farcaster wallet. Some features may be limited.');
+      setErrorMessage('Failed to connect Farcaster wallet. Please try again in Warpcast.');
+      setLoading(false);
     }
   }, []);
 
@@ -48,26 +42,6 @@ export default function Home() {
     console.log('Mini App is ready to render UI.');
     setLoading(false); // Unblock UI rendering
   }, []);
-
-  const effectiveAddress = walletAddress || farcasterAddress;
-  const effectiveConnected = walletConnected || !!farcasterAddress;
-
-  // Auto-connect wallet in non-Farcaster environments
-  useEffect(() => {
-    if (!isFarcasterClient && !walletConnected && !isPending) {
-      console.log('Attempting wallet connection in browser...');
-      if (typeof window !== 'undefined' && window.ethereum) {
-        try {
-          connect();
-        } catch (error) {
-          console.error('Wallet connection failed:', error);
-          setErrorMessage('Failed to connect wallet. Please try again.');
-        }
-      } else {
-        console.log('No web3 provider detected, skipping auto-connect');
-      }
-    }
-  }, [isFarcasterClient, walletConnected, isPending, connect]);
 
   const checkUSDCBalance = useCallback(async (address) => {
     if (!address) {
@@ -135,8 +109,15 @@ export default function Home() {
     setLoading(true);
     setErrorMessage(null);
     setApiWarning(null);
-    if (!effectiveConnected || !effectiveAddress) {
-      console.warn('No wallet connected, using mock trends');
+    if (!isFarcasterClient) {
+      console.warn('Not in Farcaster client, cannot load trends');
+      setTrends([]);
+      setErrorMessage('Please use Warpcast to access trends.');
+      setLoading(false);
+      return;
+    }
+    if (!farcasterAddress) {
+      console.warn('No Farcaster wallet connected, using mock trends');
       const mockData = {
         casts: [
           { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
@@ -147,12 +128,12 @@ export default function Home() {
         ...trend,
         ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
       })));
-      setErrorMessage('Connect a wallet for full trends. Showing sample data.');
+      setErrorMessage('Connect a Farcaster wallet in Warpcast for full trends.');
       setLoading(false);
       return;
     }
     try {
-      const resp = await fetch(`/api/trending?userAddress=${effectiveAddress}`);
+      const resp = await fetch(`/api/trending?userAddress=${farcasterAddress}`);
       console.log('Trends API response status:', resp.status);
       const data = await resp.json();
       if (resp.status === 429) {
@@ -212,7 +193,7 @@ export default function Home() {
             const aiResp = await fetch('/api/ai-analysis', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text, action: 'analyze_sentiment', userAddress: effectiveAddress }),
+              body: JSON.stringify({ text, action: 'analyze_sentiment', userAddress: farcasterAddress }),
             });
             const aiData = await aiResp.json();
             if (!aiResp.ok) {
@@ -240,7 +221,7 @@ export default function Home() {
       setErrorMessage('Failed to load trends. Please try again.');
       setLoading(false);
     }
-  }, [effectiveConnected, effectiveAddress]);
+  }, [farcasterAddress, isFarcasterClient]);
 
   const loadTopicDetails = useCallback(async (topic) => {
     console.log('Loading topic details for:', topic.text || topic.body);
@@ -249,16 +230,21 @@ export default function Home() {
     setErrorMessage(null);
     setApiWarning(null);
 
-    if (!globalMode || !isFarcasterClient) {
+    if (!isFarcasterClient) {
       setCounterNarratives([]);
-      if (!isFarcasterClient) setErrorMessage('Counter-narratives require Warpcast.');
+      setErrorMessage('Counter-narratives require Warpcast.');
       return;
     }
 
-    if (!effectiveConnected || !effectiveAddress) {
-      console.warn('No wallet connected, skipping counter-narratives');
+    if (!farcasterAddress) {
+      console.warn('No Farcaster wallet connected, skipping counter-narratives');
       setCounterNarratives([]);
-      setErrorMessage('Please connect a wallet to view counter-narratives.');
+      setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
+      return;
+    }
+
+    if (!globalMode) {
+      setCounterNarratives([]);
       return;
     }
 
@@ -288,7 +274,7 @@ export default function Home() {
       const counterResp = await fetch('/api/ai-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posts: allPosts, action: 'find_counter_narratives', userAddress: effectiveAddress }),
+        body: JSON.stringify({ posts: allPosts, action: 'find_counter_narratives', userAddress: farcasterAddress }),
       });
 
       const counterData = await counterResp.json();
@@ -310,18 +296,24 @@ export default function Home() {
       setCounterNarratives([]);
       setErrorMessage('Failed to load counter-narratives. Please try again.');
     }
-  }, [globalMode, effectiveConnected, effectiveAddress, isFarcasterClient]);
+  }, [globalMode, farcasterAddress, isFarcasterClient]);
 
   const loadUserEchoes = useCallback(async () => {
-    console.log('Loading user echoes for address:', effectiveAddress);
+    console.log('Loading user echoes for address:', farcasterAddress);
     if (!isFarcasterClient) {
       console.warn('Not in Farcaster client, skipping user echoes');
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Echo history requires Warpcast.');
       return;
     }
+    if (!farcasterAddress) {
+      console.warn('No Farcaster wallet connected');
+      setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
+      setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
+      return;
+    }
     try {
-      const response = await fetch(`/api/user-echoes?userAddress=${effectiveAddress}`);
+      const response = await fetch(`/api/user-echoes?userAddress=${farcasterAddress}`);
       if (!response.ok) {
         console.error('User echoes fetch failed:', response.status, await response.text());
         setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
@@ -336,7 +328,7 @@ export default function Home() {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Failed to load user echoes. Please try again.');
     }
-  }, [effectiveAddress, isFarcasterClient]);
+  }, [farcasterAddress, isFarcasterClient]);
 
   const mintInsightToken = useCallback(async (narrative) => {
     console.log('Minting Insight Token for narrative:', narrative);
@@ -344,8 +336,8 @@ export default function Home() {
       setErrorMessage('Please use Warpcast to mint Insight Tokens.');
       return;
     }
-    if (!effectiveConnected || !effectiveAddress) {
-      setErrorMessage('Please connect a wallet to mint Insight Tokens.');
+    if (!farcasterAddress) {
+      setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
     }
     try {
@@ -354,7 +346,7 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           narrative,
-          userAddress: effectiveAddress,
+          userAddress: farcasterAddress,
           rarity: narrative.source === 'twitter' ? 'rare' : 'common',
         }),
       });
@@ -383,12 +375,16 @@ export default function Home() {
       console.error('Minting error:', error);
       setErrorMessage('Error minting token: ' + error.message);
     }
-  }, [effectiveConnected, effectiveAddress, isFarcasterClient, loadUserEchoes]);
+  }, [farcasterAddress, isFarcasterClient, loadUserEchoes]);
 
   const handleEcho = useCallback(async (cast, isCounterNarrative = false) => {
     console.log('Echoing cast:', cast, 'Is counter-narrative:', isCounterNarrative);
     if (!isFarcasterClient) {
       setErrorMessage('Echoing requires Warpcast.');
+      return;
+    }
+    if (!farcasterAddress) {
+      setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
     }
     try {
@@ -415,19 +411,19 @@ export default function Home() {
       console.error('Error echoing:', error);
       setErrorMessage('Error echoing: ' + error.message);
     }
-  }, [isFarcasterClient, loadUserEchoes]);
+  }, [farcasterAddress, isFarcasterClient, loadUserEchoes]);
 
   useEffect(() => {
-    if (effectiveConnected && effectiveAddress) {
-      checkUSDCBalance(effectiveAddress);
-      loadUserSubscription(effectiveAddress);
+    if (isFarcasterClient && farcasterAddress) {
+      checkUSDCBalance(farcasterAddress);
+      loadUserSubscription(farcasterAddress);
       loadTrends();
-      if (isFarcasterClient) loadUserEchoes();
+      loadUserEchoes();
     } else {
-      console.warn('No wallet connected, loading mock trends');
-      loadTrends();
+      console.warn('No Farcaster client or wallet, waiting for connection');
+      setLoading(false);
     }
-  }, [effectiveConnected, effectiveAddress, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes, isFarcasterClient]);
+  }, [farcasterAddress, isFarcasterClient, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
@@ -492,8 +488,8 @@ export default function Home() {
         }}
       >
         <MiniAppComponent
-          walletConnected={effectiveConnected}
-          walletAddress={effectiveAddress}
+          walletConnected={!!farcasterAddress}
+          walletAddress={farcasterAddress}
           onMiniAppReady={handleMiniAppReady}
           onFarcasterReady={handleFarcasterReady}
         />
@@ -601,7 +597,32 @@ export default function Home() {
           </div>
         )}
 
-        {!loading && (
+        {!loading && !isFarcasterClient && (
+          <div
+            style={{
+              background: '#f59e0b',
+              color: 'white',
+              padding: '12px 16px',
+              borderRadius: 8,
+              marginBottom: 16,
+              textAlign: 'center',
+            }}
+          >
+            Please open in Warpcast to use EchoEcho.
+            <a
+              href="https://warpcast.com"
+              style={{
+                color: '#3b82f6',
+                marginLeft: 8,
+                textDecoration: 'underline',
+              }}
+            >
+              Go to Warpcast
+            </a>
+          </div>
+        )}
+
+        {!loading && isFarcasterClient && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
@@ -639,7 +660,7 @@ export default function Home() {
                 </button>
                 <div
                   style={{
-                    background: effectiveConnected ? '#059669' : '#374151',
+                    background: farcasterAddress ? '#059669' : '#374151',
                     color: 'white',
                     padding: '6px 12px',
                     borderRadius: 20,
@@ -647,11 +668,11 @@ export default function Home() {
                     border: 'none',
                   }}
                 >
-                  {effectiveConnected
-                    ? `🟢 ${effectiveAddress?.slice(0, 6)}...${effectiveAddress?.slice(-4)}`
+                  {farcasterAddress
+                    ? `🟢 ${farcasterAddress.slice(0, 6)}...${farcasterAddress.slice(-4)}`
                     : '🔴 No Wallet Connected'}
                 </div>
-                {effectiveConnected && (
+                {farcasterAddress && (
                   <div
                     style={{
                       background: '#1e40af',
@@ -666,31 +687,6 @@ export default function Home() {
                 )}
               </div>
             </div>
-
-            {!isFarcasterClient && (
-              <div
-                style={{
-                  background: '#f59e0b',
-                  color: 'white',
-                  padding: '12px 16px',
-                  borderRadius: 8,
-                  marginBottom: 16,
-                  textAlign: 'center',
-                }}
-              >
-                Please open in Warpcast for full Farcaster functionality.
-                <a
-                  href="https://warpcast.com"
-                  style={{
-                    color: '#3b82f6',
-                    marginLeft: 8,
-                    textDecoration: 'underline',
-                  }}
-                >
-                  Go to Warpcast
-                </a>
-              </div>
-            )}
 
             {subscription && !reminderDismissed && (() => {
               const now = new Date();
@@ -778,12 +774,10 @@ export default function Home() {
                     type="checkbox"
                     checked={globalMode}
                     onChange={(e) => setGlobalMode(e.target.checked)}
-                    style={{ cursor: isFarcasterClient ? 'pointer' : 'not-allowed' }}
-                    disabled={!isFarcasterClient}
+                    style={{ cursor: 'pointer' }}
                   />
                   <span style={{ fontSize: 14 }}>
                     🌐 Global Echoes {globalMode ? '(X + News)' : '(Farcaster Only)'}
-                    {!isFarcasterClient && ' (Warpcast required)'}
                   </span>
                 </label>
               </div>
@@ -801,14 +795,12 @@ export default function Home() {
                     border: 'none',
                     padding: '8px 16px',
                     borderRadius: 6,
-                    cursor: view === 'echoes' && !isFarcasterClient ? 'not-allowed' : 'pointer',
+                    cursor: 'pointer',
                     fontSize: 14,
                     textTransform: 'capitalize',
                   }}
-                  disabled={view === 'echoes' && !isFarcasterClient}
                 >
                   {view === 'trends' ? '🔥 Trends' : view === 'echoes' ? '📜 My Echoes' : '❓ FAQ'}
-                  {view === 'echoes' && !isFarcasterClient && ' (Warpcast)'}
                 </button>
               ))}
             </div>
@@ -826,7 +818,7 @@ export default function Home() {
                       textAlign: 'center',
                     }}
                   >
-                    No trends available. {searchQuery ? 'Try a different search query.' : 'Connect wallet or check API status.'}
+                    No trends available. {searchQuery ? 'Try a different search query.' : 'Connect a Farcaster wallet or check API status.'}
                   </div>
                 )}
                 {filteredTrends.map((trend, i) => (
@@ -859,10 +851,9 @@ export default function Home() {
                           border: 'none',
                           padding: '8px 16px',
                           borderRadius: 6,
-                          cursor: isFarcasterClient ? 'pointer' : 'not-allowed',
+                          cursor: 'pointer',
                           fontSize: 14,
                         }}
-                        disabled={!isFarcasterClient}
                       >
                         🔄 Echo It
                       </button>
@@ -965,10 +956,9 @@ export default function Home() {
                               border: 'none',
                               padding: '8px 16px',
                               borderRadius: 6,
-                              cursor: isFarcasterClient ? 'pointer' : 'not-allowed',
+                              cursor: 'pointer',
                               fontSize: 14,
                             }}
-                            disabled={!isFarcasterClient}
                           >
                             🌟 Echo Counter-View
                           </button>
@@ -980,10 +970,9 @@ export default function Home() {
                               border: 'none',
                               padding: '8px 16px',
                               borderRadius: 6,
-                              cursor: isFarcasterClient ? 'pointer' : 'not-allowed',
+                              cursor: 'pointer',
                               fontSize: 14,
                             }}
-                            disabled={!isFarcasterClient}
                           >
                             🎨 Mint Insight Token
                           </button>
@@ -1003,7 +992,7 @@ export default function Home() {
                       textAlign: 'center',
                     }}
                   >
-                    No counter-narratives found. {isFarcasterClient ? 'Try enabling Global Echoes or check API status.' : 'Warpcast required for counter-narratives.'}
+                    No counter-narratives found. Try enabling Global Echoes or check API status.
                   </div>
                 )}
               </div>
@@ -1022,18 +1011,12 @@ export default function Home() {
                         border: 'none',
                         padding: '12px 24px',
                         borderRadius: 8,
-                        cursor: isFarcasterClient ? 'pointer' : 'not-allowed',
+                        cursor: 'pointer',
                         fontSize: 16,
                       }}
-                      disabled={!isFarcasterClient}
                     >
                       📊 Load My Echoes
                     </button>
-                    {!isFarcasterClient && (
-                      <div style={{ color: '#9ca3af', marginTop: 12 }}>
-                        Please use Warpcast to view echo history.
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div>
@@ -1200,13 +1183,12 @@ export default function Home() {
               <PremiumView
                 userTier={userTier}
                 setUserTier={setUserTier}
-                walletConnected={effectiveConnected}
-                walletAddress={effectiveAddress}
+                walletConnected={!!farcasterAddress}
+                walletAddress={farcasterAddress}
                 usdcBalance={usdcBalance}
                 checkUSDCBalance={checkUSDCBalance}
                 setSubscription={setSubscription}
                 loadUserSubscription={loadUserSubscription}
-                sendTransaction={sendTransaction}
               />
             )}
 
@@ -1218,14 +1200,14 @@ export default function Home() {
   );
 }
 
-const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, usdcBalance, checkUSDCBalance, setSubscription, loadUserSubscription, sendTransaction }) => {
+const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, usdcBalance, checkUSDCBalance, setSubscription, loadUserSubscription }) => {
   const [selectedTier, setSelectedTier] = useState('premium');
   const [paymentStatus, setPaymentStatus] = useState('none');
 
   const handleUSDCPayment = async (tier) => {
     console.log('Initiating USDC payment for tier:', tier);
     if (!walletConnected || !walletAddress) {
-      alert('Please connect your wallet via a Farcaster client (e.g., Warpcast)!');
+      alert('Please connect your Farcaster wallet via Warpcast!');
       return;
     }
 
@@ -1241,59 +1223,40 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
 
     try {
       setPaymentStatus('pending');
-
+      const { sdk } = await import('@farcaster/miniapp-sdk');
       const usdcContract = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-      const data = encodeFunctionData({
-        abi: [
-          {
-            name: 'transfer',
-            type: 'function',
-            inputs: [
-              { name: '_to', type: 'address' },
-              { name: '_value', type: 'uint256' },
-            ],
-          },
-        ],
-        functionName: 'transfer',
-        args: ['0xYourTreasuryAddressHere', BigInt(amount * 1e6)], // Adjust for USDC decimals
-      });
+      const data = `0xa9059cbb${walletAddress.slice(2).padStart(64, '0')}${(BigInt(amount * 1e6)).toString(16).padStart(64, '0')}`; // USDC transfer data
 
-      sendTransaction({
+      const { transactionHash } = await sdk.actions.signTransaction({
         to: usdcContract,
         data,
-        chainId: base.id,
-      }, {
-        onSuccess: async (hash) => {
-          console.log('USDC payment transaction hash:', hash);
-          const resp = await fetch('/api/user-subscription', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              walletAddress,
-              action: 'create_subscription',
-              tier,
-              amount,
-              transaction_hash: hash,
-            }),
-          });
-          const data = await resp.json();
-          if (!resp.ok) {
-            throw new Error(`HTTP ${resp.status}: ${data.error || 'Unknown error'}`);
-          }
-          console.log('Subscription created:', data);
-          setUserTier(tier);
-          setSubscription(data.subscription);
-          setPaymentStatus('success');
-          alert(`🎉 ${tier.charAt(0).toUpperCase() + tier.slice(1)} subscription activated!`);
-          checkUSDCBalance(walletAddress);
-          loadUserSubscription(walletAddress);
-        },
-        onError: (error) => {
-          console.error('Transaction error:', error);
-          setPaymentStatus('error');
-          alert('Transaction failed: ' + error.message);
-        },
+        chainId: 8453, // Base chain ID
+        value: '0',
       });
+
+      console.log('USDC payment transaction hash:', transactionHash);
+      const resp = await fetch('/api/user-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress,
+          action: 'create_subscription',
+          tier,
+          amount,
+          transaction_hash: transactionHash,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${data.error || 'Unknown error'}`);
+      }
+      console.log('Subscription created:', data);
+      setUserTier(tier);
+      setSubscription(data.subscription);
+      setPaymentStatus('success');
+      alert(`🎉 ${tier.charAt(0).toUpperCase() + tier.slice(1)} subscription activated!`);
+      checkUSDCBalance(walletAddress);
+      loadUserSubscription(walletAddress);
     } catch (error) {
       console.error('Payment error:', error);
       setPaymentStatus('error');
@@ -1357,7 +1320,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }}
         disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + tier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
