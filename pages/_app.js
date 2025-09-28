@@ -23,7 +23,7 @@ const getIsFarcasterClient = () => {
 // Wagmi config with Farcaster connector
 const config = createConfig({
   chains: [base],
-  connectors: [new FarcasterConnector()], // Only Farcaster connector for Mini App
+  connectors: [new FarcasterConnector()],
   transports: {
     [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || 'https://mainnet.base.org'),
   },
