@@ -3,7 +3,7 @@ import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { base } from 'wagmi/chains';
 import { OnchainKitProvider, AutoConnect } from '@coinbase/onchainkit';
-import { FarcasterConnector } from '@farcaster/frame-wagmi-connector';
+import { FarcasterConnector } from '@farcaster/miniapp-wagmi-connector';
 import { Component } from 'react';
 
 // Simplified Farcaster detection
