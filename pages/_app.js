@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { injected } from 'wagmi/connectors';
 import { base } from 'wagmi/chains';
+import { OnchainKitProvider, AutoConnect } from '@coinbase/onchainkit';
+import { FarcasterConnector } from '@farcaster/frame-wagmi-connector';
 import { Component } from 'react';
 
-// Improved Farcaster detection
+// Simplified Farcaster detection
 const getIsFarcasterClient = () => {
   if (typeof window === 'undefined') return false;
   const url = new URL(window.location.href);
@@ -14,18 +14,18 @@ const getIsFarcasterClient = () => {
     url.hostname.includes('warpcast.com') ||
     url.hostname.includes('client.warpcast.com') ||
     url.searchParams.get('miniApp') === 'true' ||
-    url.pathname.includes('/miniapp')
+    url.pathname.includes('/miniapp') ||
+    window.farcaster ||
+    navigator.userAgent.includes('Farcaster')
   );
 };
 
-const isFarcasterClient = getIsFarcasterClient();
-
-// Wagmi config
+// Wagmi config with Farcaster connector
 const config = createConfig({
   chains: [base],
-  connectors: isFarcasterClient ? [] : [injected()],
+  connectors: [new FarcasterConnector()], // Only Farcaster connector for Mini App
   transports: {
-    [base.id]: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
+    [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || 'https://mainnet.base.org'),
   },
 });
 
@@ -72,94 +72,36 @@ class ErrorBoundary extends Component {
   }
 }
 
-const WagmiHooks = dynamic(
-  () =>
-    import('wagmi').then(({ useAccount, useConnect }) => {
-      return function WagmiHooksComponent({ children }) {
-        const { address, isConnected, status } = useAccount();
-        const { connect, connectors, error: connectError } = useConnect();
-
-        useEffect(() => {
-          console.log('Wallet connection status:', status);
-          if (isFarcasterClient) {
-            console.log('In Farcaster: Skipping wallet connect');
-            return; // No wallet logic or ready() in Farcaster
-          }
-          if (isConnected) {
-            console.log('Wallet connected:', address);
-          } else {
-            console.warn('Wallet not connected, status:', status);
-            if (connectors.length > 0 && status !== 'connecting' && typeof window !== 'undefined' && window.ethereum) {
-              try {
-                console.log('Attempting to connect with injected wallet connector...');
-                connect({ connector: connectors[0] });
-              } catch (err) {
-                console.error('Wagmi connect error:', err.message);
-              }
-            } else {
-              console.log('No web3 provider detected, skipping auto-connect');
-            }
-          }
-
-          if (connectError) {
-            console.error('Wagmi connection error:', connectError.message);
-          }
-        }, [address, isConnected, status, connect, connectors, connectError]);
-
-        return children;
-      };
-    }),
-  { ssr: false }
-);
-
 export default function MyApp({ Component, pageProps }) {
   const [isClient, setIsClient] = useState(false);
 
-  // Dedicated useEffect for Farcaster ready() call
+  // Handle Farcaster SDK and ready() call
   useEffect(() => {
+    setIsClient(true); // Mark client-side rendering
     if (getIsFarcasterClient()) {
-      console.log('MyApp: Farcaster detected - attempting to call sdk.actions.ready()');
-      // Dynamic import to ensure SDK is loaded
+      console.log('MyApp: Farcaster client detected - initializing SDK');
       import('@farcaster/miniapp-sdk')
         .then(({ sdk }) => {
-          const callReady = async (attempt = 1) => {
-            try {
-              await sdk.actions.ready();
-              console.log('MyApp: sdk.actions.ready() succeeded (attempt', attempt, ')');
-            } catch (err) {
-              console.error('MyApp: sdk.actions.ready() failed (attempt', attempt, '):', err);
-              if (attempt < 3) {
-                setTimeout(() => callReady(attempt + 1), 1000);
-              } else {
-                console.error('MyApp: Max retries reached for ready()');
-              }
-            }
-          };
-          callReady();
+          console.log('MyApp: Farcaster SDK loaded');
+          sdk.actions.ready()
+            .then(() => console.log('MyApp: sdk.actions.ready() succeeded'))
+            .catch((err) => console.error('MyApp: sdk.actions.ready() failed:', err.message));
         })
-        .catch(err => {
-          console.error('MyApp: Failed to import Farcaster SDK:', err);
-        });
+        .catch((err) => console.error('MyApp: Failed to import Farcaster SDK:', err.message));
+    } else {
+      console.log('MyApp: Non-Farcaster environment');
     }
-  }, []); // Empty dependency array: Run once on mount
-
-  // Separate useEffect for client mount
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  }, []); // Run once on mount
 
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <ErrorBoundary>
-          {isClient ? (
-            <WagmiHooks>
-              <Component {...pageProps} />
-            </WagmiHooks>
-          ) : (
-            <Component {...pageProps} />
-          )}
-        </ErrorBoundary>
+        <OnchainKitProvider>
+          <ErrorBoundary>
+            <AutoConnect /> {/* Auto-connects Farcaster wallet */}
+            {isClient && <Component {...pageProps} />}
+          </ErrorBoundary>
+        </OnchainKitProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
