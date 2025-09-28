@@ -7,8 +7,8 @@
   "extends": [
     "eslint:recommended",
     "plugin:react/recommended",
-    "plugin:@next/next/recommended",
-    "plugin:@eslint/compat"
+    "plugin:react-hooks/recommended",
+    "next/core-web-vitals"
   ],
   "parserOptions": {
     "ecmaVersion": 2021,
@@ -16,18 +16,17 @@
   },
   "plugins": [
     "react",
-    "@eslint/compat"
+    "react-hooks"
   ],
   "rules": {
     "no-undef": "error",
     "no-unused-vars": ["warn", { "varsIgnorePattern": "^_", "argsIgnorePattern": "^_" }],
-    "no-redeclare": "off", // Avoid redeclaration errors (e.g., 'data' issue)
-    "react/prop-types": "off", // Next.js doesn't need prop-types
-    "react/react-in-jsx-scope": "off", // Not needed with Next.js/React 18
+    "no-redeclare": "off",
+    "react/prop-types": "off",
+    "react/react-in-jsx-scope": "off",
     "react/no-unknown-property": ["error", { "ignore": ["jsx", "global"] }],
-    "@next/next/no-html-link-for-pages": "error", // Enforce Next.js routing
-    "no-console": ["warn", { "allow": ["warn", "error"] }], // Allow warn/error logs
-    "@eslint/compat/no-dynamic-require": "off" // Support dynamic imports (e.g., Farcaster SDK)
+    "@next/next/no-html-link-for-pages": "error",
+    "no-console": ["warn", { "allow": ["warn", "error"] }]
   },
   "settings": {
     "react": {
