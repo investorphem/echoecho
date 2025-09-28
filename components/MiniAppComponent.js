@@ -38,29 +38,47 @@ export default function MiniAppComponent({ walletConnected, walletAddress, onMin
             return Promise.resolve(); // Continue despite failure
           });
         })
-        .then(() => {
+        .then(async ({ sdk }) => {
           console.log('MiniAppComponent: Farcaster Mini App ready (initial call)');
-          // Use Quick Auth for automatic authentication
-          return sdk.quickAuth.fetch('/api/me');  // Replace with your backend /api/me endpoint for user info
-        })
-        .then(async (res) => {
-          if (res.ok) {
-            const user = await res.json();
-            console.log('MiniAppComponent: Farcaster User via Quick Auth:', user);
-            onFarcasterReady?.(user.fid); // Pass FID to parent
-          } else {
-            // Fallback to context if /api/me fails
-            console.warn('Quick Auth fetch failed, falling back to sdk.context.user');
+          // Use Quick Auth to get JWT token
+          try {
+            const token = await sdk.quickAuth.getToken();
+            console.log('MiniAppComponent: Quick Auth token retrieved:', token);
+            // Fetch user data from backend with token
+            const response = await fetch('/api/me', {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            });
+            if (response.ok) {
+              const user = await response.json();
+              console.log('MiniAppComponent: Farcaster User via Quick Auth:', user);
+              onFarcasterReady?.(user.fid); // Pass FID to parent
+            } else {
+              console.warn('MiniAppComponent: /api/me fetch failed, falling back to sdk.context.user');
+              const contextUser = sdk.context.user;
+              if (contextUser?.fid) {
+                console.log('MiniAppComponent: Farcaster User via context:', contextUser);
+                onFarcasterReady?.(contextUser.fid);
+              } else {
+                console.error('MiniAppComponent: No user FID available');
+                onFarcasterReady?.(null);
+              }
+            }
+            onMiniAppReady(); // Signal UI can render
+          } catch (error) {
+            console.error('MiniAppComponent: Quick Auth error:', error.message);
+            // Fallback to context if Quick Auth fails
             const contextUser = sdk.context.user;
             if (contextUser?.fid) {
               console.log('MiniAppComponent: Farcaster User via context:', contextUser);
               onFarcasterReady?.(contextUser.fid);
             } else {
-              console.error('No user FID available');
+              console.error('MiniAppComponent: No user FID available');
               onFarcasterReady?.(null);
             }
+            onMiniAppReady(); // Proceed to UI
           }
-          onMiniAppReady(); // Signal UI can render
         })
         .catch((error) => {
           console.error('MiniAppComponent: Farcaster SDK error:', error.message);
