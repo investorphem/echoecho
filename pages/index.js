@@ -1211,6 +1211,12 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
       return;
     }
 
+    const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS;
+    if (!treasuryAddress) {
+      alert('Treasury address not configured. Please contact support.');
+      return;
+    }
+
     const pricing = { premium: 7, pro: 25 };
     const amount = pricing[tier];
 
@@ -1225,11 +1231,11 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
       setPaymentStatus('pending');
       const { sdk } = await import('@farcaster/miniapp-sdk');
       const usdcContract = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-      const data = `0xa9059cbb${walletAddress.slice(2).padStart(64, '0')}${(BigInt(amount * 1e6)).toString(16).padStart(64, '0')}`; // USDC transfer data
+      const txData = `0xa9059cbb${treasuryAddress.slice(2).padStart(64, '0')}${(BigInt(amount * 1e6)).toString(16).padStart(64, '0')}`; // USDC transfer data
 
       const { transactionHash } = await sdk.actions.signTransaction({
         to: usdcContract,
-        data,
+        data: txData,
         chainId: 8453, // Base chain ID
         value: '0',
       });
@@ -1246,13 +1252,13 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
           transaction_hash: transactionHash,
         }),
       });
-      const data = await resp.json();
+      const responseData = await resp.json();
       if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}: ${data.error || 'Unknown error'}`);
+        throw new Error(`HTTP ${resp.status}: ${responseData.error || 'Unknown error'}`);
       }
-      console.log('Subscription created:', data);
+      console.log('Subscription created:', responseData);
       setUserTier(tier);
-      setSubscription(data.subscription);
+      setSubscription(responseData.subscription);
       setPaymentStatus('success');
       alert(`🎉 ${tier.charAt(0).toUpperCase() + tier.slice(1)} subscription activated!`);
       checkUSDCBalance(walletAddress);
@@ -1320,7 +1326,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }}
         disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + tier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
