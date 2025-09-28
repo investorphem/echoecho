@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { base } from 'wagmi/chains';
-import { OnchainKitProvider, AutoConnect } from '@coinbase/onchainkit';
-import { FarcasterConnector } from '@farcaster/miniapp-wagmi-connector';
+import { OnchainKitProvider } from '@coinbase/onchainkit';
+import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
+import { AutoConnect } from '@coinbase/onchainkit/minikit';
 import { Component } from 'react';
 
-// Simplified Farcaster detection
+// Simplified Farcaster detection (Note: This is an optional feature for non-Mini App environments)
 const getIsFarcasterClient = () => {
   if (typeof window === 'undefined') return false;
   const url = new URL(window.location.href);
@@ -15,7 +16,7 @@ const getIsFarcasterClient = () => {
     url.hostname.includes('client.warpcast.com') ||
     url.searchParams.get('miniApp') === 'true' ||
     url.pathname.includes('/miniapp') ||
-    window.farcaster ||
+    !!window.farcaster ||
     navigator.userAgent.includes('Farcaster')
   );
 };
@@ -23,7 +24,7 @@ const getIsFarcasterClient = () => {
 // Wagmi config with Farcaster connector
 const config = createConfig({
   chains: [base],
-  connectors: [new FarcasterConnector()],
+  connectors: [farcasterMiniApp()],
   transports: {
     [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || 'https://mainnet.base.org'),
   },
@@ -98,8 +99,12 @@ export default function MyApp({ Component, pageProps }) {
       <QueryClientProvider client={queryClient}>
         <OnchainKitProvider>
           <ErrorBoundary>
-            <AutoConnect /> {/* Auto-connects Farcaster wallet */}
-            {isClient && <Component {...pageProps} />}
+            {isClient && (
+              <>
+                <AutoConnect /> {/* Auto-connects Farcaster wallet */}
+                <Component {...pageProps} />
+              </>
+            )}
           </ErrorBoundary>
         </OnchainKitProvider>
       </QueryClientProvider>
