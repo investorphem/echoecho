@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@coinbase/onchainkit/minikit": [
+        "./node_modules/@coinbase/onchainkit/minikit/index.js"
+      ]
+    }
+  }
+}
