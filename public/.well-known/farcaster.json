@@ -24,6 +24,7 @@
       "perspective"
     ],
     "tagline": "Break your filter bubble",
+"noindex": "false",
     "ogTitle": "Echo:Break the Echo Chamber",
     "ogDescription": "Find counter-narratives for trending Farcaster topics and global trends from X, news, and more",
     "ogImageUrl": "https://echoechos.vercel.app/share.png",
