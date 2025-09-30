@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { base } from 'wagmi/chains';
-import { OnchainKitProvider } from '@coinbase/onchainkit';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
 import { AutoConnect } from '@coinbase/onchainkit/minikit';
 import { Component } from 'react';
+import { MiniKitContextProvider } from '../providers/MiniKitProvider'; // Import the new provider
 
 // Simplified Farcaster detection (Note: This is an optional feature for non-Mini App environments)
 const getIsFarcasterClient = () => {
@@ -97,7 +97,7 @@ export default function MyApp({ Component, pageProps }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <OnchainKitProvider>
+        <MiniKitContextProvider>
           <ErrorBoundary>
             {isClient && (
               <>
@@ -106,7 +106,7 @@ export default function MyApp({ Component, pageProps }) {
               </>
             )}
           </ErrorBoundary>
-        </OnchainKitProvider>
+        </MiniKitContextProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
