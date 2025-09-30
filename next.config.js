@@ -7,11 +7,11 @@ const nextConfig = {
   output: 'standalone',
 
   images: {
-    domains: ['assets.echoechos.xyz'],
+    domains: ['echoechos.vercel.app'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'assets.echoechos.xyz',
+        hostname: 'echoechos.vercel.app',
         pathname: '/**',
       },
     ],
@@ -24,14 +24,13 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_URL:
       process.env.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app',
-    // REMOVED BASE_RPC_URL - USE SERVER-SIDE ONLY
     ALLOWED_ORIGINS:
       process.env.ALLOWED_ORIGINS ||
       'https://warpcast.com,https://farcaster.xyz',
   },
 
-  // ❌ Removed headers() override for farcaster.json
   // Static files in /public are served directly with correct headers
+  // No need for headers() override for farcaster.json
 
   webpack: (config) => {
     config.resolve.alias = {
