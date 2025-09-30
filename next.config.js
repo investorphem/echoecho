@@ -1,3 +1,5 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -32,7 +34,14 @@ const nextConfig = {
   // Static files in /public are served directly with correct headers
 
   webpack: (config) => {
-    config.resolve.alias['@react-native-async-storage/async-storage'] = false;
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@react-native-async-storage/async-storage': false,
+      '@coinbase/onchainkit/minikit': path.resolve(
+        __dirname,
+        'node_modules/@coinbase/onchainkit/minikit'
+      ),
+    };
     return config;
   },
 };
