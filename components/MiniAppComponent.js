@@ -1,17 +1,18 @@
+// components/MiniAppComponent.js
 import { useEffect, useState } from "react";
 
-// Dynamically import the Farcaster SDK safely
+// ✅ Safely load the Farcaster SDK
 const loadFarcasterSDK = async () => {
   try {
     const mod = await import("@farcaster/miniapp-sdk");
 
-    // Log module shape for debugging
     console.log("MiniAppComponent: SDK module loaded:", mod);
 
-    // Support different export shapes
-    if (mod.sdk) return mod.sdk;              // case: { sdk }
-    if (mod.default?.sdk) return mod.default.sdk; // case: { default: { sdk } }
-    if (typeof mod.default === "object") return mod.default; // fallback: default export is sdk
+    // Normalize export shapes
+    if (mod.sdk) return mod.sdk; // { sdk }
+    if (mod.default?.sdk) return mod.default.sdk; // { default: { sdk } }
+    if (typeof mod.default === "object" && mod.default.actions) return mod.default; // fallback valid sdk object
+
     throw new Error("Unsupported SDK export shape");
   } catch (err) {
     console.error("MiniAppComponent: Failed to load SDK:", err);
@@ -36,6 +37,7 @@ export default function MiniAppComponent({
       return;
     }
 
+    // 🔎 Detect if we’re in a Farcaster environment
     const urlParams = new URLSearchParams(window.location.search);
     const detected =
       window.location.hostname.includes("warpcast.com") ||
@@ -64,12 +66,13 @@ export default function MiniAppComponent({
         if (!sdk) throw new Error("SDK not available");
         console.log("MiniAppComponent: Farcaster SDK resolved:", sdk);
 
-        // Call sdk.actions.ready()
+        // Initialize SDK
         await sdk.actions
           ?.ready()
           .catch((err) => console.warn("MiniAppComponent: sdk.actions.ready failed:", err.message));
 
         try {
+          // 🔑 Quick Auth
           const token = await sdk.quickAuth?.getToken?.();
           console.log("MiniAppComponent: Quick Auth token:", token);
 
@@ -83,11 +86,11 @@ export default function MiniAppComponent({
               console.log("MiniAppComponent: Farcaster user via Quick Auth:", user);
               onFarcasterReady?.(user.fid);
             } else {
-              console.warn("MiniAppComponent: /api/me failed, falling back to sdk.context.user");
+              console.warn("MiniAppComponent: /api/me failed, fallback to sdk.context.user");
               onFarcasterReady?.(sdk.context?.user?.fid ?? null);
             }
           } else {
-            console.warn("MiniAppComponent: No token returned, fallback to sdk.context.user");
+            console.warn("MiniAppComponent: No token, fallback to sdk.context.user");
             onFarcasterReady?.(sdk.context?.user?.fid ?? null);
           }
         } catch (error) {
@@ -117,7 +120,7 @@ export default function MiniAppComponent({
     );
   }
 
-  // 🚩 Loading state while SDK initializes
+  // 🚩 Loading state
   if (loading && isFarcasterClient) {
     return (
       <div style={{ textAlign: "center", padding: "40px", backgroundColor: "#111827", color: "#f9fafb" }}>
@@ -137,7 +140,6 @@ export default function MiniAppComponent({
         <h2>Initializing Farcaster SDK...</h2>
         <p>Please wait while we connect your wallet.</p>
 
-        {/* Inline spinner animation */}
         <style>{`
           @keyframes spin {
             from { transform: rotate(0deg); }
@@ -148,5 +150,6 @@ export default function MiniAppComponent({
     );
   }
 
-  return null; // 🚩 Once ready, no UI — parent handles rendering
+  // ✅ Once ready, render nothing — parent handles rendering
+  return null;
 }
