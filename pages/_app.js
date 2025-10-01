@@ -1,13 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { base } from 'wagmi/chains';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
 
-// Wagmi config with Farcaster connector only
+// Wagmi config with Farcaster connector
 const config = createConfig({
   chains: [base],
-  connectors: [farcasterMiniApp()], // Only Farcaster connector
+  connectors: [farcasterMiniApp()], // Farcaster SDK
   transports: {
     [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || 'https://mainnet.base.org'),
   },
@@ -15,48 +15,79 @@ const config = createConfig({
 
 const queryClient = new QueryClient();
 
-// Error Boundary Component
-const ErrorBoundary = ({ children }) => {
-  const [hasError, setHasError] = useState(false);
-  const [error, setError] = useState(null);
+// Detect Farcaster client environment
+const isFarcasterClient = () => {
+  const isBaseApp = navigator.userAgent.includes('BaseApp');
+  const isWarpcast = window.location.hostname === 'warpcast.com';
+  const isFarcasterXYZ = window.location.hostname === 'farcaster.xyz';
+  return isBaseApp || isWarpcast || isFarcasterXYZ;
+};
+
+export default function MyApp({ Component, pageProps }) {
+  const [sdkReady, setSdkReady] = useState(false);
+  const [walletConnected, setWalletConnected] = useState(false);
 
   useEffect(() => {
-    // Optional: Add global error handling logic
+    const sdk = farcasterMiniApp();
+
+    // Detect Farcaster client
+    const isClient = isFarcasterClient();
+    if (!isClient) {
+      console.warn('This app works best in Farcaster clients (Base app, warpcast.com, farcaster.xyz).');
+      return;
+    }
+
+    // SDK ready event
+    const handleSdkReady = () => {
+      console.log('Farcaster SDK is ready!');
+      setSdkReady(true);
+    };
+
+    // Wallet connection event
+    const handleWalletConnect = () => {
+      console.log('Wallet connected!');
+      setWalletConnected(true);
+    };
+
+    // SDK error handling
+    const handleSdkError = (error) => {
+      console.error('Farcaster SDK error:', error);
+    };
+
+    // Initialize SDK listeners
+    sdk.on('ready', handleSdkReady);
+    sdk.on('connect', handleWalletConnect);
+    sdk.on('error', handleSdkError);
+
+    // Clean up listeners
+    return () => {
+      sdk.off('ready', handleSdkReady);
+      sdk.off('connect', handleWalletConnect);
+      sdk.off('error', handleSdkError);
+    };
   }, []);
 
-  if (hasError) {
+  // Fallback UI for non-Farcaster clients
+  if (!isFarcasterClient()) {
     return (
-      <div style={{ padding: 20, textAlign: 'center', color: '#f9fafb', background: '#111827', minHeight: '100vh' }}>
-        <h2>Something went wrong.</h2>
-        <p>{error?.message || 'Unknown error'}</p>
-        <button
-          onClick={() => window.location.reload()}
-          style={{
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: 8,
-            cursor: 'pointer',
-          }}
-        >
-          Reload
-        </button>
+      <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', color: '#f9fafb' }}>
+        <h2>Open in Farcaster</h2>
+        <p>This app works best in the Base app, warpcast.com, or farcaster.xyz.</p>
       </div>
     );
   }
 
-  return children;
-};
-
-export default function MyApp({ Component, pageProps }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <ErrorBoundary>
-          {/* No MiniKit or AutoConnect needed for Farcaster-only apps */}
+        {sdkReady && walletConnected ? (
           <Component {...pageProps} />
-        </ErrorBoundary>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', color: '#f9fafb' }}>
+            <h2>Initializing Farcaster SDK...</h2>
+            <p>Please connect your wallet in the Farcaster client.</p>
+          </div>
+        )}
       </QueryClientProvider>
     </WagmiProvider>
   );
