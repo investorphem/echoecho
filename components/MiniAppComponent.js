@@ -1,82 +1,80 @@
-"use client";
 import { useEffect } from "react";
 import { sdk } from "@farcaster/miniapp-sdk";
 
-export default function MiniAppComponent({ 
-  walletConnected, 
-  walletAddress, 
-  onMiniAppReady, 
-  onFarcasterReady 
+export default function MiniAppComponent({
+  walletConnected,
+  walletAddress,
+  onMiniAppReady,
+  onFarcasterReady,
 }) {
   useEffect(() => {
-    let cancelled = false;
+    console.log("MiniAppComponent: Initializing...");
 
-    async function initMiniApp() {
-      console.log("MiniAppComponent: Starting initialization...");
-
+    const init = async () => {
       try {
-        // Signal SDK ready
-        await sdk.actions.ready().catch((err) => {
-          console.warn("MiniAppComponent: sdk.actions.ready failed, continuing:", err.message);
-        });
+        const isMiniApp = await sdk.isInMiniApp();
+        console.log("MiniAppComponent: isInMiniApp =", isMiniApp);
 
-        console.log("MiniAppComponent: SDK is ready");
+        if (!isMiniApp) {
+          console.log("MiniAppComponent: Not running in Farcaster");
+          onMiniAppReady?.();
+          onFarcasterReady?.(null);
+          return;
+        }
 
-        // Try QuickAuth first
+        // Signal ready
+        try {
+          await sdk.actions.ready();
+          console.log("MiniAppComponent: SDK ready");
+        } catch (err) {
+          console.warn("MiniAppComponent: sdk.actions.ready failed:", err);
+        }
+
+        // QuickAuth → backend → FID
         try {
           const token = await sdk.quickAuth.getToken();
           console.log("MiniAppComponent: QuickAuth token:", token);
 
-          // Fetch user data from backend
-          const res = await fetch("/api/me", {
+          const response = await fetch("/api/me", {
             headers: { Authorization: `Bearer ${token}` },
           });
 
-          if (!cancelled) {
-            if (res.ok) {
-              const user = await res.json();
-              console.log("MiniAppComponent: User from backend:", user);
-              onFarcasterReady?.(user.fid);
-            } else {
-              console.warn("MiniAppComponent: Backend fetch failed, fallback to sdk.context.user");
-              const contextUser = sdk.context?.user;
-              if (contextUser?.fid) {
-                onFarcasterReady?.(contextUser.fid);
-              } else {
-                onFarcasterReady?.(null);
-              }
-            }
-          }
-        } catch (authErr) {
-          console.error("MiniAppComponent: QuickAuth failed:", authErr.message);
-          const contextUser = sdk.context?.user;
-          if (!cancelled) {
+          if (response.ok) {
+            const user = await response.json();
+            console.log("MiniAppComponent: User via API:", user);
+            onFarcasterReady?.(user.fid);
+          } else {
+            const contextUser = sdk.context.user;
             if (contextUser?.fid) {
+              console.log("MiniAppComponent: User via context:", contextUser);
               onFarcasterReady?.(contextUser.fid);
             } else {
+              console.error("MiniAppComponent: No FID available");
               onFarcasterReady?.(null);
             }
           }
+        } catch (error) {
+          console.error("MiniAppComponent: QuickAuth error:", error);
+          const contextUser = sdk.context.user;
+          if (contextUser?.fid) {
+            console.log("MiniAppComponent: User via context:", contextUser);
+            onFarcasterReady?.(contextUser.fid);
+          } else {
+            onFarcasterReady?.(null);
+          }
         }
 
-        if (!cancelled) {
-          onMiniAppReady?.(); // signal parent that UI can render
-        }
+        // Signal UI ready
+        onMiniAppReady?.();
       } catch (err) {
         console.error("MiniAppComponent: Fatal error:", err);
-        if (!cancelled) {
-          onMiniAppReady?.();
-          onFarcasterReady?.(null);
-        }
+        onMiniAppReady?.();
+        onFarcasterReady?.(null);
       }
-    }
-
-    initMiniApp();
-
-    return () => {
-      cancelled = true;
     };
+
+    init();
   }, [walletConnected, walletAddress, onMiniAppReady, onFarcasterReady]);
 
-  return null; // no UI directly
+  return null;
 }
