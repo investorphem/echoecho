@@ -5,21 +5,7 @@ import { base } from 'wagmi/chains';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
 import { AutoConnect } from '@coinbase/onchainkit/minikit';
 import { Component } from 'react';
-import { MiniKitContextProvider } from '../providers/MiniKitProvider'; // Import the new provider
-
-// Simplified Farcaster detection (Note: This is an optional feature for non-Mini App environments)
-const getIsFarcasterClient = () => {
-  if (typeof window === 'undefined') return false;
-  const url = new URL(window.location.href);
-  return (
-    url.hostname.includes('warpcast.com') ||
-    url.hostname.includes('client.warpcast.com') ||
-    url.searchParams.get('miniApp') === 'true' ||
-    url.pathname.includes('/miniapp') ||
-    !!window.farcaster ||
-    navigator.userAgent.includes('Farcaster')
-  );
-};
+import { MiniKitContextProvider } from '../providers/MiniKitProvider';
 
 // Wagmi config with Farcaster connector
 const config = createConfig({
@@ -76,23 +62,10 @@ class ErrorBoundary extends Component {
 export default function MyApp({ Component, pageProps }) {
   const [isClient, setIsClient] = useState(false);
 
-  // Handle Farcaster SDK and ready() call
+  // This ensures components render only after the client is mounted
   useEffect(() => {
-    setIsClient(true); // Mark client-side rendering
-    if (getIsFarcasterClient()) {
-      console.log('MyApp: Farcaster client detected - initializing SDK');
-      import('@farcaster/miniapp-sdk')
-        .then(({ sdk }) => {
-          console.log('MyApp: Farcaster SDK loaded');
-          sdk.actions.ready()
-            .then(() => console.log('MyApp: sdk.actions.ready() succeeded'))
-            .catch((err) => console.error('MyApp: sdk.actions.ready() failed:', err.message));
-        })
-        .catch((err) => console.error('MyApp: Failed to import Farcaster SDK:', err.message));
-    } else {
-      console.log('MyApp: Non-Farcaster environment');
-    }
-  }, []); // Run once on mount
+    setIsClient(true);
+  }, []);
 
   return (
     <WagmiProvider config={config}>
