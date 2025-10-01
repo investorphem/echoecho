@@ -15,60 +15,56 @@ const config = createConfig({
 
 const queryClient = new QueryClient();
 
-// Detect Farcaster client environment
-const isFarcasterClient = () => {
-  const isBaseApp = navigator.userAgent.includes('BaseApp');
-  const isWarpcast = window.location.hostname === 'warpcast.com';
-  const isFarcasterXYZ = window.location.hostname === 'farcaster.xyz';
-  return isBaseApp || isWarpcast || isFarcasterXYZ;
-};
-
 export default function MyApp({ Component, pageProps }) {
   const [sdkReady, setSdkReady] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
+  const [isClientEnv, setIsClientEnv] = useState(false);
 
+  // Detect Farcaster client safely (runs only on client)
   useEffect(() => {
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
+      const isBaseApp = navigator.userAgent.includes('BaseApp');
+      const hostname = window.location.hostname;
+      const isWarpcast = hostname === 'warpcast.com';
+      const isFarcasterXYZ = hostname === 'farcaster.xyz';
+
+      setIsClientEnv(isBaseApp || isWarpcast || isFarcasterXYZ);
+    }
+  }, []);
+
+  // Initialize Farcaster SDK
+  useEffect(() => {
+    if (!isClientEnv) return;
+
     const sdk = farcasterMiniApp();
 
-    // Detect Farcaster client
-    const isClient = isFarcasterClient();
-    if (!isClient) {
-      console.warn('This app works best in Farcaster clients (Base app, warpcast.com, farcaster.xyz).');
-      return;
-    }
-
-    // SDK ready event
     const handleSdkReady = () => {
       console.log('Farcaster SDK is ready!');
       setSdkReady(true);
     };
 
-    // Wallet connection event
     const handleWalletConnect = () => {
       console.log('Wallet connected!');
       setWalletConnected(true);
     };
 
-    // SDK error handling
     const handleSdkError = (error) => {
       console.error('Farcaster SDK error:', error);
     };
 
-    // Initialize SDK listeners
     sdk.on('ready', handleSdkReady);
     sdk.on('connect', handleWalletConnect);
     sdk.on('error', handleSdkError);
 
-    // Clean up listeners
     return () => {
       sdk.off('ready', handleSdkReady);
       sdk.off('connect', handleWalletConnect);
       sdk.off('error', handleSdkError);
     };
-  }, []);
+  }, [isClientEnv]);
 
   // Fallback UI for non-Farcaster clients
-  if (!isFarcasterClient()) {
+  if (!isClientEnv) {
     return (
       <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', color: '#f9fafb' }}>
         <h2>Open in Farcaster</h2>
