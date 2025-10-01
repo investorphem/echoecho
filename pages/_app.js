@@ -1,4 +1,3 @@
-"use client";
 import { useEffect, useState } from "react";
 import { WagmiProvider, createConfig, http } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -6,7 +5,9 @@ import { base } from "wagmi/chains";
 import { farcasterMiniApp } from "@farcaster/miniapp-wagmi-connector";
 import { sdk } from "@farcaster/miniapp-sdk";
 
-// ✅ Wagmi config with Farcaster connector
+import MiniAppComponent from "../components/MiniAppComponent";
+
+// Wagmi config with Farcaster connector
 const config = createConfig({
   chains: [base],
   connectors: [farcasterMiniApp()],
@@ -23,80 +24,63 @@ export default function MyApp({ Component, pageProps }) {
   const [isMiniApp, setIsMiniApp] = useState(false);
   const [sdkReady, setSdkReady] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const [fid, setFid] = useState(null); // Farcaster User FID
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function detectEnvironment() {
+    const checkMiniApp = async () => {
       try {
-        const result = await sdk.isInMiniApp({ timeoutMs: 200 });
-        if (!cancelled) {
-          setIsMiniApp(result);
-          setChecked(true);
-
-          if (result) {
-            console.log("✅ Running inside Farcaster MiniApp");
-
-            const connector = farcasterMiniApp();
-
-            // Listen for SDK events
-            connector.on("ready", () => {
-              console.log("Farcaster SDK ready!");
-              setSdkReady(true);
-            });
-
-            connector.on("connect", () => {
-              console.log("Wallet connected!");
-              setWalletConnected(true);
-            });
-
-            connector.on("error", (err) => {
-              console.error("SDK error:", err);
-            });
-          } else {
-            console.warn("🌍 Not running in Farcaster MiniApp");
-          }
-        }
+        const miniApp = await sdk.isInMiniApp();
+        setIsMiniApp(miniApp);
       } catch (err) {
         console.error("MiniApp detection failed:", err);
-        setChecked(true);
+        setIsMiniApp(false);
       }
-    }
-
-    detectEnvironment();
-    return () => {
-      cancelled = true;
     };
+    checkMiniApp();
   }, []);
 
-  // While detecting environment
-  if (!checked) {
-    return (
-      <div style={{ textAlign: "center", padding: "40px" }}>
-        <h2>Detecting environment...</h2>
-      </div>
-    );
-  }
-
-  // If not in MiniApp
+  // Fallback UI if not inside MiniApp
   if (!isMiniApp) {
     return (
-      <div style={{ textAlign: "center", padding: "40px", backgroundColor: "#111827", color: "#f9fafb" }}>
+      <div
+        style={{
+          textAlign: "center",
+          padding: "40px",
+          backgroundColor: "#111827",
+          color: "#f9fafb",
+        }}
+      >
         <h2>Open in Farcaster</h2>
-        <p>This app works best inside Base app, warpcast.com, or farcaster.xyz.</p>
+        <p>This app works best in the Base app, warpcast.com, or farcaster.xyz.</p>
       </div>
     );
   }
 
-  // Inside MiniApp → render app
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
+        {/* ✅ MiniApp logic runs here */}
+        <MiniAppComponent
+          walletConnected={walletConnected}
+          walletAddress={null} // replace with wagmi hook later if needed
+          onMiniAppReady={() => setSdkReady(true)}
+          onFarcasterReady={(fid) => {
+            console.log("Farcaster user FID:", fid);
+            setFid(fid);
+          }}
+        />
+
         {sdkReady && walletConnected ? (
-          <Component {...pageProps} />
+          <Component {...pageProps} fid={fid} />
         ) : (
-          <div style={{ textAlign: "center", padding: "40px", backgroundColor: "#111827", color: "#f9fafb" }}>
+          <div
+            style={{
+              textAlign: "center",
+              padding: "40px",
+              backgroundColor: "#111827",
+              color: "#f9fafb",
+            }}
+          >
             <h2>Initializing Farcaster SDK...</h2>
             <p>Please connect your wallet in the Farcaster client.</p>
           </div>
