@@ -1,140 +1,82 @@
-// components/MiniAppComponent.js
-import { useEffect, useState } from "react";
+"use client";
+import { useEffect } from "react";
+import { sdk } from "@farcaster/miniapp-sdk";
 
-// Only load SDK when needed
-const loadFarcasterSDK = async () => {
-  try {
-    const mod = await import("@farcaster/miniapp-sdk");
-
-    console.log("MiniAppComponent: SDK module loaded:", mod);
-
-    // Normalize possible export shapes
-    if (mod.sdk) return mod.sdk;
-    if (mod.default?.sdk) return mod.default.sdk;
-    if (typeof mod.default === "object" && mod.default.actions) return mod.default;
-
-    throw new Error("Unsupported SDK export shape");
-  } catch (err) {
-    console.error("MiniAppComponent: Failed to load SDK:", err);
-    return null;
-  }
-};
-
-export default function MiniAppComponent({
-  walletConnected,
-  walletAddress,
-  onMiniAppReady,
-  onFarcasterReady,
+export default function MiniAppComponent({ 
+  walletConnected, 
+  walletAddress, 
+  onMiniAppReady, 
+  onFarcasterReady 
 }) {
-  const [isFarcasterClient, setIsFarcasterClient] = useState(null);
-  const [loading, setLoading] = useState(true);
-
   useEffect(() => {
-    console.log("MiniAppComponent: Initializing...");
+    let cancelled = false;
 
-    if (typeof window === "undefined" || typeof navigator === "undefined") {
-      console.log("MiniAppComponent: Running on server — skipping detection.");
-      return;
-    }
+    async function initMiniApp() {
+      console.log("MiniAppComponent: Starting initialization...");
 
-    // Detect Farcaster environment
-    const urlParams = new URLSearchParams(window.location.search);
-    const detected =
-      window.location.hostname.includes("warpcast.com") ||
-      window.location.hostname.includes("client.warpcast.com") ||
-      !!window.farcaster ||
-      navigator.userAgent.includes("Farcaster") ||
-      urlParams.get("farcaster") === "true";
+      try {
+        // Signal SDK ready
+        await sdk.actions.ready().catch((err) => {
+          console.warn("MiniAppComponent: sdk.actions.ready failed, continuing:", err.message);
+        });
 
-    setIsFarcasterClient(detected);
+        console.log("MiniAppComponent: SDK is ready");
 
-    if (!detected) {
-      console.log("MiniAppComponent: Browser detected, skipping SDK load");
-      setLoading(false);
-      onMiniAppReady?.();
-      onFarcasterReady?.(null);
-      return;
-    }
-
-    console.log("MiniAppComponent: Farcaster client detected → loading SDK");
-
-    loadFarcasterSDK()
-      .then(async (sdk) => {
-        if (!sdk) throw new Error("SDK not available");
-
-        await sdk.actions?.ready?.();
-
+        // Try QuickAuth first
         try {
-          const token = await sdk.quickAuth?.getToken?.();
-          if (token) {
-            const response = await fetch("/api/me", {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (response.ok) {
-              const user = await response.json();
+          const token = await sdk.quickAuth.getToken();
+          console.log("MiniAppComponent: QuickAuth token:", token);
+
+          // Fetch user data from backend
+          const res = await fetch("/api/me", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          if (!cancelled) {
+            if (res.ok) {
+              const user = await res.json();
+              console.log("MiniAppComponent: User from backend:", user);
               onFarcasterReady?.(user.fid);
             } else {
-              onFarcasterReady?.(sdk.context?.user?.fid ?? null);
+              console.warn("MiniAppComponent: Backend fetch failed, fallback to sdk.context.user");
+              const contextUser = sdk.context?.user;
+              if (contextUser?.fid) {
+                onFarcasterReady?.(contextUser.fid);
+              } else {
+                onFarcasterReady?.(null);
+              }
             }
-          } else {
-            onFarcasterReady?.(sdk.context?.user?.fid ?? null);
           }
-        } catch (err) {
-          console.error("MiniAppComponent: Auth error:", err.message);
-          onFarcasterReady?.(sdk.context?.user?.fid ?? null);
+        } catch (authErr) {
+          console.error("MiniAppComponent: QuickAuth failed:", authErr.message);
+          const contextUser = sdk.context?.user;
+          if (!cancelled) {
+            if (contextUser?.fid) {
+              onFarcasterReady?.(contextUser.fid);
+            } else {
+              onFarcasterReady?.(null);
+            }
+          }
         }
 
-        setLoading(false);
-        onMiniAppReady?.();
-      })
-      .catch((err) => {
-        console.error("MiniAppComponent: SDK init failed:", err.message);
-        setLoading(false);
-        onMiniAppReady?.();
-        onFarcasterReady?.(null);
-      });
+        if (!cancelled) {
+          onMiniAppReady?.(); // signal parent that UI can render
+        }
+      } catch (err) {
+        console.error("MiniAppComponent: Fatal error:", err);
+        if (!cancelled) {
+          onMiniAppReady?.();
+          onFarcasterReady?.(null);
+        }
+      }
+    }
+
+    initMiniApp();
+
+    return () => {
+      cancelled = true;
+    };
   }, [walletConnected, walletAddress, onMiniAppReady, onFarcasterReady]);
 
-  // 🚩 Browser fallback
-  if (isFarcasterClient === false) {
-    return (
-      <div style={{ textAlign: "center", padding: "40px", backgroundColor: "#111827", color: "#f9fafb" }}>
-        <h2>Open in Farcaster</h2>
-        <p>This mini app is designed for Farcaster (Warpcast, Base App, or farcaster.xyz).</p>
-        <p>You’re currently viewing it in a regular browser.</p>
-      </div>
-    );
-  }
-
-  // 🚩 Loading spinner
-  if (loading && isFarcasterClient) {
-    return (
-      <div style={{ textAlign: "center", padding: "40px", backgroundColor: "#111827", color: "#f9fafb" }}>
-        <div style={{ marginBottom: "20px" }}>
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              border: "4px solid #f9fafb",
-              borderTop: "4px solid transparent",
-              borderRadius: "50%",
-              margin: "0 auto",
-              animation: "spin 1s linear infinite",
-            }}
-          />
-        </div>
-        <h2>Initializing Farcaster SDK...</h2>
-        <p>Please wait while we connect your wallet.</p>
-
-        <style>{`
-          @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
-  }
-
-  return null;
+  return null; // no UI directly
 }
