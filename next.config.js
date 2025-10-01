@@ -1,5 +1,3 @@
-const path = require('path');
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -33,14 +31,7 @@ const nextConfig = {
   // No need for headers() override for farcaster.json
 
   webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@react-native-async-storage/async-storage': false,
-      '@coinbase/onchainkit/minikit': path.resolve(
-        __dirname,
-        'node_modules/@coinbase/onchainkit'
-      ),
-    };
+    config.resolve.alias['@react-native-async-storage/async-storage'] = false;
     return config;
   },
 };
