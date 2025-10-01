@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // Dynamically import the Farcaster SDK to avoid SSR issues
 const loadFarcasterSDK = () => import('@farcaster/miniapp-sdk');
@@ -9,6 +9,9 @@ export default function MiniAppComponent({
   onMiniAppReady,
   onFarcasterReady,
 }) {
+  const [isFarcasterClient, setIsFarcasterClient] = useState(null); // null = not detected yet
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     console.log('MiniAppComponent: Initializing...');
 
@@ -17,9 +20,8 @@ export default function MiniAppComponent({
       return;
     }
 
-    // ✅ Safe Farcaster environment detection
     const urlParams = new URLSearchParams(window.location.search);
-    const isFarcasterClient =
+    const detected =
       window.location.hostname.includes('warpcast.com') ||
       window.location.hostname.includes('client.warpcast.com') ||
       window.location.hostname.includes('localhost') ||
@@ -29,17 +31,11 @@ export default function MiniAppComponent({
       navigator.userAgent.includes('Farcaster') ||
       urlParams.get('farcaster') === 'true';
 
-    console.log('MiniAppComponent: Farcaster Detection Details:', {
-      isFarcasterClient,
-      hostname: window.location.hostname,
-      pathname: window.location.pathname,
-      searchParams: Object.fromEntries(urlParams),
-      hasFarcasterWindow: !!window.farcaster,
-      userAgent: navigator.userAgent,
-    });
+    setIsFarcasterClient(detected);
 
-    if (!isFarcasterClient) {
+    if (!detected) {
       console.log('MiniAppComponent: Non-Farcaster environment detected');
+      setLoading(false);
       onMiniAppReady?.();
       onFarcasterReady?.(null);
       return;
@@ -55,7 +51,7 @@ export default function MiniAppComponent({
           .catch((error) => {
             console.warn('MiniAppComponent: sdk.actions.ready failed, proceeding anyway:', error.message);
           })
-          .then(() => sdk); // ✅ forward sdk to next then
+          .then(() => sdk); // ✅ forward sdk
       })
       .then(async (sdk) => {
         if (!sdk) throw new Error('SDK not available');
@@ -82,14 +78,58 @@ export default function MiniAppComponent({
           onFarcasterReady?.(sdk.context.user?.fid ?? null);
         }
 
+        setLoading(false);
         onMiniAppReady?.();
       })
       .catch((error) => {
         console.error('MiniAppComponent: Farcaster SDK error:', error.message);
+        setLoading(false);
         onMiniAppReady?.();
         onFarcasterReady?.(null);
       });
   }, [walletConnected, walletAddress, onMiniAppReady, onFarcasterReady]);
 
-  return null; // No UI rendering
+  // 🚩 Non-Farcaster fallback
+  if (isFarcasterClient === false) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', color: '#f9fafb' }}>
+        <h2>Open in Farcaster</h2>
+        <p>This mini app is designed to run inside Farcaster (Warpcast, Base App, or farcaster.xyz).</p>
+        <p>You’re currently viewing it in a regular browser.</p>
+      </div>
+    );
+  }
+
+  // 🚩 Loading state while SDK initializes
+  if (loading && isFarcasterClient) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', color: '#f9fafb' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              border: '4px solid #f9fafb',
+              borderTop: '4px solid transparent',
+              borderRadius: '50%',
+              margin: '0 auto',
+              animation: 'spin 1s linear infinite',
+            }}
+          />
+        </div>
+        <h2>Initializing Farcaster SDK...</h2>
+        <p>Please wait while we connect your wallet.</p>
+
+        {/* Inline spinner animation */}
+        <style>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  return null; // 🚩 Once ready, no UI — parent handles rendering
 }
