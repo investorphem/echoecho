@@ -38,7 +38,7 @@ const nextConfig = {
       '@react-native-async-storage/async-storage': false,
       '@coinbase/onchainkit/minikit': path.resolve(
         __dirname,
-        'node_modules/@coinbase/onchainkit/minikit'
+        'node_modules/@coinbase/onchainkit'
       ),
     };
     return config;
