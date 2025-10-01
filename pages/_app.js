@@ -3,18 +3,11 @@ import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { base } from 'wagmi/chains';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
-import dynamic from 'next/dynamic';
 
-// Direct import of MiniKit from the package
-import { MiniKit } from '@coinbase/onchainkit';
-
-// AutoConnect is still valid
-import { AutoConnect } from '@coinbase/onchainkit';
-
-// Wagmi config with Farcaster connector
+// Wagmi config with Farcaster connector only
 const config = createConfig({
   chains: [base],
-  connectors: [farcasterMiniApp()],
+  connectors: [farcasterMiniApp()], // Only Farcaster connector
   transports: {
     [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || 'https://mainnet.base.org'),
   },
@@ -28,7 +21,7 @@ const ErrorBoundary = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Handle global errors if needed
+    // Optional: Add global error handling logic
   }, []);
 
   if (hasError) {
@@ -61,17 +54,8 @@ export default function MyApp({ Component, pageProps }) {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>
-          <MiniKit
-            appName="My App"
-            chains={[{ chainId: base.id, name: 'Base' }]}
-            connectors={[
-              { name: 'MetaMask', type: 'injected' },
-              { name: 'Coinbase Wallet', type: 'injected' },
-            ]}
-          >
-            <AutoConnect />
-            <Component {...pageProps} />
-          </MiniKit>
+          {/* No MiniKit or AutoConnect needed for Farcaster-only apps */}
+          <Component {...pageProps} />
         </ErrorBoundary>
       </QueryClientProvider>
     </WagmiProvider>
