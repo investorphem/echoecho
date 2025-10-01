@@ -12,7 +12,9 @@
     "subtitle": "Break the echo chamber",
     "description": "Discover counter-narratives to trending topics on Farcaster and beyond",
     "primaryCategory": "social",
-    "screenshotUrls": "https://echoechos.vercel.app/screenshot1.png",
+    "screenshotUrls": [
+      "https://echoechos.vercel.app/screenshot1.png"
+    ],
     "heroImageUrl": "https://echoechos.vercel.app/hero.png",
     "tags": [
       "social",
@@ -21,8 +23,8 @@
       "perspective"
     ],
     "tagline": "Break your filter bubble",
-"noindex": "false",
-    "ogTitle": "Echo:Break the Echo Chamber",
+    "noindex": false,
+    "ogTitle": "Echo: Break the Echo Chamber",
     "ogDescription": "Find counter-narratives for trending Farcaster topics and global trends from X, news, and more",
     "ogImageUrl": "https://echoechos.vercel.app/share.png",
     "castShareUrl": "https://echoechos.vercel.app/"
