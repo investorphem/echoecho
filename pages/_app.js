@@ -18,9 +18,10 @@ const queryClient = new QueryClient();
 export default function MyApp({ Component, pageProps }) {
   const [sdkReady, setSdkReady] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
-  const [isClientEnv, setIsClientEnv] = useState(false);
+  const [isClientEnv, setIsClientEnv] = useState(null); // null = not detected yet
+  const [loading, setLoading] = useState(true);
 
-  // Detect Farcaster client safely (runs only on client)
+  // Detect Farcaster client safely
   useEffect(() => {
     if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
       const isBaseApp = navigator.userAgent.includes('BaseApp');
@@ -28,7 +29,10 @@ export default function MyApp({ Component, pageProps }) {
       const isWarpcast = hostname === 'warpcast.com';
       const isFarcasterXYZ = hostname === 'farcaster.xyz';
 
-      setIsClientEnv(isBaseApp || isWarpcast || isFarcasterXYZ);
+      const detected = isBaseApp || isWarpcast || isFarcasterXYZ;
+      setIsClientEnv(detected);
+
+      if (!detected) setLoading(false);
     }
   }, []);
 
@@ -41,6 +45,7 @@ export default function MyApp({ Component, pageProps }) {
     const handleSdkReady = () => {
       console.log('Farcaster SDK is ready!');
       setSdkReady(true);
+      setLoading(false);
     };
 
     const handleWalletConnect = () => {
@@ -50,6 +55,7 @@ export default function MyApp({ Component, pageProps }) {
 
     const handleSdkError = (error) => {
       console.error('Farcaster SDK error:', error);
+      setLoading(false);
     };
 
     sdk.on('ready', handleSdkReady);
@@ -63,16 +69,49 @@ export default function MyApp({ Component, pageProps }) {
     };
   }, [isClientEnv]);
 
-  // Fallback UI for non-Farcaster clients
-  if (!isClientEnv) {
+  // 🚩 Fallback for non-Farcaster environments
+  if (isClientEnv === false) {
     return (
       <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', color: '#f9fafb' }}>
         <h2>Open in Farcaster</h2>
         <p>This app works best in the Base app, warpcast.com, or farcaster.xyz.</p>
+        <p>You’re currently viewing it in a regular browser.</p>
       </div>
     );
   }
 
+  // 🚩 Loading screen while initializing
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', color: '#f9fafb' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <div
+            style={{
+              width: '40px',
+              height: '40px',
+              border: '4px solid #f9fafb',
+              borderTop: '4px solid transparent',
+              borderRadius: '50%',
+              margin: '0 auto',
+              animation: 'spin 1s linear infinite',
+            }}
+          />
+        </div>
+        <h2>Initializing Farcaster SDK...</h2>
+        <p>Please wait while we connect your wallet.</p>
+
+        {/* Inline spinner animation */}
+        <style>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // 🚩 App rendering once SDK + wallet ready
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
@@ -80,7 +119,7 @@ export default function MyApp({ Component, pageProps }) {
           <Component {...pageProps} />
         ) : (
           <div style={{ textAlign: 'center', padding: '40px', backgroundColor: '#111827', color: '#f9fafb' }}>
-            <h2>Initializing Farcaster SDK...</h2>
+            <h2>Waiting for wallet connection...</h2>
             <p>Please connect your wallet in the Farcaster client.</p>
           </div>
         )}
