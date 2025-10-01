@@ -11,6 +11,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@coinbase/onchainkit": "^0.29.0",
     "@farcaster/miniapp-wagmi-connector": "^1.0.0",
     "@farcaster/miniapp-sdk": "^0.1.10",
     "@neondatabase/serverless": "^1.0.0",
