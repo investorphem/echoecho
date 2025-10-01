@@ -3,7 +3,7 @@ import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { base } from 'wagmi/chains';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
-import { AutoConnect } from '@coinbase/onchainkit/minikit';
+import { AutoConnect } from '@coinbase/onchainkit';
 import { Component } from 'react';
 import { MiniKitContextProvider } from '../providers/MiniKitProvider';
 
