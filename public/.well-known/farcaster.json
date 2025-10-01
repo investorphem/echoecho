@@ -12,10 +12,7 @@
     "subtitle": "Break the echo chamber",
     "description": "Discover counter-narratives to trending topics on Farcaster and beyond",
     "primaryCategory": "social",
-    "screenshotUrls": [
-      "https://echoechos.vercel.app/screenshot1.png",
-      "https://echoechos.vercel.app/screenshot2.png"
-    ],
+    "screenshotUrls": "https://echoechos.vercel.app/screenshot1.png",
     "heroImageUrl": "https://echoechos.vercel.app/hero.png",
     "tags": [
       "social",
