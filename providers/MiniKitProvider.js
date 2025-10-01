@@ -1,11 +1,11 @@
 'use client';
-import { MiniKitProvider } from '@coinbase/onchainkit';
+import { MiniKit } from '@coinbase/onchainkit'; // <-- Import corrected
 import { base } from 'wagmi/chains';
 
 export function MiniKitContextProvider({ children }) {
   return (
-    <MiniKitProvider chain={base}>
+    <MiniKit chain={base}>
       {children}
-    </MiniKitProvider>
+    </MiniKit>
   );
 }
