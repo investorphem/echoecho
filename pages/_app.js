@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Component } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { base } from 'wagmi/chains';
 import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
-import { AutoConnect } from '@coinbase/onchainkit';
-import { Component } from 'react';
-import { MiniKitContextProvider } from '../providers/MiniKitProvider';
+import dynamic from 'next/dynamic';
+
+// Dynamically import client-only components
+const MiniKitContextProvider = dynamic(() => import('../providers/MiniKitProvider'), { ssr: false });
+const AutoConnect = dynamic(() => import('@coinbase/onchainkit').then(mod => mod.AutoConnect), { ssr: false });
 
 // Wagmi config with Farcaster connector
 const config = createConfig({
@@ -18,7 +20,6 @@ const config = createConfig({
 
 const queryClient = new QueryClient();
 
-// ErrorBoundary component to catch rendering errors
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -60,24 +61,14 @@ class ErrorBoundary extends Component {
 }
 
 export default function MyApp({ Component, pageProps }) {
-  const [isClient, setIsClient] = useState(false);
-
-  // This ensures components render only after the client is mounted
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
+  // No longer need isClient state as dynamic imports handle SSR
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <MiniKitContextProvider>
           <ErrorBoundary>
-            {isClient && (
-              <>
-                <AutoConnect /> {/* Auto-connects Farcaster wallet */}
-                <Component {...pageProps} />
-              </>
-            )}
+            <AutoConnect />
+            <Component {...pageProps} />
           </ErrorBoundary>
         </MiniKitContextProvider>
       </QueryClientProvider>
