@@ -1,45 +1,25 @@
 import { useEffect, useState } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
+import { useSignMessage } from 'wagmi';
 
 export default function MiniAppComponent({
   walletConnected,
   walletAddress,
   onMiniAppReady,
   onFarcasterReady,
-  onWalletAddress,
 }) {
   const [error, setError] = useState(null);
+  const { signMessageAsync } = useSignMessage();
 
   useEffect(() => {
     const init = async () => {
       try {
         const isMiniApp = await sdk.isInMiniApp();
-        if (!isMiniApp || !window.ethereum) {
-          setError('Not running in Farcaster or no wallet provider available');
+        if (!isMiniApp) {
+          setError('Not running in a Farcaster client');
           onMiniAppReady?.();
           onFarcasterReady?.(null);
-          onWalletAddress?.(null);
           return;
-        }
-
-        // Get wallet address
-        let address = null;
-        try {
-          const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-          if (accounts.length > 0) {
-            address = accounts[0];
-            onWalletAddress?.(address);
-          } else {
-            const requestedAccounts = await window.ethereum.request({
-              method: 'eth_requestAccounts',
-            });
-            if (requestedAccounts.length > 0) {
-              address = requestedAccounts[0];
-              onWalletAddress?.(address);
-            }
-          }
-        } catch (err) {
-          setError('Wallet connection error: ' + err.message);
         }
 
         // Signal ready
@@ -49,7 +29,14 @@ export default function MiniAppComponent({
           setError('Failed to signal SDK ready: ' + err.message);
         }
 
-        // Authenticate user and get signature
+        if (!walletConnected || !walletAddress) {
+          setError('Wallet not connected');
+          onMiniAppReady?.();
+          onFarcasterReady?.(null);
+          return;
+        }
+
+        // Get FID and sign message
         try {
           const contextUser = sdk.context.user;
           const fid = contextUser?.fid;
@@ -59,23 +46,25 @@ export default function MiniAppComponent({
             return;
           }
 
-          // Generate a message for the user to sign
+          // Generate message to sign
           const message = `Login to EchoEcho at ${new Date().toISOString()}`;
-          const signature = await window.ethereum.request({
-            method: 'personal_sign',
-            params: [message, address],
-          });
+          const signature = await signMessageAsync({ message });
 
-          // Send FID, message, and signature to /api/me
+          // Send to /api/me
           const response = await fetch('/api/me', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fid, message, signature, address }),
+            body: JSON.stringify({ fid, message, signature, address: walletAddress }),
           });
 
           if (response.ok) {
             const user = await response.json();
-            onFarcasterReady?.({ fid: user.fid, username: user.username, address: user.address });
+            onFarcasterReady?.({
+              fid: user.fid,
+              username: user.username,
+              address: user.address,
+              token: user.token,
+            });
           } else {
             setError('Authentication failed');
             onFarcasterReady?.(null);
@@ -90,12 +79,11 @@ export default function MiniAppComponent({
         setError('Initialization error: ' + err.message);
         onMiniAppReady?.();
         onFarcasterReady?.(null);
-        onWalletAddress?.(null);
       }
     };
 
     init();
-  }, [walletConnected, walletAddress, onMiniAppReady, onFarcasterReady, onWalletAddress]);
+  }, [walletConnected, walletAddress, onMiniAppReady, onFarcasterReady, signMessageAsync]);
 
   return error ? <div>Error: {error}</div> : null;
 }
