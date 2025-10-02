@@ -7,36 +7,41 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { fid, message, signature, address } = req.body;
+    const { fid, message, signature, address, username } = req.body;
     if (!fid || !message || !signature || !address) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Verify signature
+    // Verify signature using ethers v5
     const recoveredAddress = ethers.utils.verifyMessage(message, signature);
     if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
       return res.status(401).json({ error: 'Invalid signature' });
     }
 
-    // Verify FID (optional: query Farcaster API or contract)
-    let username = 'unknown';
-    // Example: const userResponse = await fetch(`https://api.farcaster.xyz/v2/user/${fid}`);
-    // if (userResponse.ok) username = (await userResponse.json()).username;
+    // Mock user data (avoiding database)
+    const user = {
+      fid: parseInt(fid),
+      walletAddress: address,
+      username: username || 'unknown',
+      tier: 'free', // Default tier; adjust based on logic
+    };
 
-    // Issue session JWT
+    // Generate JWT
     const sessionToken = jwt.sign(
-      { fid, address, username },
-      process.env.JWT_SECRET,
+      { fid, address, username: user.username, tier: user.tier },
+      process.env.JWT_SECRET || 'your-secure-secret',
       { expiresIn: '1h' }
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       fid,
-      username,
+      username: user.username,
       address,
       token: sessionToken,
+      tier: user.tier,
+      subscription: null, // Mocked; no database
     });
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error: ' + error.message });
+    return res.status(500).json({ error: `Internal server error: ${error.message}` });
   }
 }
