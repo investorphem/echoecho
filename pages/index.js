@@ -1,3 +1,4 @@
+'use client';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
@@ -5,8 +6,8 @@ import Head from 'next/head';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
-export default function Home() {
-  const [farcasterAddress, setFarcasterAddress] = useState(null);
+export default function Home({ fid, walletAddress: propWalletAddress }) {
+  const [farcasterAddress, setFarcasterAddress] = useState(propWalletAddress);
   const [isFarcasterClient, setIsFarcasterClient] = useState(false);
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,33 +24,30 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [apiWarning, setApiWarning] = useState(null);
 
-  // Callback from MiniAppComponent when it detects Farcaster and gets user FID
-  const handleFarcasterReady = useCallback((fid) => {
+  // Callback from MiniAppComponent when it authenticates user
+  const handleFarcasterReady = useCallback((data) => {
     setIsFarcasterClient(true);
-    if (fid) {
-      const mockAddress = `0x${fid.toString(16).padStart(40, '0')}`;
-      setFarcasterAddress(mockAddress);
-      console.log('Farcaster wallet (mock) set:', mockAddress);
+    if (data?.fid && data?.address) {
+      setFarcasterAddress(data.address);
+      setUserTier(data.tier || 'free');
+      setSubscription(data.subscription || null);
     } else {
-      console.warn('Farcaster SDK failed to fetch user FID');
       setErrorMessage('Failed to connect Farcaster wallet. Please try again in Warpcast.');
       setLoading(false);
     }
   }, []);
 
-  // Callback from MiniAppComponent when it's safe to render the UI
+  // Callback when MiniAppComponent is ready
   const handleMiniAppReady = useCallback(() => {
-    console.log('Mini App is ready to render UI.');
-    setLoading(false); // Unblock UI rendering
+    setLoading(false);
   }, []);
 
   const checkUSDCBalance = useCallback(async (address) => {
     if (!address) {
-      console.warn('No address provided for USDC balance check');
       setUsdcBalance(0);
+      setErrorMessage('No wallet address provided for USDC balance check');
       return;
     }
-    console.log('Checking USDC balance for address:', address);
     try {
       const response = await fetch('/api/check-usdc-balance', {
         method: 'POST',
@@ -60,10 +58,8 @@ export default function Home() {
         throw new Error(`HTTP ${response.status}: ${await response.text()}`);
       }
       const data = await response.json();
-      console.log('USDC balance:', data.balance);
       setUsdcBalance(parseFloat(data.balance || 0));
     } catch (error) {
-      console.error('USDC balance check failed:', error);
       setUsdcBalance(0);
       setErrorMessage('Failed to check USDC balance. Please try again.');
     }
@@ -71,12 +67,11 @@ export default function Home() {
 
   const loadUserSubscription = useCallback(async (address) => {
     if (!address) {
-      console.warn('No address for subscription load');
       setUserTier('free');
       setSubscription(null);
+      setErrorMessage('No wallet address for subscription load');
       return;
     }
-    console.log('Loading user subscription for address:', address);
     try {
       const resp = await fetch('/api/user-subscription', {
         method: 'POST',
@@ -84,20 +79,17 @@ export default function Home() {
         body: JSON.stringify({ walletAddress: address, action: 'get_subscription' }),
       });
       if (!resp.ok) {
-        console.error('Subscription fetch failed:', resp.status, await resp.text());
         setUserTier('free');
         setSubscription(null);
         setErrorMessage('Failed to load subscription. Defaulting to free tier.');
         return;
       }
       const data = await resp.json();
-      console.log('Subscription data:', data);
       if (data.user) {
         setUserTier(data.user.tier);
         setSubscription(data.subscription);
       }
     } catch (error) {
-      console.error('Failed to load user subscription:', error);
       setUserTier('free');
       setSubscription(null);
       setErrorMessage('Failed to load subscription. Defaulting to free tier.');
@@ -105,19 +97,16 @@ export default function Home() {
   }, []);
 
   const loadTrends = useCallback(async (retryCount = 0) => {
-    console.log('Loading trends... Attempt:', retryCount + 1);
     setLoading(true);
     setErrorMessage(null);
     setApiWarning(null);
     if (!isFarcasterClient) {
-      console.warn('Not in Farcaster client, cannot load trends');
       setTrends([]);
       setErrorMessage('Please use Warpcast to access trends.');
       setLoading(false);
       return;
     }
     if (!farcasterAddress) {
-      console.warn('No Farcaster wallet connected, using mock trends');
       const mockData = {
         casts: [
           { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
@@ -134,16 +123,12 @@ export default function Home() {
     }
     try {
       const resp = await fetch(`/api/trending?userAddress=${farcasterAddress}`);
-      console.log('Trends API response status:', resp.status);
       const data = await resp.json();
       if (resp.status === 429) {
-        console.warn('Neynar API rate limit (429) reached');
         if (retryCount < 2) {
-          console.log('Retrying trends fetch in 2 seconds...');
           setTimeout(() => loadTrends(retryCount + 1), 2000);
           return;
         }
-        console.warn('Max retries reached, using mock data');
         const mockData = {
           casts: [
             { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
@@ -159,7 +144,6 @@ export default function Home() {
         return;
       }
       if (resp.status === 402 || data.warning) {
-        console.warn('Neynar API 402 or limited: Using mock data');
         const mockData = {
           casts: [
             { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
@@ -177,16 +161,13 @@ export default function Home() {
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${data.error || 'Unknown error'}`);
       }
-      console.log('Trends data:', data);
       const trendsData = data.casts || [];
       setTrends(trendsData);
-      setLoading(false);
 
       const enrichedTrends = await Promise.all(
         trendsData.slice(0, 10).map(async (trend) => {
           const text = trend.text || trend.body || '';
           if (text.length === 0) {
-            console.warn('Skipping AI analysis for empty text in trend:', trend);
             return { ...trend, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
           }
           try {
@@ -198,25 +179,21 @@ export default function Home() {
             const aiData = await aiResp.json();
             if (!aiResp.ok) {
               if (aiResp.status === 429) {
-                console.warn('OpenAI rate limit (429) exceeded for trend:', text);
                 setApiWarning('AI analysis limited due to OpenAI quota. Upgrade at https://platform.openai.com/account/billing.');
                 return { ...trend, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
               }
               throw new Error(`HTTP ${aiResp.status}: ${aiData.error || 'Unknown error'}`);
             }
-            console.log('AI analysis for trend:', text, aiData);
             return { ...trend, ai_analysis: aiData };
           } catch (error) {
-            console.error('AI analysis failed for trend:', text, error);
             return { ...trend, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
           }
         })
       );
 
-      console.log('Enriched trends:', enrichedTrends);
       setTrends(enrichedTrends);
+      setLoading(false);
     } catch (error) {
-      console.error('Error loading trends:', error);
       setTrends([]);
       setErrorMessage('Failed to load trends. Please try again.');
       setLoading(false);
@@ -224,7 +201,6 @@ export default function Home() {
   }, [farcasterAddress, isFarcasterClient]);
 
   const loadTopicDetails = useCallback(async (topic) => {
-    console.log('Loading topic details for:', topic.text || topic.body);
     setSelectedTopic(topic);
     setActiveView('topic');
     setErrorMessage(null);
@@ -237,7 +213,6 @@ export default function Home() {
     }
 
     if (!farcasterAddress) {
-      console.warn('No Farcaster wallet connected, skipping counter-narratives');
       setCounterNarratives([]);
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
@@ -267,7 +242,6 @@ export default function Home() {
       if (!twitterResp.ok || !newsResp.ok) {
         throw new Error(`Cross-platform fetch failed: Twitter ${twitterResp.status}, News ${newsResp.status}`);
       }
-      console.log('Twitter data:', twitterData, 'News data:', newsData);
 
       const allPosts = [...(twitterData.posts || []), ...(newsData.posts || [])];
 
@@ -280,7 +254,6 @@ export default function Home() {
       const counterData = await counterResp.json();
       if (!counterResp.ok) {
         if (counterResp.status === 429) {
-          console.warn('OpenAI rate limit exceeded for counter-narratives');
           setApiWarning('Counter-narratives unavailable due to OpenAI quota. Upgrade at https://platform.openai.com/account/billing.');
           setCounterNarratives([]);
           return;
@@ -289,25 +262,20 @@ export default function Home() {
       }
 
       const counterPosts = counterData.counter_posts?.map((index) => allPosts[index]) || [];
-      console.log('Counter-narratives:', counterPosts);
       setCounterNarratives(counterPosts);
     } catch (error) {
-      console.error('Error loading counter-narratives:', error);
       setCounterNarratives([]);
       setErrorMessage('Failed to load counter-narratives. Please try again.');
     }
   }, [globalMode, farcasterAddress, isFarcasterClient]);
 
   const loadUserEchoes = useCallback(async () => {
-    console.log('Loading user echoes for address:', farcasterAddress);
     if (!isFarcasterClient) {
-      console.warn('Not in Farcaster client, skipping user echoes');
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Echo history requires Warpcast.');
       return;
     }
     if (!farcasterAddress) {
-      console.warn('No Farcaster wallet connected');
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
@@ -315,23 +283,19 @@ export default function Home() {
     try {
       const response = await fetch(`/api/user-echoes?userAddress=${farcasterAddress}`);
       if (!response.ok) {
-        console.error('User echoes fetch failed:', response.status, await response.text());
         setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
         setErrorMessage('Failed to load user echoes. Please try again.');
         return;
       }
       const data = await response.json();
-      console.log('User echoes data:', data);
       setUserEchoes(data);
     } catch (error) {
-      console.error('Error loading user echoes:', error);
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Failed to load user echoes. Please try again.');
     }
   }, [farcasterAddress, isFarcasterClient]);
 
   const mintInsightToken = useCallback(async (narrative) => {
-    console.log('Minting Insight Token for narrative:', narrative);
     if (!isFarcasterClient) {
       setErrorMessage('Please use Warpcast to mint Insight Tokens.');
       return;
@@ -356,8 +320,6 @@ export default function Home() {
       }
 
       const result = await response.json();
-      console.log('Mint NFT result:', result);
-
       if (result.success) {
         setErrorMessage(null);
         alert(
@@ -372,13 +334,11 @@ export default function Home() {
         throw new Error(result.error || 'Unknown error');
       }
     } catch (error) {
-      console.error('Minting error:', error);
       setErrorMessage('Error minting token: ' + error.message);
     }
   }, [farcasterAddress, isFarcasterClient, loadUserEchoes]);
 
   const handleEcho = useCallback(async (cast, isCounterNarrative = false) => {
-    console.log('Echoing cast:', cast, 'Is counter-narrative:', isCounterNarrative);
     if (!isFarcasterClient) {
       setErrorMessage('Echoing requires Warpcast.');
       return;
@@ -397,8 +357,6 @@ export default function Home() {
         throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
       }
       const result = await resp.json();
-      console.log('Echo result:', result);
-
       if (result.ok) {
         const badge = isCounterNarrative ? ' 🌟 Diverse Echo' : '';
         setErrorMessage(null);
@@ -408,7 +366,6 @@ export default function Home() {
         throw new Error(result.error || 'Unknown error');
       }
     } catch (error) {
-      console.error('Error echoing:', error);
       setErrorMessage('Error echoing: ' + error.message);
     }
   }, [farcasterAddress, isFarcasterClient, loadUserEchoes]);
@@ -420,7 +377,6 @@ export default function Home() {
       loadTrends();
       loadUserEchoes();
     } else {
-      console.warn('No Farcaster client or wallet, waiting for connection');
       setLoading(false);
     }
   }, [farcasterAddress, isFarcasterClient, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
@@ -1205,7 +1161,6 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
   const [paymentStatus, setPaymentStatus] = useState('none');
 
   const handleUSDCPayment = async (tier) => {
-    console.log('Initiating USDC payment for tier:', tier);
     if (!walletConnected || !walletAddress) {
       alert('Please connect your Farcaster wallet via Warpcast!');
       return;
@@ -1240,7 +1195,6 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         value: '0',
       });
 
-      console.log('USDC payment transaction hash:', transactionHash);
       const resp = await fetch('/api/user-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1256,7 +1210,6 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${responseData.error || 'Unknown error'}`);
       }
-      console.log('Subscription created:', responseData);
       setUserTier(tier);
       setSubscription(responseData.subscription);
       setPaymentStatus('success');
@@ -1264,7 +1217,6 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
       checkUSDCBalance(walletAddress);
       loadUserSubscription(walletAddress);
     } catch (error) {
-      console.error('Payment error:', error);
       setPaymentStatus('error');
       alert('Error processing payment: ' + error.message);
     }
@@ -1326,7 +1278,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }}
         disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + tier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
