@@ -12,17 +12,13 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Verify the signature
+    // Verify signature
     const recoveredAddress = ethers.utils.verifyMessage(message, signature);
     if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
       return res.status(401).json({ error: 'Invalid signature' });
     }
 
-    // Verify FID (optional: query Farcaster API to confirm FID matches address)
-    // Example: Use Farcaster Hub API or a contract to verify FID ownership
-    // For simplicity, assume FID is valid if signature matches address
-
-    // Fetch username (optional: via Farcaster API or Warpcast)
+    // Verify FID (optional: query Farcaster API or contract)
     let username = 'unknown';
     // Example: const userResponse = await fetch(`https://api.farcaster.xyz/v2/user/${fid}`);
     // if (userResponse.ok) username = (await userResponse.json()).username;
@@ -30,7 +26,7 @@ export default async function handler(req, res) {
     // Issue session JWT
     const sessionToken = jwt.sign(
       { fid, address, username },
-      process.env.JWT_SECRET, // Your app’s secret for session JWT
+      process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
