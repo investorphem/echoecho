@@ -6,7 +6,7 @@ import Head from 'next/head';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
-export default function Home({ fid, walletAddress: propWalletAddress }) {
+export default function Home({ _fid, walletAddress: propWalletAddress }) {
   const [farcasterAddress, setFarcasterAddress] = useState(propWalletAddress);
   const [isFarcasterClient, setIsFarcasterClient] = useState(false);
   const [trends, setTrends] = useState([]);
@@ -1278,7 +1278,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }}
         disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + tier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
