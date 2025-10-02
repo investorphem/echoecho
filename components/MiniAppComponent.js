@@ -13,7 +13,7 @@ export default function MiniAppComponent({
 
   useEffect(() => {
     const init = async () => {
-      try {
+      try 
         const isMiniApp = await sdk.isInMiniApp();
         if (!isMiniApp) {
           setError('Not running in a Farcaster client');
