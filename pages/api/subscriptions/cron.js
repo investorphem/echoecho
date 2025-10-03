@@ -6,13 +6,17 @@ import {
   getAllActiveSubscriptions,
   reconcileUserStatus,
   getUser,
-} from '../../../lib/storage.js';
+} from '../../../lib/storage';
 
 const CRON_SECRET = process.env.CRON_SECRET;
 const NEXT_PUBLIC_URL = process.env.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app';
 
 if (!CRON_SECRET) {
   throw new Error('CRON_SECRET environment variable must be set for security');
+}
+
+if (!process.env.NEYNAR_API_KEY) {
+  throw new Error('NEYNAR_API_KEY environment variable must be set for notifications');
 }
 
 if (!NEXT_PUBLIC_URL) {
@@ -38,39 +42,38 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  try {
-    const results = {
-      reminders_3d: 0,
-      reminders_1d: 0,
-      downgrades: 0,
-      reconciliations: 0,
-      errors: [],
-    };
+  const results = {
+    reminders_3d: 0,
+    reminders_1d: 0,
+    downgrades: 0,
+    reconciliations: 0,
+    errors: [],
+  };
 
+  try {
     // Process 3-day reminders
     try {
       const expiring3d = await getExpiringSubscriptions(3);
       for (const subscription of expiring3d) {
         if (!subscription.last_reminder_3d_at) {
           const user = await getUser(subscription.wallet_address);
-          if (user?.notification_token && user?.notification_url) {
+          if (user?.wallet_address) {
             try {
-              await client.casts.create({
-                text: `EchoEcho Subscription Reminder\nYour ${subscription.tier} subscription expires in 3 days! Renew now at ${NEXT_PUBLIC_URL}/premium`,
-                channelId: 'your-channel-id', // Replace with your Farcaster channel ID
+              // Send Warpcast DM (assumes wallet_address is linked to Farcaster user)
+              await client.sendDirectMessage({
+                recipientAddress: user.wallet_address,
+                text: `EchoEcho Subscription Reminder: Your ${subscription.tier} subscription expires in 3 days! Renew now at ${NEXT_PUBLIC_URL}/premium`,
                 embeds: [{ url: `${NEXT_PUBLIC_URL}/premium` }],
               });
               await markReminderSent(subscription.id, '3d');
               results.reminders_3d++;
             } catch (notificationError) {
-              console.error(`Failed to send 3d notification for ${subscription.wallet_address}:`, notificationError);
-              results.errors.push(`3d notification error for ${subscription.wallet_address}: ${notificationError.message}`);
+              results.errors.push(`3d notification error for wallet ${subscription.wallet_address}: ${notificationError.message}`);
             }
           }
         }
       }
     } catch (error) {
-      console.error('3-day reminders error:', error);
       results.errors.push(`3-day reminders error: ${error.message}`);
     }
 
@@ -80,24 +83,22 @@ export default async function handler(req, res) {
       for (const subscription of expiring1d) {
         if (!subscription.last_reminder_1d_at) {
           const user = await getUser(subscription.wallet_address);
-          if (user?.notification_token && user?.notification_url) {
+          if (user?.wallet_address) {
             try {
-              await client.casts.create({
-                text: `EchoEcho Subscription Reminder\nYour ${subscription.tier} subscription expires tomorrow! Renew now at ${NEXT_PUBLIC_URL}/premium`,
-                channelId: 'your-channel-id', // Replace with your Farcaster channel ID
+              await client.sendDirectMessage({
+                recipientAddress: user.wallet_address,
+                text: `EchoEcho Subscription Reminder: Your ${subscription.tier} subscription expires tomorrow! Renew now at ${NEXT_PUBLIC_URL}/premium`,
                 embeds: [{ url: `${NEXT_PUBLIC_URL}/premium` }],
               });
               await markReminderSent(subscription.id, '1d');
               results.reminders_1d++;
             } catch (notificationError) {
-              console.error(`Failed to send 1d notification for ${subscription.wallet_address}:`, notificationError);
-              results.errors.push(`1d notification error for ${subscription.wallet_address}: ${notificationError.message}`);
+              results.errors.push(`1d notification error for wallet ${subscription.wallet_address}: ${notificationError.message}`);
             }
           }
         }
       }
     } catch (error) {
-      console.error('1-day reminders error:', error);
       results.errors.push(`1-day reminders error: ${error.message}`);
     }
 
@@ -110,16 +111,15 @@ export default async function handler(req, res) {
         const expiryDate = new Date(subscription.expires_at);
         if (now > expiryDate && subscription.status === 'active') {
           const user = await getUser(subscription.wallet_address);
-          if (user?.notification_token && user?.notification_url) {
+          if (user?.wallet_address) {
             try {
-              await client.casts.create({
-                text: `EchoEcho Subscription Expired\nYour ${subscription.tier} subscription has expired and been downgraded to free. Upgrade again at ${NEXT_PUBLIC_URL}/premium`,
-                channelId: 'your-channel-id', // Replace with your Farcaster channel ID
+              await client.sendDirectMessage({
+                recipientAddress: user.wallet_address,
+                text: `EchoEcho Subscription Expired: Your ${subscription.tier} subscription has expired and been downgraded to free. Upgrade again at ${NEXT_PUBLIC_URL}/premium`,
                 embeds: [{ url: `${NEXT_PUBLIC_URL}/premium` }],
               });
             } catch (notificationError) {
-              console.error(`Failed to send downgrade notification for ${subscription.wallet_address}:`, notificationError);
-              results.errors.push(`Downgrade notification error for ${subscription.wallet_address}: ${notificationError.message}`);
+              results.errors.push(`Downgrade notification error for wallet ${subscription.wallet_address}: ${notificationError.message}`);
             }
           }
           await expireSubscription(subscription.id);
@@ -129,11 +129,8 @@ export default async function handler(req, res) {
         }
       }
     } catch (error) {
-      console.error('Downgrade processing error:', error);
       results.errors.push(`Downgrade processing error: ${error.message}`);
     }
-
-    console.log('Cron job completed:', results);
 
     return res.status(200).json({
       success: true,
@@ -141,10 +138,10 @@ export default async function handler(req, res) {
       results,
     });
   } catch (error) {
-    console.error('Cron job failed:', error);
     return res.status(500).json({
       error: 'Cron job failed',
       message: error.message || 'Unknown error',
+      results,
     });
   }
 }
