@@ -1,12 +1,6 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { sdk } from '@farcaster/miniapp-sdk';
-import { useSignMessage } from 'wagmi';
-
 export default function MiniAppComponent({
-  walletConnected,
-  walletAddress,
+  walletConnected, // ← Remove if unused
+  walletAddress,   // ← Remove if unused
   onMiniAppReady,
   onFarcasterReady,
 }) {
