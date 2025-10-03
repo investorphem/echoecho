@@ -7,6 +7,14 @@ import { getUserSubscription, saveSubscription, recordPayment, updateUserTier } 
 const USDC_CONTRACT = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const SUBSCRIPTION_WALLET = process.env.SUBSCRIPTION_WALLET || '0x4f9B9C40345258684cfe23F02FDb2B88F1d2eA62';
 
+// Validate contract and wallet addresses
+if (!USDC_CONTRACT || !USDC_CONTRACT.match(/^0x[a-fA-F0-9]{40}$/)) {
+  throw new Error('Invalid USDC_CONTRACT address');
+}
+if (!SUBSCRIPTION_WALLET || !SUBSCRIPTION_WALLET.match(/^0x[a-fA-F0-9]{40}$/)) {
+  throw new Error('Invalid SUBSCRIPTION_WALLET address');
+}
+
 // Minimal ABI for USDC balanceOf and transfer events
 const USDC_ABI = [
   {
@@ -48,7 +56,11 @@ export default async function handler(req, res) {
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secure-secret');
     } catch (error) {
-      return res.status(401).json({ error: 'Invalid token', details: error.message });
+      return res.status(401).json({ 
+        error: 'Invalid token', 
+        details: error.message,
+        hint: 'Ensure you are using a valid JWT token from the /api/me endpoint.'
+      });
     }
   }
 
@@ -95,13 +107,22 @@ export default async function handler(req, res) {
       }
 
       try {
-        const pricing = { premium: 7, pro: 25 };
-        const amount = BigInt(pricing[tier] * 1e6); // USDC has 6 decimals
+        const pricing = { 
+          premium: 7_000_000, // 7 USDC (6 decimals)
+          pro: 25_000_000    // 25 USDC
+        };
+        const amount = pricing[tier];
 
         // Verify the transaction on-chain
         const receipt = await publicClient.getTransactionReceipt({ hash: transactionHash });
-        if (!receipt || receipt.status !== 'success') {
-          return res.status(400).json({ error: 'Invalid or failed transaction' });
+        if (!receipt || receipt.status !== 'success' || receipt.chainId !== base.id) {
+          return res.status(400).json({ 
+            error: 'Invalid or failed transaction', 
+            details: {
+              chainId: receipt?.chainId || 'unknown',
+              status: receipt?.status || 'unknown',
+            }
+          });
         }
 
         // Check for USDC Transfer event
@@ -112,7 +133,10 @@ export default async function handler(req, res) {
         );
 
         if (!transferEvent) {
-          return res.status(400).json({ error: 'No USDC transfer found in transaction' });
+          return res.status(400).json({ 
+            error: 'No USDC transfer found in transaction',
+            details: 'Transaction does not include a valid USDC transfer to the subscription wallet.'
+          });
         }
 
         const [, from, to] = transferEvent.topics;
@@ -123,15 +147,23 @@ export default async function handler(req, res) {
           to.toLowerCase() !== `0x${SUBSCRIPTION_WALLET.toLowerCase().slice(2).padStart(64, '0')}` ||
           value < amount
         ) {
-          return res.status(400).json({ error: 'Invalid USDC transfer details' });
+          return res.status(400).json({ 
+            error: 'Invalid USDC transfer details',
+            details: {
+              from: `0x${from.slice(2)}`,
+              to: `0x${to.slice(2)}`,
+              value: Number(formatUnits(value, 6)),
+              expected: Number(formatUnits(amount, 6)),
+            }
+          });
         }
 
         // Create subscription and record payment
         const subscription = await saveSubscription(userKey, tier, transactionHash, {
-          amount_usdc: pricing[tier],
+          amount_usdc: Number(formatUnits(amount, 6)),
           auto_renew: true,
         });
-        await recordPayment(userKey, transactionHash, pricing[tier], tier);
+        await recordPayment(userKey, transactionHash, Number(formatUnits(amount, 6)), tier);
 
         const subscriptionData = {
           tier: subscription.tier,
@@ -152,6 +184,18 @@ export default async function handler(req, res) {
     }
 
     if (action === 'check_usdc_balance') {
+      // Add rate limiting logic here (e.g., using Redis or in-memory cache)
+      const rateLimitKey = `usdc_balance:${userKey}`;
+      const rateLimit = await redis.get(rateLimitKey);
+      if (rateLimit && rateLimit > 5) {
+        return res.status(429).json({ 
+          error: 'Too many requests', 
+          details: 'You have exceeded the rate limit for USDC balance checks.'
+        });
+      }
+      await redis.incr(rateLimitKey);
+      await redis.expire(rateLimitKey, 3600); // 1-hour window
+
       try {
         const balance = await publicClient.readContract({
           address: USDC_CONTRACT,
