@@ -1,5 +1,6 @@
-import { ethers } from 'ethers';
+import { verifyMessage } from 'viem';
 import jwt from 'jsonwebtoken';
+import { getUser, createUser, getUserSubscription } from '../../lib/storage';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -7,41 +8,46 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { fid, message, signature, address, username } = req.body;
-    if (!fid || !message || !signature || !address) {
+    const { message, signature, address, username } = req.body;
+    if (!message || !signature || !address) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Verify signature using ethers v5
-    const recoveredAddress = ethers.utils.verifyMessage(message, signature);
-    if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
+    // Verify signature using viem
+    const isValid = await verifyMessage({
+      address,
+      message,
+      signature,
+    });
+
+    if (!isValid) {
       return res.status(401).json({ error: 'Invalid signature' });
     }
 
-    // Mock user data (avoiding database)
-    const user = {
-      fid: parseInt(fid),
-      walletAddress: address,
-      username: username || 'unknown',
-      tier: 'free', // Default tier; adjust based on logic
-    };
+    // Check if user exists, create if not
+    let user = await getUser(address);
+    if (!user) {
+      user = await createUser(address, { username });
+    }
+
+    // Fetch subscription status
+    const subscription = await getUserSubscription(address);
 
     // Generate JWT
     const sessionToken = jwt.sign(
-      { fid, address, username: user.username, tier: user.tier },
+      { address, username: user.username || 'unknown', tier: user.tier || 'free' },
       process.env.JWT_SECRET || 'your-secure-secret',
       { expiresIn: '1h' }
     );
 
     return res.status(200).json({
-      fid,
-      username: user.username,
-      address,
+      address: user.wallet_address,
+      username: user.username || 'unknown',
       token: sessionToken,
-      tier: user.tier,
-      subscription: null, // Mocked; no database
+      tier: user.tier || 'free',
+      subscription: subscription || null,
     });
   } catch (error) {
-    return res.status(500).json({ error: `Internal server error: ${error.message}` });
+    return res.status(500).json({ error: `Authentication failed: ${error.message}` });
   }
 }
