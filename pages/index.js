@@ -11,6 +11,7 @@ export default function Home({ walletAddress: propWalletAddress }) {
   const router = useRouter();
   const [walletAddress, setWalletAddress] = useState(propWalletAddress);
   const [isFarcasterClient, setIsFarcasterClient] = useState(false);
+  const [jwtToken, setJwtToken] = useState(null);
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [globalMode, setGlobalMode] = useState(false);
@@ -31,6 +32,7 @@ export default function Home({ walletAddress: propWalletAddress }) {
     setIsFarcasterClient(true);
     if (data?.address) {
       setWalletAddress(data.address);
+      setJwtToken(data.token);
       setUserTier(data.tier || 'free');
       setSubscription(data.subscription || null);
     } else {
@@ -938,7 +940,7 @@ export default function Home({ walletAddress: propWalletAddress }) {
                               fontSize: 14,
                             }}
                           >
-                            🎨 Mint Insight Token
+                            🎨 Mint Insight token
                           </button>
                         </div>
                       </div>
