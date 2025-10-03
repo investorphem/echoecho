@@ -35,73 +35,51 @@ export default function MiniAppComponent({
           return;
         }
 
-        if (!walletConnected || !walletAddress) {
-          setError('Wallet not connected. Please connect via Warpcast.');
-          onMiniAppReady?.();
-          onFarcasterReady?.(null);
-          return;
-        }
-
-        // Attempt to get user data or authenticate
+        // Attempt automatic connection
         try {
           const user = await client.getUser();
-          if (!user || !user.fid || !user.address) {
-            // Prompt for authentication
-            const { fid, address, username } = await client.authenticate();
-            if (!fid || !address) {
-              setError('Authentication failed. Please approve in Warpcast.');
-              onFarcasterReady?.(null);
-              return;
-            }
+          let address, username;
 
-            // Generate message to sign
-            const message = `Login to EchoEcho at ${new Date().toISOString()}`;
-            const signature = await signMessageAsync({ message });
-
-            // Send to /api/me
-            const response = await fetch('/api/me', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ fid, message, signature, address, username }),
-            });
-
-            if (response.ok) {
-              const userData = await response.json();
-              onFarcasterReady?.({
-                fid: userData.fid,
-                username: userData.username,
-                address: userData.address,
-                token: userData.token,
-              });
-            } else {
-              const errorData = await response.json();
-              setError(`Authentication failed: ${errorData.error || 'Unknown error'}`);
-              onFarcasterReady?.(null);
-            }
+          if (user && user.address) {
+            address = user.address;
+            username = user.username || 'unknown';
           } else {
-            // User already authenticated
-            const message = `Login to EchoEcho at ${new Date().toISOString()}`;
-            const signature = await signMessageAsync({ message });
+            setError('No wallet connected in Warpcast. Please log in.');
+            onFarcasterReady?.(null);
+            return;
+          }
 
-            const response = await fetch('/api/me', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ fid: user.fid, message, signature, address: user.address, username: user.username }),
+          // Generate and sign message for authentication
+          const message = `Login to EchoEcho at ${new Date().toISOString()}`;
+          let signature;
+          try {
+            signature = await signMessageAsync({ message });
+          } catch (signError) {
+            setError(`Signature failed: ${signError.message}`);
+            onFarcasterReady?.(null);
+            return;
+          }
+
+          // Send to /api/me
+          const response = await fetch('/api/me', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message, signature, address, username }),
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            onFarcasterReady?.({
+              username: userData.username,
+              address: userData.address,
+              token: userData.token,
+              tier: userData.tier || 'free',
+              subscription: userData.subscription || null,
             });
-
-            if (response.ok) {
-              const userData = await response.json();
-              onFarcasterReady?.({
-                fid: userData.fid,
-                username: userData.username,
-                address: userData.address,
-                token: userData.token,
-              });
-            } else {
-              const errorData = await response.json();
-              setError(`Authentication failed: ${errorData.error || 'Unknown error'}`);
-              onFarcasterReady?.(null);
-            }
+          } else {
+            const errorData = await response.json();
+            setError(`Authentication failed: ${errorData.error || 'Unknown error'}`);
+            onFarcasterReady?.(null);
           }
         } catch (error) {
           setError(`Authentication error: ${error.message}`);
@@ -117,7 +95,7 @@ export default function MiniAppComponent({
     };
 
     init();
-  }, [walletConnected, walletAddress, onMiniAppReady, onFarcasterReady, signMessageAsync]);
+  }, [signMessageAsync, onMiniAppReady, onFarcasterReady]);
 
   return error ? <div style={{ color: 'red' }}>Error: {error}</div> : null;
 }
