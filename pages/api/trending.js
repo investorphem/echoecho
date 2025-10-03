@@ -1,5 +1,5 @@
 import { NeynarAPIClient } from '@neynar/nodejs-sdk';
-import { FeedType, FilterType } from '@neynar/nodejs-sdk/build/neynar-api/v2';
+import { FeedType, FilterType } from '@neynar/nodejs-sdk/build/api/index.js';
 import { getUserSubscription, getApiCallsUsed, incrementApiCalls, rollbackApiCalls } from '../../lib/storage';
 
 export default async function handler(req, res) {
