@@ -1,18 +1,14 @@
-import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk';
-import { FeedType, FilterType } from '@neynar/nodejs-sdk/build/api';
-import { neon } from '@neondatabase/serverless';
-
-const sql = neon(process.env.DATABASE_URL);
+import { NeynarAPIClient } from '@neynar/nodejs-sdk';
+import { FeedType, FilterType } from '@neynar/nodejs-sdk/build/neynar-api/v2';
+import { getUserSubscription, getApiCallsUsed, incrementApiCalls, rollbackApiCalls } from '../../lib/storage';
 
 export default async function handler(req, res) {
   const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
   if (!NEYNAR_API_KEY) {
-    console.error('NEYNAR_API_KEY is not set');
     return res.status(500).json({ error: 'Server configuration error: NEYNAR_API_KEY missing' });
   }
 
   if (req.method !== 'GET') {
-    console.warn(`Invalid method: ${req.method}`);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
@@ -21,7 +17,6 @@ export default async function handler(req, res) {
 
   // Validate userAddress if provided
   if (userAddress && !userAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
-    console.warn('Invalid userAddress:', userAddress);
     return res.status(400).json({ error: 'Valid userAddress required' });
   }
 
@@ -33,37 +28,17 @@ export default async function handler(req, res) {
   let remainingApiCalls = apiLimits.free;
   if (userAddress) {
     try {
-      const subscriptions = await sql`
-        SELECT * FROM subscriptions
-        WHERE wallet_address = ${userAddress.toLowerCase()}
-        ORDER BY created_at DESC
-        LIMIT 1
-      `;
-
-      if (subscriptions.length > 0) {
-        const sub = subscriptions[0];
-        const expiresAt = new Date(sub.expires_at);
-        const now = new Date();
-        if (expiresAt > now) {
-          userTier = sub.tier;
-        }
+      const subscription = await getUserSubscription(userAddress.toLowerCase());
+      if (subscription && new Date(subscription.expires_at) > new Date()) {
+        userTier = subscription.tier;
       }
-
-      console.log('User subscription tier:', userTier);
 
       if (apiLimits[userTier] !== 'unlimited') {
         // Check remaining API calls
-        const usage = await sql`
-          SELECT trending_api_calls_used FROM user_usage
-          WHERE wallet_address = ${userAddress.toLowerCase()}
-          AND DATE_TRUNC('day', usage_date) = CURRENT_DATE
-        `;
-
-        let apiCallsUsed = usage.length > 0 ? usage[0].trending_api_calls_used : 0;
+        const apiCallsUsed = await getApiCallsUsed(userAddress.toLowerCase(), 'trending');
         remainingApiCalls = apiLimits[userTier] - apiCallsUsed;
 
         if (remainingApiCalls <= 0) {
-          console.warn(`Trending API limit reached for user: ${userAddress}, tier: ${userTier}`);
           return res.status(429).json({
             error: `Trending API limit reached for ${userTier} tier`,
             details: `You have reached your daily limit of ${apiLimits[userTier]} trending API calls. Please upgrade to a higher tier.`,
@@ -74,18 +49,21 @@ export default async function handler(req, res) {
                 body: 'Discussing AI’s blockchain future.',
                 hash: 'mock1',
                 timestamp: new Date().toISOString(),
+                caster: { username: 'unknown', address: null },
               },
               {
                 text: 'Mock Trend 2: Farcaster Updates',
                 body: 'New features released.',
                 hash: 'mock2',
                 timestamp: new Date().toISOString(),
+                caster: { username: 'unknown', address: null },
               },
               {
                 text: 'Mock Trend 3: NFT Market Boom',
                 body: 'Base chain growth.',
                 hash: 'mock3',
                 timestamp: new Date().toISOString(),
+                caster: { username: 'unknown', address: null },
               },
             ],
             next_cursor: null,
@@ -94,26 +72,15 @@ export default async function handler(req, res) {
 
         // Increment API calls used
         try {
-          await sql`
-            INSERT INTO user_usage (wallet_address, usage_date, trending_api_calls_used)
-            VALUES (${userAddress.toLowerCase()}, CURRENT_DATE, 1)
-            ON CONFLICT (wallet_address, usage_date)
-            DO UPDATE SET trending_api_calls_used = user_usage.trending_api_calls_used + 1
-          `;
-          console.log(`Trending API calls remaining for ${userAddress}: ${remainingApiCalls - 1}`);
-        } catch (dbError) {
-          console.error('Usage tracking error:', dbError.message);
-          if (dbError.code === '42P01') {
-            return res.status(500).json({
-              error: 'Database configuration error',
-              details: 'Usage tracking unavailable. Please initialize database with /api/init-db.',
-            });
-          }
-          throw dbError; // Rethrow other errors
+          await incrementApiCalls(userAddress.toLowerCase(), 'trending');
+        } catch (error) {
+          return res.status(500).json({
+            error: 'Failed to track API usage',
+            details: error.message,
+          });
         }
       }
     } catch (error) {
-      console.error('Subscription or usage check error:', error.message, { code: error.code });
       return res.status(500).json({
         error: 'Failed to verify subscription or usage',
         details: error.message,
@@ -124,41 +91,43 @@ export default async function handler(req, res) {
 
   try {
     // Configure Neynar client
-    const config = new Configuration({ apiKey: NEYNAR_API_KEY });
-    const client = new NeynarAPIClient(config);
+    const client = new NeynarAPIClient(NEYNAR_API_KEY);
 
     // Fetch trending casts
     const trendingFeed = await client.fetchFeed({
-      feedType: FeedType.Filter,
-      filterType: FilterType.GlobalTrending,
+      feed_type: FeedType.Filter,
+      filter_type: FilterType.GlobalTrending,
       limit: parseInt(limit, 10),
       cursor: cursor || undefined,
     });
 
     // Extract casts
     const data = {
-      casts: trendingFeed.casts || [],
+      casts: (trendingFeed.casts || []).map((cast) => ({
+        text: cast.text || '',
+        body: cast.text || '',
+        hash: cast.hash,
+        timestamp: cast.created_at || new Date().toISOString(),
+        caster: {
+          username: cast.author?.username || 'unknown',
+          address: cast.author?.address || null,
+        },
+      })),
       next_cursor: trendingFeed.next?.cursor || null,
     };
 
-    console.log('Trending feed fetched:', data);
     return res.status(200).json(data);
   } catch (error) {
-    console.error('Error fetching trending casts:', error.message);
     if (error.status === 402 || error.message.includes('Payment Required')) {
-      console.warn('Neynar trending requires payment, using mock data');
       // Roll back API call increment
       if (userAddress && apiLimits[userTier] !== 'unlimited') {
         try {
-          await sql`
-            UPDATE user_usage
-            SET trending_api_calls_used = GREATEST(user_usage.trending_api_calls_used - 1, 0)
-            WHERE wallet_address = ${userAddress.toLowerCase()}
-            AND DATE_TRUNC('day', usage_date) = CURRENT_DATE
-          `;
-          console.log(`Rolled back trending API call usage for ${userAddress}`);
-        } catch (dbError) {
-          console.error('Rollback error:', dbError.message);
+          await rollbackApiCalls(userAddress.toLowerCase(), 'trending');
+        } catch (rollbackError) {
+          return res.status(500).json({
+            error: 'Failed to rollback API usage',
+            details: rollbackError.message,
+          });
         }
       }
       return res.status(200).json({
@@ -169,18 +138,21 @@ export default async function handler(req, res) {
             body: 'Discussing AI’s blockchain future.',
             hash: 'mock1',
             timestamp: new Date().toISOString(),
+            caster: { username: 'unknown', address: null },
           },
           {
             text: 'Mock Trend 2: Farcaster Updates',
             body: 'New features released.',
             hash: 'mock2',
             timestamp: new Date().toISOString(),
+            caster: { username: 'unknown', address: null },
           },
           {
             text: 'Mock Trend 3: NFT Market Boom',
             body: 'Base chain growth.',
             hash: 'mock3',
             timestamp: new Date().toISOString(),
+            caster: { username: 'unknown', address: null },
           },
         ],
         next_cursor: null,
