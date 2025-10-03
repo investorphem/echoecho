@@ -143,7 +143,7 @@ export default function Home({ walletAddress: propWalletAddress }) {
           ...trend,
           ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
         })));
-        setApiWarning('Trending data unavailable due to Neynar API rate limits. Upgrade your plan at https://dev.neynar.com/pricing.');
+        setApiWarning('Trending data unavailable due to Neynar API rate limits. Upgrade at https://dev.neynar.com/pricing.');
         setLoading(false);
         return;
       }
@@ -1193,13 +1193,13 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
     try {
       setPaymentStatus('pending');
       const { sdk } = await import('@farcaster/miniapp-sdk');
-      const usdcContract = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+      const usdcContract = '0xx833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
       const txData = `0xa9059cbb${treasuryAddress.slice(2).padStart(64, '0')}${(BigInt(amount * 1e6)).toString(16).padStart(64, '0')}`; // USDC transfer data
 
       const { transactionHash } = await sdk.actions.signTransaction({
         to: usdcContract,
         data: txData,
-        chainId: 8453, // Base chain ID
+        chainId: 8453, // Base chain id
         value: '0',
       });
 
@@ -1264,7 +1264,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
               ) : (
                 <>
                   <li>All Premium features</li>
-                  <li>Unlimited Insight Token minting</li>
+                  <li>Unlimited Insight Token mintinging</li>
                   <li>Exclusive Pro badge & analytics</li>
                 </>
               )}
