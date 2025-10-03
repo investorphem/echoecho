@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MiniAppClient } from '@farcaster/miniapp-sdk';
+import { sdk } from '@farcaster/miniapp-sdk';
 import { useSignMessage } from 'wagmi';
 
 export default function MiniAppComponent({
@@ -16,8 +16,8 @@ export default function MiniAppComponent({
   useEffect(() => {
     const init = async () => {
       try {
-        const client = new MiniAppClient();
-        const isMiniApp = await client.isInMiniApp();
+        // Detect if running inside Warpcast Mini App
+        const isMiniApp = await sdk.isInMiniApp();
         if (!isMiniApp) {
           setError('Not running in a Farcaster client. Please use Warpcast.');
           onMiniAppReady?.();
@@ -27,7 +27,7 @@ export default function MiniAppComponent({
 
         // Signal SDK ready
         try {
-          await client.actions.ready();
+          await sdk.actions.ready();
         } catch (err) {
           setError(`Failed to signal SDK ready: ${err.message}`);
           onMiniAppReady?.();
@@ -37,7 +37,7 @@ export default function MiniAppComponent({
 
         // Attempt automatic connection
         try {
-          const user = await client.getUser();
+          const user = await sdk.getUser?.();
           let address, username;
 
           if (user && user.address) {
