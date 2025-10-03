@@ -1,6 +1,6 @@
 export default function MiniAppComponent({
-  walletConnected, // ← Remove if unused
-  walletAddress,   // ← Remove if unused
+  walletConnected, // Now used in UI
+  walletAddress,   // Now used in UI
   onMiniAppReady,
   onFarcasterReady,
 }) {
@@ -91,5 +91,17 @@ export default function MiniAppComponent({
     init();
   }, [signMessageAsync, onMiniAppReady, onFarcasterReady]);
 
-  return error ? <div style={{ color: 'red' }}>Error: {error}</div> : null;
+  // Use walletConnected and walletAddress in UI
+  const walletStatus = walletConnected 
+    ? `Connected: ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`
+    : 'Not connected';
+
+  return (
+    <div>
+      {error && <div style={{ color: 'red', marginBottom: 12 }}>Error: {error}</div>}
+      <div style={{ marginBottom: 12 }}>
+        <strong>Wallet Status:</strong> {walletStatus}
+      </div>
+    </div>
+  );
 }
