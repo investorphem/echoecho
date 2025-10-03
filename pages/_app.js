@@ -1,19 +1,16 @@
-import { useEffect, useState } from "react";
-import { WagmiProvider, createConfig, http, useAccount } from "wagmi";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { base } from "wagmi/chains";
-import { farcasterMiniApp } from "@farcaster/miniapp-wagmi-connector";
-import { sdk } from "@farcaster/miniapp-sdk";
-import MiniAppComponent from "../components/MiniAppComponent";
+import { useState } from 'react';
+import { WagmiProvider, createConfig, http } from 'wagmi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { base } from 'wagmi/chains';
+import { farcasterMiniApp } from '@farcaster/miniapp-wagmi-connector';
+import MiniAppComponent from '../components/MiniAppComponent';
 
 // Wagmi config with Farcaster connector
 const config = createConfig({
   chains: [base],
   connectors: [farcasterMiniApp()],
   transports: {
-    [base.id]: http(
-      process.env.NEXT_PUBLIC_BASE_RPC_URL || "https://mainnet.base.org"
-    ),
+    [base.id]: http(process.env.NEXT_PUBLIC_BASE_RPC_URL || 'https://mainnet.base.org'),
   },
 });
 
@@ -24,34 +21,26 @@ function AppContent({ Component, pageProps }) {
   const [sdkReady, setSdkReady] = useState(false);
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState(null);
-  const [fid, setFid] = useState(null);
-  const { address, isConnected } = useAccount();
 
-  useEffect(() => {
-    const checkMiniApp = async () => {
-      try {
-        const miniApp = await sdk.isInMiniApp();
-        setIsMiniApp(miniApp);
-      } catch (err) {
-        setIsMiniApp(false);
-      }
-    };
-    checkMiniApp();
-  }, []);
-
-  useEffect(() => {
-    setWalletConnected(isConnected);
-    setWalletAddress(address || null);
-  }, [isConnected, address]);
+  // Update wallet state based on MiniAppComponent data
+  const handleFarcasterReady = (data) => {
+    if (data?.address) {
+      setWalletAddress(data.address);
+      setWalletConnected(true);
+    } else {
+      setWalletConnected(false);
+      setWalletAddress(null);
+    }
+  };
 
   if (!isMiniApp) {
     return (
       <div
         style={{
-          textAlign: "center",
-          padding: "40px",
-          backgroundColor: "#111827",
-          color: "#f9fafb",
+          textAlign: 'center',
+          padding: '40px',
+          backgroundColor: '#111827',
+          color: '#f9fafb',
         }}
       >
         <h2>Open in Farcaster</h2>
@@ -65,25 +54,39 @@ function AppContent({ Component, pageProps }) {
       <MiniAppComponent
         walletConnected={walletConnected}
         walletAddress={walletAddress}
-        onMiniAppReady={() => setSdkReady(true)}
-        onFarcasterReady={(data) => {
-          setFid(data.fid);
-          setWalletAddress(data.address || walletAddress);
+        onMiniAppReady={() => {
+          setIsMiniApp(true);
+          setSdkReady(true);
         }}
+        onFarcasterReady={handleFarcasterReady}
       />
-      {sdkReady && walletConnected ? (
-        <Component {...pageProps} fid={fid} walletAddress={walletAddress} />
+      {sdkReady ? (
+        walletConnected && walletAddress ? (
+          <Component {...pageProps} walletAddress={walletAddress} />
+        ) : (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '40px',
+              backgroundColor: '#111827',
+              color: '#f9fafb',
+            }}
+          >
+            <h2>Connect Wallet</h2>
+            <p>Waiting for automatic wallet connection in Warpcast...</p>
+          </div>
+        )
       ) : (
         <div
           style={{
-            textAlign: "center",
-            padding: "40px",
-            backgroundColor: "#111827",
-            color: "#f9fafb",
+            textAlign: 'center',
+            padding: '40px',
+            backgroundColor: '#111827',
+            color: '#f9fafb',
           }}
         >
           <h2>Initializing Farcaster SDK...</h2>
-          <p>Please connect your wallet in the Farcaster client.</p>
+          <p>Please open this app in Warpcast, base.org, or farcaster.xyz.</p>
         </div>
       )}
     </>
