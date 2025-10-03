@@ -3,11 +3,13 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Head from 'next/head';
+import { useRouter } from 'next/navigation';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
-export default function Home({ _fid, walletAddress: propWalletAddress }) {
-  const [farcasterAddress, setFarcasterAddress] = useState(propWalletAddress);
+export default function Home({ walletAddress: propWalletAddress }) {
+  const router = useRouter();
+  const [walletAddress, setWalletAddress] = useState(propWalletAddress);
   const [isFarcasterClient, setIsFarcasterClient] = useState(false);
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -27,8 +29,8 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
   // Callback from MiniAppComponent when it authenticates user
   const handleFarcasterReady = useCallback((data) => {
     setIsFarcasterClient(true);
-    if (data?.fid && data?.address) {
-      setFarcasterAddress(data.address);
+    if (data?.address) {
+      setWalletAddress(data.address);
       setUserTier(data.tier || 'free');
       setSubscription(data.subscription || null);
     } else {
@@ -106,7 +108,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setLoading(false);
       return;
     }
-    if (!farcasterAddress) {
+    if (!walletAddress) {
       const mockData = {
         casts: [
           { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
@@ -122,7 +124,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       return;
     }
     try {
-      const resp = await fetch(`/api/trending?userAddress=${farcasterAddress}`);
+      const resp = await fetch(`/api/trending?userAddress=${walletAddress}`);
       const data = await resp.json();
       if (resp.status === 429) {
         if (retryCount < 2) {
@@ -174,7 +176,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
             const aiResp = await fetch('/api/ai-analysis', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text, action: 'analyze_sentiment', userAddress: farcasterAddress }),
+              body: JSON.stringify({ text, action: 'analyze_sentiment', userAddress: walletAddress }),
             });
             const aiData = await aiResp.json();
             if (!aiResp.ok) {
@@ -198,7 +200,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setErrorMessage('Failed to load trends. Please try again.');
       setLoading(false);
     }
-  }, [farcasterAddress, isFarcasterClient]);
+  }, [walletAddress, isFarcasterClient]);
 
   const loadTopicDetails = useCallback(async (topic) => {
     setSelectedTopic(topic);
@@ -212,7 +214,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       return;
     }
 
-    if (!farcasterAddress) {
+    if (!walletAddress) {
       setCounterNarratives([]);
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
@@ -248,7 +250,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       const counterResp = await fetch('/api/ai-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ posts: allPosts, action: 'find_counter_narratives', userAddress: farcasterAddress }),
+        body: JSON.stringify({ posts: allPosts, action: 'find_counter_narratives', userAddress: walletAddress }),
       });
 
       const counterData = await counterResp.json();
@@ -267,7 +269,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setCounterNarratives([]);
       setErrorMessage('Failed to load counter-narratives. Please try again.');
     }
-  }, [globalMode, farcasterAddress, isFarcasterClient]);
+  }, [globalMode, walletAddress, isFarcasterClient]);
 
   const loadUserEchoes = useCallback(async () => {
     if (!isFarcasterClient) {
@@ -275,13 +277,13 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setErrorMessage('Echo history requires Warpcast.');
       return;
     }
-    if (!farcasterAddress) {
+    if (!walletAddress) {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
     }
     try {
-      const response = await fetch(`/api/user-echoes?userAddress=${farcasterAddress}`);
+      const response = await fetch(`/api/user-echoes?userAddress=${walletAddress}`);
       if (!response.ok) {
         setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
         setErrorMessage('Failed to load user echoes. Please try again.');
@@ -293,14 +295,14 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Failed to load user echoes. Please try again.');
     }
-  }, [farcasterAddress, isFarcasterClient]);
+  }, [walletAddress, isFarcasterClient]);
 
   const mintInsightToken = useCallback(async (narrative) => {
     if (!isFarcasterClient) {
       setErrorMessage('Please use Warpcast to mint Insight Tokens.');
       return;
     }
-    if (!farcasterAddress) {
+    if (!walletAddress) {
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
     }
@@ -310,7 +312,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           narrative,
-          userAddress: farcasterAddress,
+          userAddress: walletAddress,
           rarity: narrative.source === 'twitter' ? 'rare' : 'common',
         }),
       });
@@ -336,14 +338,14 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     } catch (error) {
       setErrorMessage('Error minting token: ' + error.message);
     }
-  }, [farcasterAddress, isFarcasterClient, loadUserEchoes]);
+  }, [walletAddress, isFarcasterClient, loadUserEchoes]);
 
   const handleEcho = useCallback(async (cast, isCounterNarrative = false) => {
     if (!isFarcasterClient) {
       setErrorMessage('Echoing requires Warpcast.');
       return;
     }
-    if (!farcasterAddress) {
+    if (!walletAddress) {
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
     }
@@ -368,18 +370,18 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     } catch (error) {
       setErrorMessage('Error echoing: ' + error.message);
     }
-  }, [farcasterAddress, isFarcasterClient, loadUserEchoes]);
+  }, [walletAddress, isFarcasterClient, loadUserEchoes]);
 
   useEffect(() => {
-    if (isFarcasterClient && farcasterAddress) {
-      checkUSDCBalance(farcasterAddress);
-      loadUserSubscription(farcasterAddress);
+    if (isFarcasterClient && walletAddress) {
+      checkUSDCBalance(walletAddress);
+      loadUserSubscription(walletAddress);
       loadTrends();
       loadUserEchoes();
     } else {
       setLoading(false);
     }
-  }, [farcasterAddress, isFarcasterClient, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
+  }, [walletAddress, isFarcasterClient, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
@@ -444,8 +446,8 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         }}
       >
         <MiniAppComponent
-          walletConnected={!!farcasterAddress}
-          walletAddress={farcasterAddress}
+          walletConnected={!!walletAddress}
+          walletAddress={walletAddress}
           onMiniAppReady={handleMiniAppReady}
           onFarcasterReady={handleFarcasterReady}
         />
@@ -616,7 +618,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
                 </button>
                 <div
                   style={{
-                    background: farcasterAddress ? '#059669' : '#374151',
+                    background: walletAddress ? '#059669' : '#374151',
                     color: 'white',
                     padding: '6px 12px',
                     borderRadius: 20,
@@ -624,11 +626,11 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
                     border: 'none',
                   }}
                 >
-                  {farcasterAddress
-                    ? `🟢 ${farcasterAddress.slice(0, 6)}...${farcasterAddress.slice(-4)}`
+                  {walletAddress
+                    ? `🟢 ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
                     : '🔴 No Wallet Connected'}
                 </div>
-                {farcasterAddress && (
+                {walletAddress && (
                   <div
                     style={{
                       background: '#1e40af',
@@ -743,7 +745,13 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
               {['trends', 'echoes', 'faq'].map((view) => (
                 <button
                   key={view}
-                  onClick={() => setActiveView(view)}
+                  onClick={() => {
+                    if (view === 'faq') {
+                      router.push('/faq');
+                    } else {
+                      setActiveView(view);
+                    }
+                  }}
                   style={{
                     flex: 1,
                     background: activeView === view ? '#3b82f6' : 'transparent',
@@ -1139,16 +1147,14 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
               <PremiumView
                 userTier={userTier}
                 setUserTier={setUserTier}
-                walletConnected={!!farcasterAddress}
-                walletAddress={farcasterAddress}
+                walletConnected={!!walletAddress}
+                walletAddress={walletAddress}
                 usdcBalance={usdcBalance}
                 checkUSDCBalance={checkUSDCBalance}
                 setSubscription={setSubscription}
                 loadUserSubscription={loadUserSubscription}
               />
             )}
-
-            {activeView === 'faq' && <FAQView />}
           </>
         )}
       </div>
@@ -1293,27 +1299,3 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
     </div>
   );
 };
-
-const FAQView = () => (
-  <div>
-    <h2 style={{ marginBottom: 20 }}>❓ Frequently Asked Questions</h2>
-    <div style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 12, padding: 16 }}>
-      <h3 style={{ fontSize: 16, marginBottom: 8 }}>What is EchoEcho?</h3>
-      <p style={{ fontSize: 14, color: '#d1d5db' }}>
-        EchoEcho is an AI-powered app on Farcaster that helps you break out of echo chambers by discovering counter-narratives and minting them as Insight Tokens (NFTs).
-      </p>
-    </div>
-    <div style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 12, padding: 16, marginTop: 16 }}>
-      <h3 style={{ fontSize: 16, marginBottom: 8 }}>How do I use Global Echoes?</h3>
-      <p style={{ fontSize: 14, color: '#d1d5db' }}>
-        Enable Global Echoes to fetch counter-narratives from X and news sources. This feature requires a Warpcast client and a Premium or Pro subscription.
-      </p>
-    </div>
-    <div style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 12, padding: 16, marginTop: 16 }}>
-      <h3 style={{ fontSize: 16, marginBottom: 8 }}>What are Insight Tokens?</h3>
-      <p style={{ fontSize: 14, color: '#d1d5db' }}>
-        Insight Tokens are NFTs representing counter-narratives you discover. Mint them to showcase your commitment to diverse perspectives!
-      </p>
-    </div>
-  </div>
-);
