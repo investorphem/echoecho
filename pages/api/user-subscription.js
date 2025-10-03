@@ -1,7 +1,7 @@
 import { createPublicClient, http, formatUnits } from 'viem';
 import { base } from 'viem/chains';
 import jwt from 'jsonwebtoken';
-import { getUserSubscription, createSubscription, recordPayment, updateUserTier } from '../../lib/storage';
+import { getUserSubscription, saveSubscription, recordPayment, updateUserTier } from '../../lib/storage';
 
 // USDC contract on Base
 const USDC_CONTRACT = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -72,6 +72,7 @@ export default async function handler(req, res) {
               transaction_hash: subscription.transaction_hash,
               created_at: subscription.created_at,
               expires_at: subscription.expires_at,
+              amount_usdc: subscription.amount_usdc,
             }
           : null;
 
@@ -126,15 +127,18 @@ export default async function handler(req, res) {
         }
 
         // Create subscription and record payment
-        const subscription = await createSubscription(userKey, tier, transactionHash);
+        const subscription = await saveSubscription(userKey, tier, transactionHash, {
+          amount_usdc: pricing[tier],
+          auto_renew: true,
+        });
         await recordPayment(userKey, transactionHash, pricing[tier], tier);
-        await updateUserTier(userKey, tier);
 
         const subscriptionData = {
           tier: subscription.tier,
           transaction_hash: subscription.transaction_hash,
           created_at: subscription.created_at,
           expires_at: subscription.expires_at,
+          amount_usdc: subscription.amount_usdc,
         };
 
         return res.status(200).json({
@@ -195,4 +199,11 @@ export default async function handler(req, res) {
           daily_echoes: 'unlimited',
           cross_platform: true,
           nft_rarities: ['common', 'rare', 'epic', 'legendary'],
-          analytics
+          analytics: true,
+        },
+      },
+    });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
+}
