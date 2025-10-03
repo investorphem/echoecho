@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import jwt from 'jsonwebtoken';
-import { getUserSubscription, getApiCallsUsed, incrementApiCalls } from '../../../lib/storage';
+import { getUserSubscription, getApiCallsUsed, incrementApiCalls } from '../../lib/storage';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
