@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Head from 'next/head';
 import { useRouter } from 'next/navigation';
+import { encodeFunctionData } from 'viem';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
@@ -11,7 +12,7 @@ export default function Home({ walletAddress: propWalletAddress }) {
   const router = useRouter();
   const [walletAddress, setWalletAddress] = useState(propWalletAddress);
   const [isFarcasterClient, setIsFarcasterClient] = useState(false);
-  const [jwtToken, setJwtToken] = useState(null);
+  const [_jwtToken, setJwtToken] = useState(null); // Renamed to _jwtToken to fix ESLint warning
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [globalMode, setGlobalMode] = useState(false);
@@ -940,7 +941,7 @@ export default function Home({ walletAddress: propWalletAddress }) {
                               fontSize: 14,
                             }}
                           >
-                            🎨 Mint Insight token
+                            🎨 Mint Insight Token
                           </button>
                         </div>
                       </div>
@@ -1180,12 +1181,12 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
       return;
     }
 
-    const pricing = { premium: 7, pro: 25 };
+    const pricing = { premium: 7_000_000, pro: 25_000_000 }; // USDC has 6 decimals
     const amount = pricing[tier];
 
-    if (usdcBalance < amount) {
+    if (usdcBalance < amount / 1_000_000) {
       alert(
-        `❌ Insufficient USDC Balance!\n\nRequired: ${amount} USDC\nYour Balance: ${usdcBalance} USDC\n\nPlease add more USDC to your wallet on Base network.`
+        `❌ Insufficient USDC Balance!\n\nRequired: ${amount / 1_000_000} USDC\nYour Balance: ${usdcBalance} USDC\n\nPlease add more USDC to your wallet on Base network.`
       );
       return;
     }
@@ -1193,24 +1194,48 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
     try {
       setPaymentStatus('pending');
       const { sdk } = await import('@farcaster/miniapp-sdk');
-      const usdcContract = '0xx833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-      const txData = `0xa9059cbb${treasuryAddress.slice(2).padStart(64, '0')}${(BigInt(amount * 1e6)).toString(16).padStart(64, '0')}`; // USDC transfer data
+      await sdk.actions.ready(); // Ensure SDK is initialized
+      const usdcContract = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // Corrected USDC address
+      const txData = encodeFunctionData({
+        abi: [
+          {
+            name: 'transfer',
+            type: 'function',
+            inputs: [
+              { name: 'recipient', type: 'address' },
+              { name: 'amount', type: 'uint256' },
+            ],
+            outputs: [{ name: 'success', type: 'bool' }],
+            stateMutability: 'nonpayable',
+          },
+        ],
+        functionName: 'transfer',
+        args: [treasuryAddress, BigInt(amount)],
+      });
 
       const { transactionHash } = await sdk.actions.signTransaction({
         to: usdcContract,
         data: txData,
-        chainId: 8453, // Base chain id
+        chainId: 8453, // Base chain ID
         value: '0',
       });
 
+      const jwtToken = localStorage.getItem('jwt_token'); // Fetched from localStorage
+      if (!jwtToken) {
+        throw new Error('No JWT token found. Please log in again.');
+      }
+
       const resp = await fetch('/api/user-subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwtToken}`,
+        },
         body: JSON.stringify({
           walletAddress,
           action: 'create_subscription',
           tier,
-          amount,
+          amount: amount / 1_000_000, // Convert to USDC units
           transaction_hash: transactionHash,
         }),
       });
@@ -1264,7 +1289,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
               ) : (
                 <>
                   <li>All Premium features</li>
-                  <li>Unlimited Insight Token mintinging</li>
+                  <li>Unlimited Insight Token minting</li>
                   <li>Exclusive Pro badge & analytics</li>
                 </>
               )}
@@ -1286,7 +1311,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }}
         disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + tier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
