@@ -1,7 +1,7 @@
 import { createPublicClient, http, formatUnits } from 'viem';
 import { base } from 'viem/chains';
 import jwt from 'jsonwebtoken';
-import { getUserSubscription, saveSubscription, recordPayment, updateUserTier, checkRateLimit } from '../../lib/storage';
+import { getUserSubscription, saveSubscription, recordPayment, checkRateLimit } from '../../lib/storage';
 
 // USDC contract on Base
 const USDC_CONTRACT = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -160,13 +160,12 @@ export default async function handler(req, res) {
           });
         }
 
-        // Create subscription, record payment, and update user tier
+        // Create subscription and record payment
         const subscription = await saveSubscription(userKey, tier, transactionHash, {
           amount_usdc: Number(formatUnits(amount, 6)),
           auto_renew: true,
         });
         await recordPayment(userKey, transactionHash, Number(formatUnits(amount, 6)), tier);
-        await updateUserTier(userKey, tier); // Use updateUserTier
 
         const subscriptionData = {
           tier: subscription.tier,
@@ -193,7 +192,7 @@ export default async function handler(req, res) {
         if (!rateLimit.allowed) {
           return res.status(429).json({
             error: 'Too many requests',
-            details: 'You have exceeded the rate limit for USDC balance checks.',
+            details: rateLimit.message,
           });
         }
 
