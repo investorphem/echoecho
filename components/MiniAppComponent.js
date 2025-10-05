@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
+import { useAccount, useConnect } from 'wagmi';
 
 export default function MiniAppComponent({
   _walletConnected, // Prefixed with _ to satisfy no-unused-vars
@@ -10,26 +11,35 @@ export default function MiniAppComponent({
 }) {
   const [initializing, setInitializing] = useState(false);
   const [error, setError] = useState(null);
+  const { isConnected, address } = useAccount();
+  const { connect, connectors } = useConnect();
 
   useEffect(() => {
     const initialize = async () => {
       try {
-        // Check if in Mini App context with longer timeout
+        // Check if in Mini App context
         // eslint-disable-next-line no-console
         console.log('Checking Mini App context...');
-        const _isMiniApp = await sdk.isInMiniApp({ timeoutMs: 500 }); // Increased timeout to 500ms
+        const _isMiniApp = await sdk.isInMiniApp({ timeoutMs: 500 });
         // eslint-disable-next-line no-console
         console.log('Mini App context:', _isMiniApp);
 
         if (_isMiniApp) {
-          // Immediately call sdk.actions.ready() for Farcaster environment
+          // Immediately call sdk.actions.ready()
           // eslint-disable-next-line no-console
           console.log('Calling sdk.actions.ready()...');
           await sdk.actions.ready();
           // eslint-disable-next-line no-console
           console.log('Farcaster SDK initialized');
 
-          setInitializing(true); // Show "Farcaster initializing" message
+          setInitializing(true); // Show "Farcaster initializing"
+
+          // Connect to wallet if not connected
+          if (!isConnected && connectors[0]) {
+            // eslint-disable-next-line no-console
+            console.log('Connecting to wallet...');
+            connect({ connector: connectors[0] });
+          }
 
           // Get user data
           const user = await sdk.getUser();
@@ -38,6 +48,13 @@ export default function MiniAppComponent({
           if (!user?.address) {
             setError('No user address found');
             onFarcasterReady({ error: 'No user address found' });
+            return;
+          }
+
+          // Verify wallet address matches user address
+          if (isConnected && address && address.toLowerCase() !== user.address.toLowerCase()) {
+            setError('Wallet address does not match Farcaster user address');
+            onFarcasterReady({ error: 'Wallet address mismatch' });
             return;
           }
 
@@ -77,17 +94,16 @@ export default function MiniAppComponent({
             subscription: data.subscription,
           });
         } else {
-          // Non-Mini App context (e.g., browser)
+          // Non-Mini App context
           // eslint-disable-next-line no-console
           console.log('Not in Mini App context. Skipping Farcaster authentication.');
           setError('Not in Farcaster Mini App context. Please open in Warpcast.');
           onFarcasterReady({ error: 'Not in Mini App context' });
         }
 
-        // Signal that MiniAppComponent is ready
+        // Signal MiniAppComponent is ready
         onMiniAppReady();
       } catch (err) {
-        // Error: MiniAppComponent error: ${err.message}
         // eslint-disable-next-line no-console
         console.error('MiniAppComponent error:', err);
         setError(`Failed to initialize Farcaster: ${err.message}`);
@@ -98,7 +114,7 @@ export default function MiniAppComponent({
     };
 
     initialize();
-  }, [onMiniAppReady, onFarcasterReady]);
+  }, [onMiniAppReady, onFarcasterReady, isConnected, address, connect, connectors]);
 
   if (error) {
     return (
@@ -166,5 +182,5 @@ export default function MiniAppComponent({
     );
   }
 
-  return null; // No UI when not initializing or in error state
+  return null;
 }
