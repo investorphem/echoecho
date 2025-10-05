@@ -60,13 +60,17 @@ export default function Home({ walletAddress: propWalletAddress }) {
         body: JSON.stringify({ address }),
       });
       if (!response.ok) {
+        if (response.status === 429) {
+          setErrorMessage('Rate limit exceeded for USDC balance check. Please try again later.');
+          return;
+        }
         throw new Error(`HTTP ${response.status}: ${await response.text()}`);
       }
       const data = await response.json();
       setUsdcBalance(parseFloat(data.balance || 0));
     } catch (error) {
       setUsdcBalance(0);
-      setErrorMessage('Failed to check USDC balance. Please try again.');
+      setErrorMessage('Failed to check USDC balance: ' + error.message);
     }
   }, []);
 
@@ -97,7 +101,7 @@ export default function Home({ walletAddress: propWalletAddress }) {
     } catch (error) {
       setUserTier('free');
       setSubscription(null);
-      setErrorMessage('Failed to load subscription. Defaulting to free tier.');
+      setErrorMessage('Failed to load subscription: ' + error.message);
     }
   }, []);
 
@@ -200,7 +204,7 @@ export default function Home({ walletAddress: propWalletAddress }) {
       setLoading(false);
     } catch (error) {
       setTrends([]);
-      setErrorMessage('Failed to load trends. Please try again.');
+      setErrorMessage('Failed to load trends: ' + error.message);
       setLoading(false);
     }
   }, [walletAddress, isFarcasterClient]);
@@ -270,7 +274,7 @@ export default function Home({ walletAddress: propWalletAddress }) {
       setCounterNarratives(counterPosts);
     } catch (error) {
       setCounterNarratives([]);
-      setErrorMessage('Failed to load counter-narratives. Please try again.');
+      setErrorMessage('Failed to load counter-narratives: ' + error.message);
     }
   }, [globalMode, walletAddress, isFarcasterClient]);
 
@@ -289,14 +293,14 @@ export default function Home({ walletAddress: propWalletAddress }) {
       const response = await fetch(`/api/user-echoes?userAddress=${walletAddress}`);
       if (!response.ok) {
         setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
-        setErrorMessage('Failed to load user echoes. Please try again.');
+        setErrorMessage('Failed to load user echoes: ' + error.message);
         return;
       }
       const data = await response.json();
       setUserEchoes(data);
     } catch (error) {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
-      setErrorMessage('Failed to load user echoes. Please try again.');
+      setErrorMessage('Failed to load user echoes: ' + error.message);
     }
   }, [walletAddress, isFarcasterClient]);
 
@@ -1194,8 +1198,13 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
     try {
       setPaymentStatus('pending');
       const { sdk } = await import('@farcaster/miniapp-sdk');
-      await sdk.actions.ready(); // Ensure SDK is initialized
-      const usdcContract = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // Corrected USDC address
+      try {
+        await sdk.actions.ready(); // Ensure SDK is initialized
+      } catch (error) {
+        throw new Error('Failed to initialize Farcaster SDK: ' + error.message);
+      }
+
+      const usdcContract = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913'; // Correct USDC address
       const txData = encodeFunctionData({
         abi: [
           {
@@ -1220,7 +1229,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         value: '0',
       });
 
-      const jwtToken = localStorage.getItem('jwt_token'); // Fetched from localStorage
+      const jwtToken = localStorage.getItem('jwt_token');
       if (!jwtToken) {
         throw new Error('No JWT token found. Please log in again.');
       }
@@ -1235,7 +1244,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
           walletAddress,
           action: 'create_subscription',
           tier,
-          amount: amount / 1_000_000, // Convert to USDC units
+          amount: amount / 1_000_000,
           transaction_hash: transactionHash,
         }),
       });
@@ -1311,7 +1320,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }}
         disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + tier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
