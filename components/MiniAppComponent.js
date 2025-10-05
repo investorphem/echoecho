@@ -1,16 +1,15 @@
+'use client';
 import { useState, useEffect } from 'react';
-import { useSignMessage } from 'wagmi';
 import { sdk } from '@farcaster/miniapp-sdk';
 
 export default function MiniAppComponent({
-  walletConnected, // Now used in UI
-  walletAddress,   // Now used in UI
+  walletConnected,
+  walletAddress,
   onMiniAppReady,
   onFarcasterReady,
 }) {
   const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true); // Added loading state
-  const { signMessageAsync } = useSignMessage();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const init = async () => {
@@ -25,7 +24,7 @@ export default function MiniAppComponent({
           return;
         }
 
-        // Signal SDK ready
+        // Initialize SDK
         try {
           await sdk.actions.ready();
         } catch (err) {
@@ -36,56 +35,70 @@ export default function MiniAppComponent({
           return;
         }
 
-        // Attempt automatic connection
+        // Get user data
+        let address, username;
         try {
-          const user = await sdk.getUser?.();
-          let address, username;
-
-          if (user && user.address) {
-            address = user.address;
-            username = user.username || 'unknown';
-          } else {
+          const user = await sdk.getUser();
+          if (!user || !user.address) {
             setError('No wallet connected in Warpcast. Please log in.');
             onFarcasterReady?.(null);
             setLoading(false);
             return;
           }
+          address = user.address;
+          username = user.username || 'unknown';
+        } catch (err) {
+          setError(`Failed to get user: ${err.message}`);
+          onFarcasterReady?.(null);
+          setLoading(false);
+          return;
+        }
 
-          // Generate and sign message for authentication
-          const message = `Login to EchoEcho at ${new Date().toISOString()}`;
-          let signature;
-          try {
-            signature = await signMessageAsync({ message });
-          } catch (signError) {
-            setError(`Signature failed: ${signError.message}`);
-            onFarcasterReady?.(null);
-            setLoading(false);
-            return;
-          }
+        // Generate and sign message using Farcaster SDK
+        const message = `Login to EchoEcho at ${new Date().toISOString()}`;
+        let signature;
+        try {
+          // Use SDK's signMessage instead of wagmi
+          signature = await sdk.actions.signMessage({ message });
+        } catch (signError) {
+          setError(`Signature failed: ${signError.message}`);
+          onFarcasterReady?.(null);
+          setLoading(false);
+          return;
+        }
 
-          // Send to /api/me
+        // Send to /api/me
+        try {
           const response = await fetch('/api/me', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message, signature, address, username }),
           });
 
-          if (response.ok) {
-            const userData = await response.json();
-            onFarcasterReady?.({
-              username: userData.username,
-              address: userData.address,
-              token: userData.token,
-              tier: userData.tier || 'free',
-              subscription: userData.subscription || null,
-            });
-          } else {
+          if (!response.ok) {
             const errorData = await response.json();
             setError(`Authentication failed: ${errorData.error || 'Unknown error'}`);
             onFarcasterReady?.(null);
+            setLoading(false);
+            return;
           }
-        } catch (error) {
-          setError(`Authentication error: ${error.message}`);
+
+          const userData = await response.json();
+          // Store in localStorage for handleUSDCPayment
+          localStorage.setItem('jwt_token', userData.token);
+          localStorage.setItem('wallet_address', userData.address);
+          localStorage.setItem('tier', userData.tier || 'free');
+          localStorage.setItem('subscription', JSON.stringify(userData.subscription || null));
+
+          onFarcasterReady?.({
+            username: userData.username,
+            address: userData.address,
+            token: userData.token,
+            tier: userData.tier || 'free',
+            subscription: userData.subscription || null,
+          });
+        } catch (authError) {
+          setError(`Authentication error: ${authError.message}`);
           onFarcasterReady?.(null);
         }
 
@@ -100,9 +113,8 @@ export default function MiniAppComponent({
     };
 
     init();
-  }, [signMessageAsync, onMiniAppReady, onFarcasterReady]);
+  }, [onMiniAppReady, onFarcasterReady]);
 
-  // Use walletConnected and walletAddress in UI
   const walletStatus = walletConnected
     ? `Connected: ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`
     : 'Not connected';
