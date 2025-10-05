@@ -292,9 +292,7 @@ export default function Home({ walletAddress: propWalletAddress }) {
     try {
       const response = await fetch(`/api/user-echoes?userAddress=${walletAddress}`);
       if (!response.ok) {
-        setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
-        setErrorMessage('Failed to load user echoes: ' + error.message);
-        return;
+        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
       }
       const data = await response.json();
       setUserEchoes(data);
