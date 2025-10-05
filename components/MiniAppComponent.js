@@ -1,3 +1,7 @@
+import { useState, useEffect } from 'react';
+import { useSignMessage } from 'wagmi';
+import { sdk } from '@farcaster/miniapp-sdk';
+
 export default function MiniAppComponent({
   walletConnected, // Now used in UI
   walletAddress,   // Now used in UI
@@ -5,6 +9,7 @@ export default function MiniAppComponent({
   onFarcasterReady,
 }) {
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true); // Added loading state
   const { signMessageAsync } = useSignMessage();
 
   useEffect(() => {
@@ -16,6 +21,7 @@ export default function MiniAppComponent({
           setError('Not running in a Farcaster client. Please use Warpcast.');
           onMiniAppReady?.();
           onFarcasterReady?.(null);
+          setLoading(false);
           return;
         }
 
@@ -23,9 +29,10 @@ export default function MiniAppComponent({
         try {
           await sdk.actions.ready();
         } catch (err) {
-          setError(`Failed to signal SDK ready: ${err.message}`);
+          setError(`Failed to initialize Farcaster SDK: ${err.message}`);
           onMiniAppReady?.();
           onFarcasterReady?.(null);
+          setLoading(false);
           return;
         }
 
@@ -40,6 +47,7 @@ export default function MiniAppComponent({
           } else {
             setError('No wallet connected in Warpcast. Please log in.');
             onFarcasterReady?.(null);
+            setLoading(false);
             return;
           }
 
@@ -51,6 +59,7 @@ export default function MiniAppComponent({
           } catch (signError) {
             setError(`Signature failed: ${signError.message}`);
             onFarcasterReady?.(null);
+            setLoading(false);
             return;
           }
 
@@ -81,10 +90,12 @@ export default function MiniAppComponent({
         }
 
         onMiniAppReady?.();
+        setLoading(false);
       } catch (err) {
         setError(`Initialization error: ${err.message}`);
         onMiniAppReady?.();
         onFarcasterReady?.(null);
+        setLoading(false);
       }
     };
 
@@ -92,13 +103,18 @@ export default function MiniAppComponent({
   }, [signMessageAsync, onMiniAppReady, onFarcasterReady]);
 
   // Use walletConnected and walletAddress in UI
-  const walletStatus = walletConnected 
+  const walletStatus = walletConnected
     ? `Connected: ${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}`
     : 'Not connected';
 
   return (
     <div>
-      {error && <div style={{ color: 'red', marginBottom: 12 }}>Error: {error}</div>}
+      {loading && <div style={{ color: '#666', marginBottom: 12 }}>Loading...</div>}
+      {error && (
+        <div style={{ color: 'red', marginBottom: 12 }}>
+          Error: {error.includes('Too many requests') ? 'Rate limit exceeded. Please try again later.' : error}
+        </div>
+      )}
       <div style={{ marginBottom: 12 }}>
         <strong>Wallet Status:</strong> {walletStatus}
       </div>
