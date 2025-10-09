@@ -3,6 +3,9 @@ import { base } from 'viem/chains';
 import { createHelia } from 'helia';
 import { json } from '@helia/json';
 import { getUserSubscription, saveNFT } from '../../lib/storage.js';
+import { NeynarAPIClient } from '@neynar/nodejs-sdk';
+
+const client = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
 
 const _publicClient = createPublicClient({
   chain: base,
@@ -10,21 +13,7 @@ const _publicClient = createPublicClient({
 });
 
 // NFT contract on Base
-const NFT_CONTRACT = process.env.NFT_CONTRACT || '0xYourNFTContractAddress';
-
-// Minimal ABI for minting
-const _NFT_ABI = [
-  {
-    inputs: [
-      { internalType: 'address', name: 'to', type: 'address' },
-      { internalType: 'string', name: 'tokenURI', type: 'string' },
-    ],
-    name: 'mint',
-    outputs: [{ internalType: 'uint256', name: 'tokenId', type: 'uint256' }],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-];
+const NFT_CONTRACT = process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -32,7 +21,23 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { narrative, userAddress, rarity = 'common' } = req.body;
+    const { narrative, userAddress, rarity = 'common', trustedData, tokenId, transactionHash } = req.body;
+
+    // Validate Frame action
+    if (trustedData?.messageBytes) {
+      const result = await client.validateFrameAction({
+        messageBytesInHex: trustedData.messageBytes,
+      });
+      if (!result.valid || result.action.interactor.fid !== Number(req.body.untrustedData?.fid)) {
+        return res.status(401).json({ error: 'Invalid Frame action' });
+      }
+      const verifiedAddresses = result.action.interactor.verified_addresses.eth_addresses;
+      if (!verifiedAddresses.includes(userAddress.toLowerCase())) {
+        return res.status(401).json({ error: 'User address does not match Frame interactor' });
+      }
+    } else {
+      return res.status(400).json({ error: 'Missing trustedData for Frame validation' });
+    }
 
     // Validate inputs
     if (!userAddress || !isAddress(userAddress)) {
@@ -45,8 +50,11 @@ export default async function handler(req, res) {
     if (!validRarities.includes(rarity)) {
       return res.status(400).json({ error: 'Invalid rarity' });
     }
+    if (!tokenId || !transactionHash) {
+      return res.status(400).json({ error: 'Token ID and transaction hash required' });
+    }
 
-    // Verify subscription for NFT minting
+    // Verify subscription
     const subscription = await getUserSubscription(userAddress.toLowerCase());
     const userTier = subscription?.status === 'active' && new Date(subscription.expires_at) > new Date()
       ? subscription.tier
@@ -78,6 +86,7 @@ export default async function handler(req, res) {
     // Upload metadata to IPFS
     const cid = await ipfs.add(metadata);
     const metadataURI = `ipfs://${cid.toString()}`;
+    const imageURI = `https://ipfs.io/ipfs/${cid.toString()}`;
 
     // Pricing from environment variables
     const rarityPricing = {
@@ -88,51 +97,33 @@ export default async function handler(req, res) {
     };
     const pricing = rarityPricing[rarity] || rarityPricing.common;
 
-    // Note: Minting requires wallet client (insecure in API route)
-    // Move to client-side or secure backend
-    // Simulate minting for now (replace with real contract call)
-    const simulatedTokenId = Date.now(); // Placeholder
-    const simulatedTxHash = '0x_pending'; // Placeholder
-    /*
-    const walletClient = createWalletClient({...}); // Requires private key
-    const { request } = await _publicClient.simulateContract({
-      address: NFT_CONTRACT,
-      abi: _NFT_ABI,
-      functionName: 'mint',
-      args: [userAddress, metadataURI],
-    });
-    const transactionHash = await walletClient.writeContract(request);
-    const receipt = await _publicClient.waitForTransactionReceipt({ hash: transactionHash });
-    const tokenId = receipt.logs[0].topics[3]; // Adjust based on contract
-    */
-
+    // Save NFT to database
     const insightToken = {
-      id: simulatedTokenId.toString(),
+      id: tokenId.toString(),
       contract_address: NFT_CONTRACT,
-      token_id: simulatedTokenId,
+      token_id: Number(tokenId),
       network: 'base',
       metadata_uri: metadataURI,
-      metadata: { ...metadata, image: `https://ipfs.io/ipfs/${cid.toString()}` },
-      transaction_hash: simulatedTxHash,
-      block_number: null, // Replace with real block number
+      metadata: { ...metadata, image: imageURI },
+      transaction_hash: transactionHash,
+      block_number: null,
       minted_at: new Date().toISOString(),
       owner: userAddress.toLowerCase(),
       rarity,
       pricing,
-      marketplace_url: `https://opensea.io/assets/base/${NFT_CONTRACT}/${simulatedTokenId}`,
+      marketplace_url: `https://opensea.io/assets/base/${NFT_CONTRACT}/${tokenId}`,
     };
 
-    // Save to database
     await saveNFT(insightToken);
 
     res.status(200).json({
       success: true,
       token: insightToken,
-      transaction_hash: simulatedTxHash,
+      transaction_hash: transactionHash,
       network: 'base',
-      explorer_url: `https://basescan.org/tx/${simulatedTxHash}`,
+      explorer_url: `https://basescan.org/tx/${transactionHash}`,
       opensea_url: insightToken.marketplace_url,
-      message: `Insight Token #${simulatedTokenId} minting initiated on Base! Rarity: ${rarity}`,
+      message: `Insight Token #${tokenId} minted on Base! Rarity: ${rarity}`,
     });
   } catch (error) {
     console.error('Base NFT minting error:', error);
