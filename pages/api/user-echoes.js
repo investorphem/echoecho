@@ -1,24 +1,44 @@
 import { createPublicClient, http, isAddress } from 'viem';
 import { base } from 'viem/chains';
-import { 
-  getUserEchoes, 
-  getUserNFTs, 
-  saveEcho 
-} from '../../lib/storage.js';
+import { getUserEchoes, getUserNFTs, saveEcho } from '../../lib/storage.js';
+import { NeynarAPIClient } from '@neynar/nodejs-sdk';
+
+const client = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
 
 const publicClient = createPublicClient({
   chain: base,
-  transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org')
+  transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
 });
 
-// NFT contract on Base (example, replace with your contract)
-const NFT_CONTRACT = '0xea2a41c02fa86a4901826615f9796e603c6a4491'; // Example: Bridge to Base NFT
+// NFT contract on Base
+const NFT_CONTRACT = process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS;
 
-// Minimal ABI for NFT balanceOf and tokenURI
+// Minimal ABI for NFT balanceOf, tokenOfOwnerByIndex, and tokenURI
 const NFT_ABI = [
-  'function balanceOf(address) view returns (uint256)',
-  'function tokenOfOwnerByIndex(address, uint256) view returns (uint256)',
-  'function tokenURI(uint256) view returns (string)'
+  {
+    inputs: [{ name: 'owner', type: 'address' }],
+    name: 'balanceOf',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [
+      { name: 'owner', type: 'address' },
+      { name: 'index', type: 'uint256' },
+    ],
+    name: 'tokenOfOwnerByIndex',
+    outputs: [{ name: '', type: 'uint256' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
+  {
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    name: 'tokenURI',
+    outputs: [{ name: '', type: 'string' }],
+    stateMutability: 'view',
+    type: 'function',
+  },
 ];
 
 export default async function handler(req, res) {
@@ -35,42 +55,62 @@ export default async function handler(req, res) {
     try {
       // Query database for echoes
       const echoes = await getUserEchoes(userKey);
-      
-      // Query blockchain for NFTs
-      const balance = await publicClient.readContract({
-        address: NFT_CONTRACT,
-        abi: NFT_ABI,
-        functionName: 'balanceOf',
-        args: [userAddress]
-      });
 
-      const nfts = [];
-      for (let i = 0; i < Number(balance); i++) {
-        const tokenId = await publicClient.readContract({
-          address: NFT_CONTRACT,
-          abi: NFT_ABI,
-          functionName: 'tokenOfOwnerByIndex',
-          args: [userAddress, i]
-        });
-        const tokenURI = await publicClient.readContract({
-          address: NFT_CONTRACT,
-          abi: NFT_ABI,
-          functionName: 'tokenURI',
-          args: [tokenId]
-        });
-        
-        // Assume tokenURI returns JSON metadata (e.g., via IPFS)
-        const metadata = await (await fetch(tokenURI)).json();
-        nfts.push({
-          id: tokenId.toString(),
-          title: metadata.name || `Insight Token #${tokenId}`,
-          rarity: metadata.rarity || 'common',
-          minted_at: new Date().toISOString(), // Replace with real mint timestamp if available
-          image: metadata.image || 'https://your-cdn.com/default-nft.png'
-        });
+      // Query blockchain for NFTs
+      let nfts = [];
+      if (NFT_CONTRACT) {
+        try {
+          const balance = await publicClient.readContract({
+            address: NFT_CONTRACT,
+            abi: NFT_ABI,
+            functionName: 'balanceOf',
+            args: [userAddress],
+          });
+
+          for (let i = 0; i < Number(balance); i++) {
+            const tokenId = await publicClient.readContract({
+              address: NFT_CONTRACT,
+              abi: NFT_ABI,
+              functionName: 'tokenOfOwnerByIndex',
+              args: [userAddress, i],
+            });
+            const tokenURI = await publicClient.readContract({
+              address: NFT_CONTRACT,
+              abi: NFT_ABI,
+              functionName: 'tokenURI',
+              args: [tokenId],
+            });
+
+            let metadata = {};
+            try {
+              // Handle IPFS URLs (e.g., ipfs://<CID>)
+              const url = tokenURI.startsWith('ipfs://')
+                ? `https://ipfs.io/ipfs/${tokenURI.replace('ipfs://', '')}`
+                : tokenURI;
+              const response = await fetch(url);
+              if (response.ok) {
+                metadata = await response.json();
+              }
+            } catch (fetchError) {
+              console.error(`Failed to fetch metadata for token ${tokenId}:`, fetchError);
+            }
+
+            nfts.push({
+              id: tokenId.toString(),
+              title: metadata.name || `Insight Token #${tokenId}`,
+              rarity: metadata.attributes?.find(attr => attr.trait_type === 'Rarity')?.value || 'common',
+              minted_at: metadata.minted_at || new Date().toISOString(),
+              image: metadata.image || 'https://your-cdn.com/default-nft.png',
+            });
+          }
+        } catch (contractError) {
+          console.error('Error querying NFT contract:', contractError);
+        }
+      } else {
+        console.warn('NEXT_PUBLIC_NFT_CONTRACT_ADDRESS not set. Skipping blockchain NFT fetch.');
       }
 
-      // Query database for NFTs (combine with blockchain data if needed)
+      // Query database for NFTs
       const storedNFTs = await getUserNFTs(userKey);
       const combinedNFTs = [...nfts, ...storedNFTs];
 
@@ -80,18 +120,18 @@ export default async function handler(req, res) {
         stats: {
           total_echoes: echoes.length,
           counter_narratives: echoes.filter(e => e.type === 'counter_narrative').length,
-          nfts_minted: combinedNFTs.length
-        }
+          nfts_minted: combinedNFTs.length,
+        },
       });
     } catch (error) {
       console.error('Error fetching user echoes/NFTs:', error);
-      return res.status(500).json({ error: 'Failed to fetch user data' });
+      return res.status(500).json({ error: `Failed to fetch user data: ${error.message}` });
     }
   }
 
   if (req.method === 'POST') {
     // Record a new echo
-    const { castId, userAddress, type = 'standard', source = 'farcaster' } = req.body;
+    const { castId, userAddress, type = 'standard', source = 'farcaster', trustedData } = req.body;
 
     if (!castId || !userAddress || !isAddress(userAddress)) {
       return res.status(400).json({ error: 'Valid castId and userAddress required' });
@@ -101,6 +141,27 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid echo type' });
     }
 
+    // Validate Frame action
+    if (trustedData?.messageBytes) {
+      try {
+        const result = await client.validateFrameAction({
+          messageBytesInHex: trustedData.messageBytes,
+        });
+        if (!result.valid || result.action.interactor.fid !== Number(req.body.untrustedData?.fid)) {
+          return res.status(401).json({ error: 'Invalid Frame action' });
+        }
+        const verifiedAddresses = result.action.interactor.verified_addresses.eth_addresses;
+        if (!verifiedAddresses.includes(userAddress.toLowerCase())) {
+          return res.status(401).json({ error: 'User address does not match Frame interactor' });
+        }
+      } catch (frameError) {
+        console.error('Frame validation error:', frameError);
+        return res.status(401).json({ error: `Frame validation failed: ${frameError.message}` });
+      }
+    } else {
+      return res.status(400).json({ error: 'Missing trustedData for Frame validation' });
+    }
+
     try {
       const newEcho = {
         id: `echo_${Date.now()}`,
@@ -108,7 +169,7 @@ export default async function handler(req, res) {
         user_address: userAddress.toLowerCase(),
         type,
         source,
-        echoed_at: new Date().toISOString()
+        echoed_at: new Date().toISOString(),
       };
 
       // Save to database
@@ -116,11 +177,11 @@ export default async function handler(req, res) {
 
       return res.status(200).json({
         success: true,
-        echo: newEcho
+        echo: newEcho,
       });
     } catch (error) {
       console.error('Error recording echo:', error);
-      return res.status(500).json({ error: 'Failed to record echo' });
+      return res.status(500).json({ error: `Failed to record echo: ${error.message}` });
     }
   }
 
