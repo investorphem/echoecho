@@ -24,7 +24,7 @@
     "firebase-admin": "^13.4.1",
     "helia": "^5.5.0",
     "@helia/json": "^4.0.7",
-    "jsonwebtoken": "^9.0.3",
+    "jsonwebtoken": "^9.0.2",
     "lru-cache": "^11.2.2",
     "next": "^14.2.15",
     "openai": "^5.19.1",
