@@ -6,8 +6,51 @@ import Head from 'next/head';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { createHelia } from 'helia';
 import { json } from '@helia/json';
+import { WagmiConfig, useAccount, useConnect, useSendTransaction, useSendCalls, useBalance } from 'wagmi';
+import { encodeFunctionData, parseUnits } from 'viem';
+import { wagmiConfig } from '../wagmi';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
+
+function ConnectMenu({ onConnected }) {
+  const { isConnected, address } = useAccount();
+  const { connect, connectors } = useConnect();
+
+  useEffect(() => {
+    if (isConnected && address) {
+      onConnected?.(address);
+    }
+  }, [isConnected, address, onConnected]);
+
+  if (isConnected) {
+    return (
+      <div style={{ color: '#4ade80', textAlign: 'center', marginBottom: 16 }}>
+        <div>You're connected!</div>
+        <div>Address: {address.slice(0, 6)}...{address.slice(-4)}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ textAlign: 'center', marginBottom: 16 }}>
+      <button
+        type="button"
+        onClick={() => connect({ connector: connectors[0] })}
+        style={{
+          background: '#3b82f6',
+          color: 'white',
+          border: 'none',
+          padding: '12px 24px',
+          borderRadius: 8,
+          cursor: 'pointer',
+          fontSize: 16,
+        }}
+      >
+        Connect Wallet
+      </button>
+    </div>
+  );
+}
 
 export default function Home({ _fid, walletAddress: propWalletAddress }) {
   const [farcasterAddress, setFarcasterAddress] = useState(propWalletAddress || null);
@@ -31,7 +74,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
   const [contextInfo, setContextInfo] = useState({ referrerDomain: null, clientFid: null, platformType: 'unknown' });
 
   const handleFarcasterReady = useCallback((data) => {
-    console.log('handleFarcasterReady received:', data);
+    console.log('handleFarcasterReady received:', JSON.stringify(data, null, 2));
     setContextInfo({
       referrerDomain: data.referrerDomain || null,
       clientFid: data.clientFid || null,
@@ -61,26 +104,44 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setJwtToken(data.token);
       setUserTier(data.tier || 'free');
       setSubscription(data.subscription || null);
-      console.log('Farcaster user data set:', { fid: data.fid, address: data.address, clientFid: data.clientFid, platformType: data.platformType });
+      console.log('Farcaster user data set:', {
+        fid: data.fid,
+        address: data.address,
+        clientFid: data.clientFid,
+        platformType: data.platformType,
+      });
     } else {
-      setErrorMessage('Failed to fetch user data: Missing wallet address');
-      setLoading(false);
-      // Load mock trends
-      const mockData = {
-        casts: [
-          { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
-          { text: 'Sample trend 2', body: 'Another mock trend', hash: 'mock2', timestamp: new Date().toISOString() },
-        ],
-      };
-      setTrends(mockData.casts.map((trend) => ({
-        ...trend,
-        ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
-      })));
+      // Fallback to cached address
+      const cachedAddress = localStorage.getItem('wallet_address');
+      if (cachedAddress) {
+        setFarcasterAddress(cachedAddress);
+        console.log('Using cached address:', cachedAddress);
+      } else {
+        setErrorMessage('Failed to fetch user data: Missing wallet address');
+        setLoading(false);
+        // Load mock trends
+        const mockData = {
+          casts: [
+            { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
+            { text: 'Sample trend 2', body: 'Another mock trend', hash: 'mock2', timestamp: new Date().toISOString() },
+          ],
+        };
+        setTrends(mockData.casts.map((trend) => ({
+          ...trend,
+          ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
+        })));
+      }
     }
   }, []);
 
   const handleMiniAppReady = useCallback(() => {
     setLoading(false);
+  }, []);
+
+  const handleWalletConnected = useCallback((address) => {
+    setFarcasterAddress(address);
+    localStorage.setItem('wallet_address', address);
+    console.log('Wallet connected:', address);
   }, []);
 
   const checkUSDCBalance = useCallback(async (address) => {
@@ -380,12 +441,43 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         }
         const metadataURI = `ipfs://${cid.toString()}`;
 
-        const { transactionHash } = await sdk.actions.signTransaction({
-          to: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS,
-          data: `0x${Buffer.from(`mint(address,string)${farcasterAddress}${metadataURI}`).toString('hex')}`,
-          chainId: 8453,
-          value: '0',
-        });
+        const { sendTransaction } = useSendTransaction();
+        let transactionHash;
+        try {
+          console.log('Preparing to mint NFT:', { farcasterAddress, metadataURI });
+          const { hash } = await sendTransaction({
+            to: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS,
+            data: encodeFunctionData({
+              abi: [
+                {
+                  name: 'mint',
+                  type: 'function',
+                  inputs: [
+                    { name: 'to', type: 'address' },
+                    { name: 'uri', type: 'string' },
+                  ],
+                  outputs: [],
+                },
+              ],
+              functionName: 'mint',
+              args: [farcasterAddress, metadataURI],
+            }),
+            chainId: 8453,
+          });
+          transactionHash = hash;
+          console.log('NFT mint transaction submitted:', transactionHash);
+        } catch (txError) {
+          console.error('Transaction error:', txError);
+          // Fallback to sdk.actions.signTransaction
+          const { transactionHash: fallbackHash } = await sdk.actions.signTransaction({
+            to: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS,
+            data: `0x${Buffer.from(`mint(address,string)${farcasterAddress}${metadataURI}`).toString('hex')}`,
+            chainId: 8453,
+            value: '0',
+          });
+          transactionHash = fallbackHash;
+          console.log('Fallback NFT mint transaction submitted:', transactionHash);
+        }
 
         const response = await fetch('/api/base-nft', {
           method: 'POST',
@@ -419,9 +511,14 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         );
         loadUserEchoes();
       } catch (error) {
+        console.error('Minting error:', error);
         setErrorMessage('Error minting token: ' + error.message);
         if (error.message.includes('rejected')) {
           setErrorMessage('Error minting token: User rejected the transaction');
+        } else if (error.message.includes('malicious')) {
+          setErrorMessage(
+            'Transaction flagged as potentially malicious. Please verify our contracts using the Blockaid Tool: https://blockaid.io/verify. If the issue persists, contact support.'
+          );
         }
       }
     },
@@ -520,8 +617,16 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     );
   }, [trends, searchQuery]);
 
+  // Apply safeAreaInsets for mobile layout
+  const safeAreaStyles = contextInfo.platformType === 'mobile' ? {
+    paddingTop: 20, // From client.json safeAreaInsets.top
+    paddingBottom: 20, // From client.json safeAreaInsets.bottom
+    paddingLeft: 0,
+    paddingRight: 0,
+  } : {};
+
   return (
-    <>
+    <WagmiConfig config={wagmiConfig}>
       <Head>
         <title>EchoEcho - AI-Powered Echo Chamber Breaker</title>
         <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
@@ -540,12 +645,14 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
           background: '#111827',
           color: '#f9fafb',
           minHeight: '100vh',
+          ...safeAreaStyles,
         }}
       >
         <MiniAppComponent
           onMiniAppReady={handleMiniAppReady}
           onFarcasterReady={handleFarcasterReady}
         />
+        <ConnectMenu onConnected={handleWalletConnected} />
 
         {errorMessage && (
           <div
@@ -1238,23 +1345,26 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
           </>
         )}
       </div>
-    </>
+    </WagmiConfig>
   );
 }
 
 const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, usdcBalance, checkUSDCBalance, setSubscription, loadUserSubscription }) => {
   const [selectedTier, setSelectedTier] = useState('premium');
   const [paymentStatus, setPaymentStatus] = useState('none');
+  const [error, setError] = useState(null);
+  const { sendCalls } = useSendCalls();
+  const { data: balanceData } = useBalance({ address: walletAddress, chainId: 8453 });
 
   const handleUSDCPayment = async (tier) => {
     if (!walletConnected || !walletAddress) {
-      alert('Please connect your Farcaster wallet via Warpcast!');
+      setError('Please connect your Farcaster wallet via Warpcast!');
       return;
     }
 
     const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS;
     if (!treasuryAddress) {
-      alert('Treasury address not configured. Please contact support.');
+      setError('Treasury address not configured. Please contact support.');
       return;
     }
 
@@ -1262,24 +1372,76 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
     const amount = pricing[tier];
 
     if (usdcBalance < amount) {
-      alert(
+      setError(
         `❌ Insufficient USDC Balance!\n\nRequired: ${amount} USDC\nYour Balance: ${usdcBalance} USDC\n\nPlease add more USDC to your wallet on Base network.`
       );
       return;
     }
 
+    const ethBalance = balanceData ? Number(balanceData.formatted) : 0;
+    if (ethBalance < 0.01) {
+      setError('Insufficient ETH for gas fees. Please add at least 0.01 ETH to your wallet on Base.');
+      return;
+    }
+
     try {
       setPaymentStatus('pending');
-      const { sdk } = await import('@farcaster/miniapp-sdk');
-      const usdcContract = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
-      const txData = `0xa9059cbb${treasuryAddress.slice(2).padStart(64, '0')}${(BigInt(amount * 1e6)).toString(16).padStart(64, '0')}`; // USDC transfer data
+      setError(null);
 
-      const { transactionHash } = await sdk.actions.signTransaction({
-        to: usdcContract,
-        data: txData,
-        chainId: 8453,
-        value: '0',
+      const usdcContract = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+      const amountInUnits = parseUnits(amount.toString(), 6);
+
+      console.log('Preparing batch transaction for USDC approval and transfer:', {
+        tier,
+        amount,
+        walletAddress,
+        treasuryAddress,
       });
+
+      await sendCalls({
+        calls: [
+          {
+            to: usdcContract,
+            data: encodeFunctionData({
+              abi: [
+                {
+                  name: 'approve',
+                  type: 'function',
+                  inputs: [
+                    { name: 'spender', type: 'address' },
+                    { name: 'value', type: 'uint256' },
+                  ],
+                  outputs: [{ type: 'bool' }],
+                },
+              ],
+              functionName: 'approve',
+              args: [treasuryAddress, amountInUnits],
+            }),
+            chainId: 8453,
+          },
+          {
+            to: usdcContract,
+            data: encodeFunctionData({
+              abi: [
+                {
+                  name: 'transfer',
+                  type: 'function',
+                  inputs: [
+                    { name: 'to', type: 'address' },
+                    { name: 'value', type: 'uint256' },
+                  ],
+                  outputs: [{ type: 'bool' }],
+                },
+              ],
+              functionName: 'transfer',
+              args: [treasuryAddress, amountInUnits],
+            }),
+            chainId: 8453,
+          },
+        ],
+      });
+
+      console.log('Batch transaction submitted successfully');
 
       const resp = await fetch('/api/user-subscription', {
         method: 'POST',
@@ -1289,28 +1451,114 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
           action: 'create_subscription',
           tier,
           amount,
-          transaction_hash: transactionHash,
+          transaction_hash: 'batch-transaction',
         }),
       });
       const responseData = await resp.json();
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}: ${responseData.error || 'Unknown error'}`);
       }
+
       setUserTier(tier);
       setSubscription(responseData.subscription);
       setPaymentStatus('success');
+      setError(null);
       alert(`🎉 ${tier.charAt(0).toUpperCase() + tier.slice(1)} subscription activated!`);
       checkUSDCBalance(walletAddress);
       loadUserSubscription(walletAddress);
     } catch (error) {
+      console.error('Batch transaction error:', error);
       setPaymentStatus('error');
-      alert('Error processing payment: ' + error.message);
+      if (error.message.includes('rejected')) {
+        setError('Payment failed: User rejected the transaction');
+      } else if (error.message.includes('malicious')) {
+        setError(
+          'Transaction flagged as potentially malicious. Please verify our contracts using the Blockaid Tool: https://blockaid.io/verify. If the issue persists, contact support.'
+        );
+      } else {
+        setError(`Error processing payment: ${error.message}`);
+        // Fallback to single transaction
+        try {
+          const { transactionHash } = await sdk.actions.signTransaction({
+            to: usdcContract,
+            data: encodeFunctionData({
+              abi: [
+                {
+                  name: 'transfer',
+                  type: 'function',
+                  inputs: [
+                    { name: 'to', type: 'address' },
+                    { name: 'value', type: 'uint256' },
+                  ],
+                  outputs: [{ type: 'bool' }],
+                },
+              ],
+              functionName: 'transfer',
+              args: [treasuryAddress, amountInUnits],
+            }),
+            chainId: 8453,
+            value: '0',
+          });
+          const resp = await fetch('/api/user-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              walletAddress,
+              action: 'create_subscription',
+              tier,
+              amount,
+              transaction_hash: transactionHash,
+            }),
+          });
+          const responseData = await resp.json();
+          if (!resp.ok) {
+            throw new Error(`HTTP ${resp.status}: ${responseData.error || 'Unknown error'}`);
+          }
+          setUserTier(tier);
+          setSubscription(responseData.subscription);
+          setPaymentStatus('success');
+          setError(null);
+          alert(`🎉 ${tier.charAt(0).toUpperCase() + tier.slice(1)} subscription activated!`);
+          checkUSDCBalance(walletAddress);
+          loadUserSubscription(walletAddress);
+        } catch (fallbackError) {
+          setError(`Fallback transaction failed: ${fallbackError.message}`);
+        }
+      }
     }
   };
 
   return (
     <div>
       <h2 style={{ marginBottom: 20 }}>💎 Upgrade Your Plan</h2>
+      {error && (
+        <div
+          style={{
+            background: '#dc2626',
+            color: 'white',
+            padding: '12px 16px',
+            borderRadius: 8,
+            marginBottom: 16,
+            textAlign: 'center',
+          }}
+        >
+          {error}
+        </div>
+      )}
+      {ethBalance < 0.01 && (
+        <div
+          style={{
+            background: '#f59e0b',
+            color: 'white',
+            padding: '12px 16px',
+            borderRadius: 8,
+            marginBottom: 16,
+            textAlign: 'center',
+          }}
+        >
+          ⚠️ Low ETH balance ({ethBalance.toFixed(4)} ETH). Please add at least 0.01 ETH for gas fees.
+        </div>
+      )}
       <div style={{ display: 'grid', gap: 16, marginBottom: 24 }}>
         {['premium', 'pro'].map((tier) => (
           <div
@@ -1399,6 +1647,12 @@ const FAQView = () => (
       <h3 style={{ fontSize: 16, marginBottom: 8 }}>What are Insight Tokens?</h3>
       <p style={{ fontSize: 14, color: '#d1d5db' }}>
         Insight Tokens are NFTs representing counter-narratives you discover. Mint them to showcase your commitment to diverse perspectives!
+      </p>
+    </div>
+    <div style={{ background: '#1f2937', border: '1px solid #374151', borderRadius: 12, padding: 16, marginTop: 16 }}>
+      <h3 style={{ fontSize: 16, marginBottom: 8 }}>Why was my transaction flagged?</h3>
+      <p style={{ fontSize: 14, color: '#d1d5db' }}>
+        Some wallets may flag new contracts as potentially malicious. Verify our contracts using the <a href="https://blockaid.io/verify" style={{ color: '#3b82f6' }}>Blockaid Tool</a>. Contact support if issues persist.
       </p>
     </div>
   </div>
