@@ -4,24 +4,10 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Head from 'next/head';
 import { sdk } from '@farcaster/miniapp-sdk';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { createHelia } from 'helia';
 import { json } from '@helia/json';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
-
-const NFT_ABI = [
-  {
-    inputs: [
-      { name: 'to', type: 'address' },
-      { name: 'uri', type: 'string' },
-    ],
-    name: 'mint',
-    outputs: [{ name: 'tokenId', type: 'uint256' }],
-    stateMutability: 'nonpayable',
-    type: 'function',
-  },
-];
 
 export default function Home({ _fid, walletAddress: propWalletAddress }) {
   const [farcasterAddress, setFarcasterAddress] = useState(propWalletAddress || null);
@@ -43,10 +29,6 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
   const [errorMessage, setErrorMessage] = useState(null);
   const [apiWarning, setApiWarning] = useState(null);
 
-  const { isConnected, address } = useAccount();
-  const { writeContract, data: hash } = useWriteContract();
-  const { isLoading: isTxPending, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({ hash });
-
   // Callback from MiniAppComponent when it authenticates user
   const handleFarcasterReady = useCallback((data) => {
     if (data.error) {
@@ -55,14 +37,14 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       return;
     }
     setIsFarcasterClient(true);
-    if (data.fid && data.address) {
+    if (data?.fid && data?.address) {
       setFarcasterAddress(data.address);
       setFid(data.fid);
       setJwtToken(data.token);
       setUserTier(data.tier || 'free');
       setSubscription(data.subscription || null);
     } else {
-      setErrorMessage('Failed to connect Farcaster wallet. Please try again in Warpcast.');
+      setErrorMessage('Failed to fetch user data: Invalid or missing user information');
       setLoading(false);
     }
   }, []);
@@ -385,59 +367,44 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         }
         const metadataURI = `ipfs://${cid.toString()}`;
 
-        writeContract({
-          address: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS,
-          abi: NFT_ABI,
-          functionName: 'mint',
-          args: [farcasterAddress, metadataURI],
+        const { transactionHash } = await sdk.actions.signTransaction({
+          to: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS,
+          data: `0x${Buffer.from(`mint(address,string)${farcasterAddress}${metadataURI}`).toString('hex')}`,
+          chainId: 8453, // Base chain ID
+          value: '0',
         });
 
-        if (hash) {
-          const receipt = await new Promise((resolve) => {
-            const checkTx = setInterval(async () => {
-              if (isTxConfirmed) {
-                clearInterval(checkTx);
-                const txReceipt = await fetch(`/api/get-tx-receipt?hash=${hash}`).then((res) => res.json());
-                resolve(txReceipt);
-              }
-            }, 1000);
-          });
+        const response = await fetch('/api/base-nft', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${jwtToken || localStorage.getItem('jwt_token')}`,
+          },
+          body: JSON.stringify({
+            narrative: { text: narrative.text, source: narrative.source },
+            userAddress: farcasterAddress,
+            rarity,
+            trustedData,
+            tokenId: Date.now(), // Temporary until contract emits tokenId
+            transactionHash,
+            untrustedData: { fid },
+          }),
+        });
 
-          const tokenId = receipt.logs[0]?.topics[3] ? parseInt(receipt.logs[0].topics[3], 16) : Date.now();
-
-          const response = await fetch('/api/base-nft', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${jwtToken || localStorage.getItem('jwt_token')}`,
-            },
-            body: JSON.stringify({
-              narrative: { text: narrative.text, source: narrative.source },
-              userAddress: farcasterAddress,
-              rarity,
-              trustedData,
-              tokenId,
-              transactionHash: hash,
-              untrustedData: { fid },
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-          }
-
-          const { token } = await response.json();
-          setErrorMessage(null);
-          alert(
-            `Insight Token minted!\n\n` +
-            `Token ID: ${token.id}\n` +
-            `Transaction: ${token.transaction_hash.slice(0, 10)}...\n` +
-            `Rarity: ${token.rarity}\n\n` +
-            `This counter-narrative is now part of your collection!`
-          );
-          loadUserEchoes();
-          return token;
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${await response.text()}`);
         }
+
+        const { token } = await response.json();
+        setErrorMessage(null);
+        alert(
+          `Insight Token minted!\n\n` +
+          `Token ID: ${token.id}\n` +
+          `Transaction: ${token.transaction_hash.slice(0, 10)}...\n` +
+          `Rarity: ${token.rarity}\n\n` +
+          `This counter-narrative is now part of your collection!`
+        );
+        loadUserEchoes();
       } catch (error) {
         setErrorMessage('Error minting token: ' + error.message);
         if (error.message.includes('rejected')) {
@@ -445,7 +412,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         }
       }
     },
-    [farcasterAddress, fid, isFarcasterClient, jwtToken, loadUserEchoes, writeContract, hash, isTxConfirmed]
+    [farcasterAddress, fid, isFarcasterClient, jwtToken, loadUserEchoes]
   );
 
   const handleEcho = useCallback(
@@ -1399,7 +1366,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }}
         disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + tier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
