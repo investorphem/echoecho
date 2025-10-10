@@ -4,12 +4,10 @@ import { sdk } from '@farcaster/miniapp-sdk';
 import { useAccount, useConnect, useSignMessage } from 'wagmi';
 
 export default function MiniAppComponent({
-  walletConnected: _walletConnected,
-  walletAddress: _walletAddress,
   onMiniAppReady,
   onFarcasterReady,
 }) {
-  const [initializing, setInitializing] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
   const { isConnected, address } = useAccount();
   const { connect, connectors } = useConnect();
@@ -18,9 +16,8 @@ export default function MiniAppComponent({
   useEffect(() => {
     const init = async () => {
       try {
-        setInitializing(true);
         console.log('Checking Mini App context...');
-        const isMiniApp = await sdk.isInMiniApp({ timeoutMs: 2000 });
+        const isMiniApp = await sdk.isInMiniApp({ timeoutMs: 5000 }); // Increased timeout to 5s
         console.log('Mini App context:', isMiniApp);
 
         if (!isMiniApp) {
@@ -57,20 +54,21 @@ export default function MiniAppComponent({
           return;
         }
 
-        // Get user data with retries
+        // Get user data with exponential backoff retries
         let user;
-        for (let attempt = 1; attempt <= 3; attempt++) {
+        for (let attempt = 1; attempt <= 5; attempt++) {
           try {
             user = await sdk.getUser();
-            if (user && user.address && user.fid) break;
+            if (user && user.fid && user.address) break;
             console.log(`Attempt ${attempt}: Invalid user data, retrying...`);
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+            await new Promise((resolve) => setTimeout(resolve, delay));
           } catch (userErr) {
             console.log(`Attempt ${attempt}: Error fetching user: ${userErr.message}`);
           }
         }
 
-        if (!user || !user.address || !user.fid) {
+        if (!user || !user.fid || !user.address) {
           throw new Error('Failed to fetch user data: Invalid or missing user information');
         }
         console.log('User data:', user);
