@@ -28,13 +28,20 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
   const [reminderDismissed, setReminderDismissed] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [apiWarning, setApiWarning] = useState(null);
+  const [contextInfo, setContextInfo] = useState({ referrerDomain: null, clientFid: null, platformType: 'unknown' });
 
-  // Callback from MiniAppComponent when it authenticates user
   const handleFarcasterReady = useCallback((data) => {
+    console.log('handleFarcasterReady received:', data);
+    setContextInfo({
+      referrerDomain: data.referrerDomain || null,
+      clientFid: data.clientFid || null,
+      platformType: data.platformType || 'unknown',
+    });
     if (data.error) {
+      console.error('Farcaster initialization error:', data.error);
       setErrorMessage(data.error);
       setLoading(false);
-      // Load mock trends to prevent blank screen
+      // Load mock trends
       const mockData = {
         casts: [
           { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
@@ -50,15 +57,15 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     setIsFarcasterClient(true);
     if (data?.address) {
       setFarcasterAddress(data.address);
-      setFid(data.fid || null); // fid is optional
+      setFid(data.fid || null);
       setJwtToken(data.token);
       setUserTier(data.tier || 'free');
       setSubscription(data.subscription || null);
-      console.log('Farcaster user data:', { fid: data.fid, address: data.address });
+      console.log('Farcaster user data set:', { fid: data.fid, address: data.address, clientFid: data.clientFid, platformType: data.platformType });
     } else {
       setErrorMessage('Failed to fetch user data: Missing wallet address');
       setLoading(false);
-      // Load mock trends to prevent blank screen
+      // Load mock trends
       const mockData = {
         casts: [
           { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
@@ -72,7 +79,6 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     }
   }, []);
 
-  // Callback when MiniAppComponent is ready
   const handleMiniAppReady = useCallback(() => {
     setLoading(false);
   }, []);
@@ -135,21 +141,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     setLoading(true);
     setErrorMessage(null);
     setApiWarning(null);
-    if (!isFarcasterClient) {
-      const mockData = {
-        casts: [
-          { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
-          { text: 'Sample trend 2', body: 'Another mock trend', hash: 'mock2', timestamp: new Date().toISOString() },
-        ],
-      };
-      setTrends(mockData.casts.map((trend) => ({
-        ...trend,
-        ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
-      })));
-      setErrorMessage('Please use Warpcast to access full trends.');
-      setLoading(false);
-      return;
-    }
+
     if (!farcasterAddress) {
       const mockData = {
         casts: [
@@ -161,12 +153,15 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         ...trend,
         ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
       })));
-      setErrorMessage('Connect a Farcaster wallet in Warpcast for full trends.');
+      setErrorMessage('Connect a Farcaster wallet in Warpcast to view real trends.');
       setLoading(false);
       return;
     }
+
     try {
-      const resp = await fetch(`/api/trending?userAddress=${farcasterAddress}`);
+      const resp = await fetch(`/api/trending?userAddress=${farcasterAddress}`, {
+        headers: { Authorization: `Bearer ${jwtToken || localStorage.getItem('jwt_token')}` },
+      });
       const data = await resp.json();
       if (resp.status === 429) {
         if (retryCount < 2) {
@@ -238,23 +233,18 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setTrends(enrichedTrends);
       setLoading(false);
     } catch (error) {
+      console.error('loadTrends error:', error);
       setTrends([]);
-      setErrorMessage('Failed to load trends. Please try again.');
+      setErrorMessage('Failed to load trends. Please try again or open in Warpcast.');
       setLoading(false);
     }
-  }, [farcasterAddress, isFarcasterClient]);
+  }, [farcasterAddress, jwtToken]);
 
   const loadTopicDetails = useCallback(async (topic) => {
     setSelectedTopic(topic);
     setActiveView('topic');
     setErrorMessage(null);
     setApiWarning(null);
-
-    if (!isFarcasterClient) {
-      setCounterNarratives([]);
-      setErrorMessage('Counter-narratives require Warpcast.');
-      return;
-    }
 
     if (!farcasterAddress) {
       setCounterNarratives([]);
@@ -311,14 +301,9 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setCounterNarratives([]);
       setErrorMessage('Failed to load counter-narratives. Please try again.');
     }
-  }, [globalMode, farcasterAddress, isFarcasterClient]);
+  }, [globalMode, farcasterAddress]);
 
   const loadUserEchoes = useCallback(async () => {
-    if (!isFarcasterClient) {
-      setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
-      setErrorMessage('Echo history requires Warpcast.');
-      return;
-    }
     if (!farcasterAddress) {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
@@ -339,14 +324,10 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Failed to load user echoes. Please try again.');
     }
-  }, [farcasterAddress, isFarcasterClient, jwtToken]);
+  }, [farcasterAddress, jwtToken]);
 
   const mintInsightToken = useCallback(
     async (narrative, trustedData = {}) => {
-      if (!isFarcasterClient) {
-        setErrorMessage('Please use Warpcast to mint Insight Tokens.');
-        return;
-      }
       if (!farcasterAddress) {
         setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
         return;
@@ -402,7 +383,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         const { transactionHash } = await sdk.actions.signTransaction({
           to: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS,
           data: `0x${Buffer.from(`mint(address,string)${farcasterAddress}${metadataURI}`).toString('hex')}`,
-          chainId: 8453, // Base chain ID
+          chainId: 8453,
           value: '0',
         });
 
@@ -417,9 +398,9 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
             userAddress: farcasterAddress,
             rarity,
             trustedData,
-            tokenId: Date.now(), // Temporary until contract emits tokenId
+            tokenId: Date.now(),
             transactionHash,
-            untrustedData: { fid: fid || null }, // Allow null fid
+            untrustedData: { fid: fid || null },
           }),
         });
 
@@ -444,15 +425,11 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         }
       }
     },
-    [farcasterAddress, fid, isFarcasterClient, jwtToken, loadUserEchoes]
+    [farcasterAddress, fid, jwtToken, loadUserEchoes]
   );
 
   const handleEcho = useCallback(
     async (cast, isCounterNarrative = false, trustedData = {}) => {
-      if (!isFarcasterClient) {
-        setErrorMessage('Echoing requires Warpcast.');
-        return;
-      }
       if (!farcasterAddress) {
         setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
         return;
@@ -470,7 +447,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
             type: isCounterNarrative ? 'counter_narrative' : 'standard',
             source: cast.source || 'farcaster',
             trustedData,
-            untrustedData: { fid: fid || null }, // Allow null fid
+            untrustedData: { fid: fid || null },
           }),
         });
         if (!resp.ok) {
@@ -489,11 +466,11 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         setErrorMessage('Error echoing: ' + error.message);
       }
     },
-    [farcasterAddress, fid, isFarcasterClient, jwtToken, loadUserEchoes]
+    [farcasterAddress, fid, jwtToken, loadUserEchoes]
   );
 
   useEffect(() => {
-    if (isFarcasterClient && farcasterAddress) {
+    if (farcasterAddress) {
       checkUSDCBalance(farcasterAddress);
       loadUserSubscription(farcasterAddress);
       loadTrends();
@@ -501,7 +478,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     } else {
       setLoading(false);
     }
-  }, [farcasterAddress, isFarcasterClient, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
+  }, [farcasterAddress, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
@@ -585,6 +562,8 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
             }}
           >
             <div>{errorMessage}</div>
+            <div>Context: {contextInfo.platformType}, Client FID: {contextInfo.clientFid || 'Unknown'}</div>
+            {contextInfo.referrerDomain && <div>Launched from: {contextInfo.referrerDomain}</div>}
             <button
               onClick={() => window.location.reload()}
               style={{
@@ -681,31 +660,6 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
                 100% { transform: rotate(360deg); }
               }
             `}</style>
-          </div>
-        )}
-
-        {!loading && !isFarcasterClient && (
-          <div
-            style={{
-              background: '#f59e0b',
-              color: 'white',
-              padding: '12px 16px',
-              borderRadius: 8,
-              marginBottom: 16,
-              textAlign: 'center',
-            }}
-          >
-            Please open in Warpcast to use EchoEcho.
-            <a
-              href="https://warpcast.com"
-              style={{
-                color: '#3b82f6',
-                marginLeft: 8,
-                textDecoration: 'underline',
-              }}
-            >
-              Go to Warpcast
-            </a>
           </div>
         )}
 
@@ -865,6 +819,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
                   />
                   <span style={{ fontSize: 14 }}>
                     🌐 Global Echoes {globalMode ? '(X + News)' : '(Farcaster Only)'}
+                    {contextInfo.referrerDomain && ` • From ${contextInfo.referrerDomain}`}
                   </span>
                 </label>
               </div>
@@ -1322,7 +1277,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
       const { transactionHash } = await sdk.actions.signTransaction({
         to: usdcContract,
         data: txData,
-        chainId: 8453, // Base chain ID
+        chainId: 8453,
         value: '0',
       });
 
