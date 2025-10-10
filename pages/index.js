@@ -34,18 +34,41 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     if (data.error) {
       setErrorMessage(data.error);
       setLoading(false);
+      // Load mock trends to prevent blank screen
+      const mockData = {
+        casts: [
+          { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
+          { text: 'Sample trend 2', body: 'Another mock trend', hash: 'mock2', timestamp: new Date().toISOString() },
+        ],
+      };
+      setTrends(mockData.casts.map((trend) => ({
+        ...trend,
+        ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
+      })));
       return;
     }
     setIsFarcasterClient(true);
-    if (data?.fid && data?.address) {
+    if (data?.address) {
       setFarcasterAddress(data.address);
-      setFid(data.fid);
+      setFid(data.fid || null); // fid is optional
       setJwtToken(data.token);
       setUserTier(data.tier || 'free');
       setSubscription(data.subscription || null);
+      console.log('Farcaster user data:', { fid: data.fid, address: data.address });
     } else {
-      setErrorMessage('Failed to fetch user data: Invalid or missing user information');
+      setErrorMessage('Failed to fetch user data: Missing wallet address');
       setLoading(false);
+      // Load mock trends to prevent blank screen
+      const mockData = {
+        casts: [
+          { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
+          { text: 'Sample trend 2', body: 'Another mock trend', hash: 'mock2', timestamp: new Date().toISOString() },
+        ],
+      };
+      setTrends(mockData.casts.map((trend) => ({
+        ...trend,
+        ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
+      })));
     }
   }, []);
 
@@ -113,8 +136,17 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     setErrorMessage(null);
     setApiWarning(null);
     if (!isFarcasterClient) {
-      setTrends([]);
-      setErrorMessage('Please use Warpcast to access trends.');
+      const mockData = {
+        casts: [
+          { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
+          { text: 'Sample trend 2', body: 'Another mock trend', hash: 'mock2', timestamp: new Date().toISOString() },
+        ],
+      };
+      setTrends(mockData.casts.map((trend) => ({
+        ...trend,
+        ai_analysis: { sentiment: 'neutral', confidence: 0.5 },
+      })));
+      setErrorMessage('Please use Warpcast to access full trends.');
       setLoading(false);
       return;
     }
@@ -287,7 +319,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setErrorMessage('Echo history requires Warpcast.');
       return;
     }
-    if (!farcasterAddress || !fid) {
+    if (!farcasterAddress) {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
@@ -307,7 +339,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Failed to load user echoes. Please try again.');
     }
-  }, [farcasterAddress, fid, isFarcasterClient, jwtToken]);
+  }, [farcasterAddress, isFarcasterClient, jwtToken]);
 
   const mintInsightToken = useCallback(
     async (narrative, trustedData = {}) => {
@@ -315,7 +347,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         setErrorMessage('Please use Warpcast to mint Insight Tokens.');
         return;
       }
-      if (!farcasterAddress || !fid) {
+      if (!farcasterAddress) {
         setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
         return;
       }
@@ -387,7 +419,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
             trustedData,
             tokenId: Date.now(), // Temporary until contract emits tokenId
             transactionHash,
-            untrustedData: { fid },
+            untrustedData: { fid: fid || null }, // Allow null fid
           }),
         });
 
@@ -421,7 +453,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         setErrorMessage('Echoing requires Warpcast.');
         return;
       }
-      if (!farcasterAddress || !fid) {
+      if (!farcasterAddress) {
         setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
         return;
       }
@@ -438,7 +470,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
             type: isCounterNarrative ? 'counter_narrative' : 'standard',
             source: cast.source || 'farcaster',
             trustedData,
-            untrustedData: { fid },
+            untrustedData: { fid: fid || null }, // Allow null fid
           }),
         });
         if (!resp.ok) {
@@ -461,7 +493,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
   );
 
   useEffect(() => {
-    if (isFarcasterClient && farcasterAddress && fid) {
+    if (isFarcasterClient && farcasterAddress) {
       checkUSDCBalance(farcasterAddress);
       loadUserSubscription(farcasterAddress);
       loadTrends();
@@ -469,7 +501,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     } else {
       setLoading(false);
     }
-  }, [farcasterAddress, fid, isFarcasterClient, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
+  }, [farcasterAddress, isFarcasterClient, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
@@ -547,25 +579,36 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
               borderRadius: 8,
               marginBottom: 16,
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'space-between',
+              gap: 12,
             }}
           >
             <div>{errorMessage}</div>
             <button
-              onClick={() => setErrorMessage(null)}
+              onClick={() => window.location.reload()}
               style={{
-                background: 'transparent',
+                background: '#3b82f6',
                 color: 'white',
                 border: 'none',
-                padding: '6px 8px',
+                padding: '8px 16px',
                 borderRadius: 6,
-                fontSize: 16,
                 cursor: 'pointer',
               }}
             >
-              ✕
+              Retry
             </button>
+            <div>
+              <a
+                href="https://warpcast.com"
+                style={{
+                  color: '#3b82f6',
+                  textDecoration: 'underline',
+                }}
+              >
+                Open in Warpcast
+              </a>
+            </div>
           </div>
         )}
 
@@ -666,7 +709,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
           </div>
         )}
 
-        {!loading && isFarcasterClient && (
+        {!loading && (
           <>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div>
@@ -1366,7 +1409,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }}
         disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + tier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
