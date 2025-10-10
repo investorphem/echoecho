@@ -3,27 +3,51 @@ import { useEffect, useState } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { useAccount, useConnect, useSignMessage } from 'wagmi';
 
-export default function MiniAppComponent({
-  onMiniAppReady,
-  onFarcasterReady,
-}) {
+export default function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
   const { isConnected, address } = useAccount();
   const { connect, connectors } = useConnect();
   const { signMessageAsync } = useSignMessage();
 
+  const pollForUser = async (maxAttempts = 5, baseDelay = 2000) => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        console.log(`Polling for user data, attempt ${attempt}...`);
+        const user = await sdk.getUser();
+        console.log('sdk.getUser() response:', user);
+        // Only require address, fid is optional
+        if (user && user.address) {
+          return user;
+        }
+        console.log(`Attempt ${attempt}: Invalid user data (fid: ${user?.fid}, address: ${user?.address})`);
+        const delay = Math.pow(2, attempt) * baseDelay; // Exponential backoff: 2s, 4s, 8s, 16s, 32s
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      } catch (userErr) {
+        console.error(`Attempt ${attempt}: Error fetching user:`, userErr);
+      }
+    }
+    // Fallback to cached address if available
+    const cachedAddress = localStorage.getItem('wallet_address');
+    if (cachedAddress) {
+      console.log('Using cached address:', cachedAddress);
+      return { address: cachedAddress, username: 'cached_user', fid: null };
+    }
+    return null;
+  };
+
   useEffect(() => {
     const init = async () => {
       try {
         console.log('Checking Mini App context...');
-        const isMiniApp = await sdk.isInMiniApp({ timeoutMs: 5000 }); // Increased timeout to 5s
+        const isMiniApp = await sdk.isInMiniApp({ timeoutMs: 5000 });
         console.log('Mini App context:', isMiniApp);
 
         if (!isMiniApp) {
-          setError('Not running in a Farcaster client. Please open in Warpcast.');
+          const errorMsg = 'Not running in a Farcaster client. Please open in Warpcast.';
+          setError(errorMsg);
           onMiniAppReady?.();
-          onFarcasterReady?.({ error: 'Not in Mini App context' });
+          onFarcasterReady?.({ error: errorMsg });
           return;
         }
 
@@ -48,35 +72,36 @@ export default function MiniAppComponent({
 
         // Wait for wallet connection
         if (!isConnected || !address) {
-          setError('Wallet not connected');
+          const errorMsg = 'Wallet not connected. Please connect your wallet in Warpcast.';
+          setError(errorMsg);
           onMiniAppReady?.();
-          onFarcasterReady?.({ error: 'Wallet not connected' });
+          onFarcasterReady?.({ error: errorMsg });
           return;
         }
 
-        // Get user data with exponential backoff retries
-        let user;
-        for (let attempt = 1; attempt <= 5; attempt++) {
-          try {
-            user = await sdk.getUser();
-            if (user && user.fid && user.address) break;
-            console.log(`Attempt ${attempt}: Invalid user data, retrying...`);
-            const delay = Math.pow(2, attempt) * 1000; // Exponential backoff: 2s, 4s, 8s, 16s, 32s
-            await new Promise((resolve) => setTimeout(resolve, delay));
-          } catch (userErr) {
-            console.log(`Attempt ${attempt}: Error fetching user: ${userErr.message}`);
-          }
-        }
-
-        if (!user || !user.fid || !user.address) {
-          throw new Error('Failed to fetch user data: Invalid or missing user information');
+        // Poll for user data
+        const user = await pollForUser();
+        if (!user || !user.address) {
+          const errorMsg = 'Failed to fetch user data: Missing wallet address';
+          setError(errorMsg);
+          onMiniAppReady?.();
+          onFarcasterReady?.({ error: errorMsg });
+          return;
         }
         console.log('User data:', user);
 
         // Verify wallet address matches Farcaster user
         if (address.toLowerCase() !== user.address.toLowerCase()) {
-          throw new Error('Connected wallet address does not match Farcaster user address');
+          const errorMsg = 'Connected wallet address does not match Farcaster user address';
+          setError(errorMsg);
+          onMiniAppReady?.();
+          onFarcasterReady?.({ error: errorMsg });
+          return;
         }
+
+        // Cache user data
+        localStorage.setItem('wallet_address', user.address);
+        if (user.fid) localStorage.setItem('fid', user.fid);
 
         // Generate and sign message
         const message = `Login to EchoEcho for ${user.address} at ${new Date().toISOString()}`;
@@ -84,10 +109,10 @@ export default function MiniAppComponent({
         try {
           signature = await signMessageAsync({ message });
         } catch (signErr) {
-          if (signErr.message.includes('rejected')) {
-            throw new Error('Authentication failed: User rejected the signature request');
-          }
-          throw new Error(`Authentication failed: ${signErr.message}`);
+          const errorMsg = signErr.message.includes('rejected')
+            ? 'Authentication failed: User rejected the signature request'
+            : `Authentication failed: ${signErr.message}`;
+          throw new Error(errorMsg);
         }
 
         // Authenticate with /api/me
@@ -99,24 +124,26 @@ export default function MiniAppComponent({
             signature,
             address: user.address,
             username: user.username || 'unknown',
-            fid: user.fid,
+            fid: user.fid || null, // fid is optional
           }),
         });
 
         if (!response.ok) {
           const errorText = await response.text();
+          console.error('Authentication failed, /api/me response:', errorText);
           throw new Error(`Authentication failed: HTTP ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
+        console.log('Authentication response:', data);
         localStorage.setItem('jwt_token', data.token);
         localStorage.setItem('wallet_address', data.address);
         localStorage.setItem('tier', data.tier);
         localStorage.setItem('subscription', JSON.stringify(data.subscription));
 
         onFarcasterReady?.({
-          fid: data.fid,
-          username: data.username,
+          fid: data.fid || null, // Allow null fid
+          username: data.username || 'unknown',
           address: data.address,
           token: data.token,
           tier: data.tier,
@@ -157,7 +184,24 @@ export default function MiniAppComponent({
           textAlign: 'center',
         }}
       >
-        {error}
+        <div>
+          {error}
+          <br />
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: 6,
+              cursor: 'pointer',
+              marginTop: 12,
+            }}
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
