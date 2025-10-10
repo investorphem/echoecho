@@ -3,12 +3,31 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Head from 'next/head';
+import { sdk } from '@farcaster/miniapp-sdk';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { createHelia } from 'helia';
+import { json } from '@helia/json';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
+const NFT_ABI = [
+  {
+    inputs: [
+      { name: 'to', type: 'address' },
+      { name: 'uri', type: 'string' },
+    ],
+    name: 'mint',
+    outputs: [{ name: 'tokenId', type: 'uint256' }],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+];
+
 export default function Home({ _fid, walletAddress: propWalletAddress }) {
-  const [farcasterAddress, setFarcasterAddress] = useState(propWalletAddress);
+  const [farcasterAddress, setFarcasterAddress] = useState(propWalletAddress || null);
+  const [fid, setFid] = useState(_fid || null);
   const [isFarcasterClient, setIsFarcasterClient] = useState(false);
+  const [jwtToken, setJwtToken] = useState(null);
   const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
   const [globalMode, setGlobalMode] = useState(false);
@@ -24,11 +43,22 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
   const [errorMessage, setErrorMessage] = useState(null);
   const [apiWarning, setApiWarning] = useState(null);
 
+  const { isConnected, address } = useAccount();
+  const { writeContract, data: hash } = useWriteContract();
+  const { isLoading: isTxPending, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({ hash });
+
   // Callback from MiniAppComponent when it authenticates user
   const handleFarcasterReady = useCallback((data) => {
+    if (data.error) {
+      setErrorMessage(data.error);
+      setLoading(false);
+      return;
+    }
     setIsFarcasterClient(true);
-    if (data?.fid && data?.address) {
+    if (data.fid && data.address) {
       setFarcasterAddress(data.address);
+      setFid(data.fid);
+      setJwtToken(data.token);
       setUserTier(data.tier || 'free');
       setSubscription(data.subscription || null);
     } else {
@@ -275,13 +305,15 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setErrorMessage('Echo history requires Warpcast.');
       return;
     }
-    if (!farcasterAddress) {
+    if (!farcasterAddress || !fid) {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
     }
     try {
-      const response = await fetch(`/api/user-echoes?userAddress=${farcasterAddress}`);
+      const response = await fetch(`/api/user-echoes?userAddress=${farcasterAddress}`, {
+        headers: { Authorization: `Bearer ${jwtToken || localStorage.getItem('jwt_token')}` },
+      });
       if (!response.ok) {
         setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
         setErrorMessage('Failed to load user echoes. Please try again.');
@@ -293,85 +325,176 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Failed to load user echoes. Please try again.');
     }
-  }, [farcasterAddress, isFarcasterClient]);
+  }, [farcasterAddress, fid, isFarcasterClient, jwtToken]);
 
-  const mintInsightToken = useCallback(async (narrative) => {
-    if (!isFarcasterClient) {
-      setErrorMessage('Please use Warpcast to mint Insight Tokens.');
-      return;
-    }
-    if (!farcasterAddress) {
-      setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
-      return;
-    }
-    try {
-      const response = await fetch('/api/mint-nft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          narrative,
-          userAddress: farcasterAddress,
-          rarity: narrative.source === 'twitter' ? 'rare' : 'common',
-        }),
-      });
+  const mintInsightToken = useCallback(
+    async (narrative, trustedData = {}) => {
+      if (!isFarcasterClient) {
+        setErrorMessage('Please use Warpcast to mint Insight Tokens.');
+        return;
+      }
+      if (!farcasterAddress || !fid) {
+        setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
+        return;
+      }
+      try {
+        await sdk.actions.ready();
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${await response.text()}`);
-      }
+        if (!process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS) {
+          throw new Error('NFT contract address not configured');
+        }
 
-      const result = await response.json();
-      if (result.success) {
-        setErrorMessage(null);
-        alert(
-          `Insight Token minted!\n\n` +
-          `Token ID: ${result.token.id}\n` +
-          `Transaction: ${result.transaction_hash.slice(0, 10)}...\n` +
-          `Rarity: ${result.token.rarity}\n\n` +
-          `This counter-narrative is now part of your collection!`
-        );
-        loadUserEchoes();
-      } else {
-        throw new Error(result.error || 'Unknown error');
-      }
-    } catch (error) {
-      setErrorMessage('Error minting token: ' + error.message);
-    }
-  }, [farcasterAddress, isFarcasterClient, loadUserEchoes]);
+        if (!narrative.text || !narrative.source) {
+          throw new Error('Narrative text and source required');
+        }
+        const validRarities = ['common', 'rare', 'epic', 'legendary'];
+        const rarity = narrative.source === 'twitter' ? 'rare' : 'common';
+        if (!validRarities.includes(rarity)) {
+          throw new Error('Invalid rarity');
+        }
 
-  const handleEcho = useCallback(async (cast, isCounterNarrative = false) => {
-    if (!isFarcasterClient) {
-      setErrorMessage('Echoing requires Warpcast.');
-      return;
-    }
-    if (!farcasterAddress) {
-      setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
-      return;
-    }
-    try {
-      const resp = await fetch('/api/echo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ castId: cast.hash || cast.id }),
-      });
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+        let helia;
+        try {
+          helia = await createHelia();
+        } catch (error) {
+          console.error('Helia initialization failed:', error);
+          throw new Error('Failed to initialize IPFS node');
+        }
+        const ipfs = json(helia);
+
+        const metadata = {
+          name: `EchoEcho Insight Token`,
+          description: `Counter-narrative discovered: "${narrative.text.slice(0, 100)}..."`,
+          attributes: [
+            { trait_type: 'Source', value: narrative.source },
+            { trait_type: 'Rarity', value: rarity },
+            { trait_type: 'Echo Type', value: 'Counter-Narrative' },
+            { trait_type: 'Discovery Date', value: new Date().toDateString() },
+            { trait_type: 'Network', value: 'Base' },
+          ],
+          external_url: 'https://echoecho.app',
+          animation_url: null,
+        };
+
+        let cid;
+        try {
+          cid = await ipfs.add(metadata);
+        } catch (error) {
+          console.error('IPFS upload failed:', error);
+          throw new Error('Failed to upload metadata to IPFS');
+        }
+        const metadataURI = `ipfs://${cid.toString()}`;
+
+        writeContract({
+          address: process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS,
+          abi: NFT_ABI,
+          functionName: 'mint',
+          args: [farcasterAddress, metadataURI],
+        });
+
+        if (hash) {
+          const receipt = await new Promise((resolve) => {
+            const checkTx = setInterval(async () => {
+              if (isTxConfirmed) {
+                clearInterval(checkTx);
+                const txReceipt = await fetch(`/api/get-tx-receipt?hash=${hash}`).then((res) => res.json());
+                resolve(txReceipt);
+              }
+            }, 1000);
+          });
+
+          const tokenId = receipt.logs[0]?.topics[3] ? parseInt(receipt.logs[0].topics[3], 16) : Date.now();
+
+          const response = await fetch('/api/base-nft', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${jwtToken || localStorage.getItem('jwt_token')}`,
+            },
+            body: JSON.stringify({
+              narrative: { text: narrative.text, source: narrative.source },
+              userAddress: farcasterAddress,
+              rarity,
+              trustedData,
+              tokenId,
+              transactionHash: hash,
+              untrustedData: { fid },
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+          }
+
+          const { token } = await response.json();
+          setErrorMessage(null);
+          alert(
+            `Insight Token minted!\n\n` +
+            `Token ID: ${token.id}\n` +
+            `Transaction: ${token.transaction_hash.slice(0, 10)}...\n` +
+            `Rarity: ${token.rarity}\n\n` +
+            `This counter-narrative is now part of your collection!`
+          );
+          loadUserEchoes();
+          return token;
+        }
+      } catch (error) {
+        setErrorMessage('Error minting token: ' + error.message);
+        if (error.message.includes('rejected')) {
+          setErrorMessage('Error minting token: User rejected the transaction');
+        }
       }
-      const result = await resp.json();
-      if (result.ok) {
-        const badge = isCounterNarrative ? ' 🌟 Diverse Echo' : '';
-        setErrorMessage(null);
-        alert(`✅ Echoed!${badge}`);
-        loadUserEchoes();
-      } else {
-        throw new Error(result.error || 'Unknown error');
+    },
+    [farcasterAddress, fid, isFarcasterClient, jwtToken, loadUserEchoes, writeContract, hash, isTxConfirmed]
+  );
+
+  const handleEcho = useCallback(
+    async (cast, isCounterNarrative = false, trustedData = {}) => {
+      if (!isFarcasterClient) {
+        setErrorMessage('Echoing requires Warpcast.');
+        return;
       }
-    } catch (error) {
-      setErrorMessage('Error echoing: ' + error.message);
-    }
-  }, [farcasterAddress, isFarcasterClient, loadUserEchoes]);
+      if (!farcasterAddress || !fid) {
+        setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
+        return;
+      }
+      try {
+        const resp = await fetch('/api/user-echoes', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${jwtToken || localStorage.getItem('jwt_token')}`,
+          },
+          body: JSON.stringify({
+            castId: cast.hash || cast.id,
+            userAddress: farcasterAddress,
+            type: isCounterNarrative ? 'counter_narrative' : 'standard',
+            source: cast.source || 'farcaster',
+            trustedData,
+            untrustedData: { fid },
+          }),
+        });
+        if (!resp.ok) {
+          throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+        }
+        const result = await resp.json();
+        if (result.ok) {
+          const badge = isCounterNarrative ? ' 🌟 Diverse Echo' : '';
+          setErrorMessage(null);
+          alert(`✅ Echoed!${badge}`);
+          loadUserEchoes();
+        } else {
+          throw new Error(result.error || 'Unknown error');
+        }
+      } catch (error) {
+        setErrorMessage('Error echoing: ' + error.message);
+      }
+    },
+    [farcasterAddress, fid, isFarcasterClient, jwtToken, loadUserEchoes]
+  );
 
   useEffect(() => {
-    if (isFarcasterClient && farcasterAddress) {
+    if (isFarcasterClient && farcasterAddress && fid) {
       checkUSDCBalance(farcasterAddress);
       loadUserSubscription(farcasterAddress);
       loadTrends();
@@ -379,7 +502,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     } else {
       setLoading(false);
     }
-  }, [farcasterAddress, isFarcasterClient, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
+  }, [farcasterAddress, fid, isFarcasterClient, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
@@ -430,7 +553,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
           property="og:description"
           content="Discover counter-narratives, mint NFTs, and break echo chambers on Farcaster."
         />
-        <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
+        <meta property="og:image" content="https://echoecho.app/preview.png" />
       </Head>
       <div
         suppressHydrationWarning
@@ -444,8 +567,6 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         }}
       >
         <MiniAppComponent
-          walletConnected={!!farcasterAddress}
-          walletAddress={farcasterAddress}
           onMiniAppReady={handleMiniAppReady}
           onFarcasterReady={handleFarcasterReady}
         />
@@ -1278,7 +1399,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }}
         disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + tier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
