@@ -1,5 +1,4 @@
-import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk';
-import { FeedType, FilterType } from '@neynar/nodejs-sdk/build/api';
+import { NeynarAPIClient } from '@neynar/nodejs-sdk';
 import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.DATABASE_URL);
@@ -16,21 +15,18 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Extract userAddress from query
   const { limit = 10, cursor, userAddress } = req.query;
 
-  // Validate userAddress if provided
-  if (userAddress && !userAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+  if (userAddress && !/^0x[a-fA-F0-9]{40}$/.test(userAddress)) {
     console.warn('Invalid userAddress:', userAddress);
     return res.status(400).json({ error: 'Valid userAddress required' });
   }
 
-  // Define API limits
   const apiLimits = { free: 10, premium: 'unlimited', pro: 'unlimited' };
-
-  // Check subscription and API limits if userAddress is provided
   let userTier = 'free';
   let remainingApiCalls = apiLimits.free;
+
+  // 🔹 Subscription check
   if (userAddress) {
     try {
       const subscriptions = await sql`
@@ -42,9 +38,7 @@ export default async function handler(req, res) {
 
       if (subscriptions.length > 0) {
         const sub = subscriptions[0];
-        const expiresAt = new Date(sub.expires_at);
-        const now = new Date();
-        if (expiresAt > now) {
+        if (new Date(sub.expires_at) > new Date()) {
           userTier = sub.tier;
         }
       }
@@ -52,14 +46,13 @@ export default async function handler(req, res) {
       console.log('User subscription tier:', userTier);
 
       if (apiLimits[userTier] !== 'unlimited') {
-        // Check remaining API calls
         const usage = await sql`
           SELECT trending_api_calls_used FROM user_usage
           WHERE wallet_address = ${userAddress.toLowerCase()}
           AND DATE_TRUNC('day', usage_date) = CURRENT_DATE
         `;
 
-        let apiCallsUsed = usage.length > 0 ? usage[0].trending_api_calls_used : 0;
+        const apiCallsUsed = usage.length > 0 ? usage[0].trending_api_calls_used : 0;
         remainingApiCalls = apiLimits[userTier] - apiCallsUsed;
 
         if (remainingApiCalls <= 0) {
@@ -68,49 +61,19 @@ export default async function handler(req, res) {
             error: `Trending API limit reached for ${userTier} tier`,
             details: `You have reached your daily limit of ${apiLimits[userTier]} trending API calls. Please upgrade to a higher tier.`,
             warning: 'Trending data limited due to API plan. Upgrade your Neynar API plan at https://dev.neynar.com/pricing for full access.',
-            casts: [
-              {
-                text: 'Mock Trend 1: AI in Web3',
-                body: 'Discussing AI’s blockchain future.',
-                hash: 'mock1',
-                timestamp: new Date().toISOString(),
-              },
-              {
-                text: 'Mock Trend 2: Farcaster Updates',
-                body: 'New features released.',
-                hash: 'mock2',
-                timestamp: new Date().toISOString(),
-              },
-              {
-                text: 'Mock Trend 3: NFT Market Boom',
-                body: 'Base chain growth.',
-                hash: 'mock3',
-                timestamp: new Date().toISOString(),
-              },
-            ],
+            casts: mockTrendingCasts(),
             next_cursor: null,
           });
         }
 
-        // Increment API calls used
-        try {
-          await sql`
-            INSERT INTO user_usage (wallet_address, usage_date, trending_api_calls_used)
-            VALUES (${userAddress.toLowerCase()}, CURRENT_DATE, 1)
-            ON CONFLICT (wallet_address, usage_date)
-            DO UPDATE SET trending_api_calls_used = user_usage.trending_api_calls_used + 1
-          `;
-          console.log(`Trending API calls remaining for ${userAddress}: ${remainingApiCalls - 1}`);
-        } catch (dbError) {
-          console.error('Usage tracking error:', dbError.message);
-          if (dbError.code === '42P01') {
-            return res.status(500).json({
-              error: 'Database configuration error',
-              details: 'Usage tracking unavailable. Please initialize database with /api/init-db.',
-            });
-          }
-          throw dbError; // Rethrow other errors
-        }
+        await sql`
+          INSERT INTO user_usage (wallet_address, usage_date, trending_api_calls_used)
+          VALUES (${userAddress.toLowerCase()}, CURRENT_DATE, 1)
+          ON CONFLICT (wallet_address, usage_date)
+          DO UPDATE SET trending_api_calls_used = user_usage.trending_api_calls_used + 1
+        `;
+
+        console.log(`Trending API calls remaining for ${userAddress}: ${remainingApiCalls - 1}`);
       }
     } catch (error) {
       console.error('Subscription or usage check error:', error.message, { code: error.code });
@@ -123,19 +86,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Configure Neynar client
-    const config = new Configuration({ apiKey: NEYNAR_API_KEY });
-    const client = new NeynarAPIClient(config);
+    // ✅ Use new Neynar client directly (no Configuration import needed)
+    const client = new NeynarAPIClient(NEYNAR_API_KEY);
 
-    // Fetch trending casts
+    // ✅ Updated feedType and filterType (string-based, avoids undefined Filter issue)
     const trendingFeed = await client.fetchFeed({
-      feedType: FeedType.Filter,
-      filterType: FilterType.GlobalTrending,
+      feedType: 'filter',
+      filterType: 'global_trending',
       limit: parseInt(limit, 10),
       cursor: cursor || undefined,
     });
 
-    // Extract casts
     const data = {
       casts: trendingFeed.casts || [],
       next_cursor: trendingFeed.next?.cursor || null,
@@ -145,9 +106,10 @@ export default async function handler(req, res) {
     return res.status(200).json(data);
   } catch (error) {
     console.error('Error fetching trending casts:', error.message);
+
     if (error.status === 402 || error.message.includes('Payment Required')) {
       console.warn('Neynar trending requires payment, using mock data');
-      // Roll back API call increment
+
       if (userAddress && apiLimits[userTier] !== 'unlimited') {
         try {
           await sql`
@@ -161,31 +123,14 @@ export default async function handler(req, res) {
           console.error('Rollback error:', dbError.message);
         }
       }
+
       return res.status(200).json({
         warning: 'Trending data limited due to API plan. Upgrade your Neynar API plan at https://dev.neynar.com/pricing for full access.',
-        casts: [
-          {
-            text: 'Mock Trend 1: AI in Web3',
-            body: 'Discussing AI’s blockchain future.',
-            hash: 'mock1',
-            timestamp: new Date().toISOString(),
-          },
-          {
-            text: 'Mock Trend 2: Farcaster Updates',
-            body: 'New features released.',
-            hash: 'mock2',
-            timestamp: new Date().toISOString(),
-          },
-          {
-            text: 'Mock Trend 3: NFT Market Boom',
-            body: 'Base chain growth.',
-            hash: 'mock3',
-            timestamp: new Date().toISOString(),
-          },
-        ],
+        casts: mockTrendingCasts(),
         next_cursor: null,
       });
     }
+
     return res.status(500).json({
       error: 'Failed to fetch trending casts',
       details: error.message,
@@ -193,7 +138,16 @@ export default async function handler(req, res) {
   }
 }
 
-// Cache for 5 minutes using Vercel ISR
+function mockTrendingCasts() {
+  const now = new Date().toISOString();
+  return [
+    { text: 'Mock Trend 1: AI in Web3', body: 'Discussing AI’s blockchain future.', hash: 'mock1', timestamp: now },
+    { text: 'Mock Trend 2: Farcaster Updates', body: 'New features released.', hash: 'mock2', timestamp: now },
+    { text: 'Mock Trend 3: NFT Market Boom', body: 'Base chain growth.', hash: 'mock3', timestamp: now },
+  ];
+}
+
+// Cache config
 export const config = {
   api: { responseLimit: false },
 };
