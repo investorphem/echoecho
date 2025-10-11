@@ -92,15 +92,16 @@ export default async function handler(req, res) {
     // ✅ Correct SDK initialization
     const client = new NeynarAPIClient({ apiKey: NEYNAR_API_KEY });
 
-    // ✅ Correct fetchFeed parameters
+    // ✅ Added required 'timeframe' parameter
     const trendingFeed = await client.fetchFeed({
-      feedType: 'trending', // ✅ Correct feed type
+      feedType: 'trending',
+      timeframe: '24h', // ✅ Required parameter for trending feed
       limit: parsedLimit,
       cursor,
     });
 
     const data = {
-      casts: trendingFeed.result?.casts || [], // ✅ Access nested result
+      casts: trendingFeed.result?.casts || [],
       next_cursor: trendingFeed.result?.next?.cursor || null,
     };
 
