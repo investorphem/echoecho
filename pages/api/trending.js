@@ -1,5 +1,4 @@
 import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk';
-import { FeedType, FilterType } from '@neynar/nodejs-sdk/build/api';
 import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.DATABASE_URL || '');
@@ -95,15 +94,15 @@ export default async function handler(req, res) {
 
     // ✅ Correct fetchFeed parameters
     const trendingFeed = await client.fetchFeed({
-      feedType: FeedType.Filter,          // ✅ Required feed type
-      filterType: FilterType.GlobalTrending, // ✅ Required filter type
+      feedType: 'filter',          // ✅ Valid feed type
+      filterType: 'global_trending', // ✅ Use string instead of enum
       limit: parsedLimit,
       cursor,
     });
 
     const data = {
-      casts: trendingFeed.casts || [],
-      next_cursor: trendingFeed.next?.cursor || null,
+      casts: trendingFeed.result?.casts || [],
+      next_cursor: trendingFeed.result?.next?.cursor || null,
     };
 
     return res.status(200).json(data);
