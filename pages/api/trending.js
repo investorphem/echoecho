@@ -1,8 +1,12 @@
-import { NeynarAPIClient } from '@neynar/nodejs-sdk';
+import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk';
+import { FeedType, FilterType } from '@neynar/nodejs-sdk/build/api';
 import { neon } from '@neondatabase/serverless';
 
 const sql = neon(process.env.DATABASE_URL || '');
-const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
+const config = new Configuration({
+  apiKey: process.env.NEYNAR_API_KEY,
+});
+const client = new NeynarAPIClient(config);
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -13,7 +17,7 @@ export default async function handler(req, res) {
     const { limit = '10', cursor, userAddress } = req.query;
     const parsedLimit = parseInt(limit, 10);
 
-    if (!NEYNAR_API_KEY) {
+    if (!config.apiKey) {
       console.error('NEYNAR_API_KEY is missing');
       return res.status(500).json({ 
         error: 'Server configuration error: NEYNAR_API_KEY missing' 
@@ -89,20 +93,17 @@ export default async function handler(req, res) {
       }
     }
 
-    // ✅ Correct SDK initialization
-    const client = new NeynarAPIClient({ apiKey: NEYNAR_API_KEY });
-
-    // ✅ Added required 'timeframe' parameter
+    // ✅ Correct fetchFeed parameters
     const trendingFeed = await client.fetchFeed({
-      feedType: 'trending',
-      timeframe: '24h', // ✅ Required parameter for trending feed
+      feedType: FeedType.Filter,          // ✅ Required feed type
+      filterType: FilterType.GlobalTrending, // ✅ Required filter type
       limit: parsedLimit,
       cursor,
     });
 
     const data = {
-      casts: trendingFeed.result?.casts || [],
-      next_cursor: trendingFeed.result?.next?.cursor || null,
+      casts: trendingFeed.casts || [],
+      next_cursor: trendingFeed.next?.cursor || null,
     };
 
     return res.status(200).json(data);
