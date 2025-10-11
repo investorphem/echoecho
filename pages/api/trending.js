@@ -15,12 +15,12 @@ export default async function handler(req, res) {
 
     if (!NEYNAR_API_KEY) {
       console.error('NEYNAR_API_KEY is missing');
-      return res
-        .status(500)
-        .json({ error: 'Server configuration error: NEYNAR_API_KEY missing' });
+      return res.status(500).json({ 
+        error: 'Server configuration error: NEYNAR_API_KEY missing' 
+      });
     }
 
-    // ✅ Validate user address
+    // Validate user address
     if (userAddress && !/^0x[a-fA-F0-9]{40}$/.test(userAddress)) {
       console.warn('Invalid userAddress:', userAddress);
       return res.status(400).json({ error: 'Valid userAddress required' });
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     let userTier = 'free';
     let remainingApiCalls = apiLimits.free;
 
-    // ✅ Subscription check
+    // Subscription check
     if (userAddress) {
       try {
         const subscriptions = await sql`
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
             INSERT INTO user_usage (wallet_address, usage_date, trending_api_calls_used)
             VALUES (${userAddress.toLowerCase()}, CURRENT_DATE, 1)
             ON CONFLICT (wallet_address, usage_date)
-            DO UPDATE SET trending_api_calls_used = user_usage.trending_api_calls_used + 1
+            DO UPDATE SET trending_api_calls_used = user_usage.trending_api_calls_used + 1 
           `;
         }
       } catch (err) {
@@ -89,20 +89,19 @@ export default async function handler(req, res) {
       }
     }
 
-    // ✅ Proper Neynar client (no Configuration object needed in latest SDK)
-    const client = new NeynarAPIClient(NEYNAR_API_KEY);
+    // ✅ Correct SDK initialization
+    const client = new NeynarAPIClient({ apiKey: NEYNAR_API_KEY });
 
-    // ✅ Correct fetchFeed format
+    // ✅ Correct fetchFeed parameters
     const trendingFeed = await client.fetchFeed({
-      feedType: 'filter',
-      filterType: 'global_trending',
+      feedType: 'trending', // ✅ Correct feed type
       limit: parsedLimit,
       cursor,
     });
 
     const data = {
-      casts: trendingFeed.casts || [],
-      next_cursor: trendingFeed.next?.cursor || null,
+      casts: trendingFeed.result?.casts || [], // ✅ Access nested result
+      next_cursor: trendingFeed.result?.next?.cursor || null,
     };
 
     return res.status(200).json(data);
