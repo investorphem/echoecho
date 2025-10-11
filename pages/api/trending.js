@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { Configuration, NeynarAPIClient } from '@neynar/nodejs-sdk';
 import { neon } from '@neondatabase/serverless';
 
-const sql = neon(process.env.DATABASE_URL!);
+const sql = neon(process.env.DATABASE_URL);
 
 export const runtime = 'edge'; // use Vercel Edge Functions
 
