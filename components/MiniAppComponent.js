@@ -1,10 +1,11 @@
+// components/MiniAppComponent.js
 'use client';
 import { useEffect, useState } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { WagmiConfig, useAccount, useConnect, useSignMessage } from 'wagmi';
 import { wagmiConfig } from '../wagmi';
 
-export default function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
+function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
   const { isConnected, address } = useAccount();
@@ -332,12 +333,10 @@ export default function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
 }
 
 // Wrap with WagmiConfig
-function WrappedMiniAppComponent(props) {
+export default function WrappedMiniAppComponent(props) {
   return (
     <WagmiConfig config={wagmiConfig}>
       <MiniAppComponent {...props} />
     </WagmiConfig>
   );
 }
-
-export default WrappedMiniAppComponent;
