@@ -1,9 +1,18 @@
 import { createPublicClient, http, isAddress } from 'viem';
 import { base } from 'viem/chains';
 import { getUserEchoes, getUserNFTs, saveEcho } from '../../lib/storage.js';
-import { NeynarAPIClient } from '@neynar/nodejs-sdk';
+import { NeynarAPIClient, Configuration } from '@neynar/nodejs-sdk'; // ✅ Import Configuration too
 
-const client = new NeynarAPIClient(process.env.NEYNAR_API_KEY);
+// ✅ Correct Neynar v2 initialization
+const config = new Configuration({
+  apiKey: process.env.NEYNAR_API_KEY,
+  baseOptions: {
+    headers: {
+      'x-neynar-experimental': true,
+    },
+  },
+});
+const client = new NeynarAPIClient(config);
 
 const publicClient = createPublicClient({
   chain: base,
@@ -43,7 +52,6 @@ const NFT_ABI = [
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
-    // Get user's echo history
     const { userAddress } = req.query;
 
     if (!userAddress || !isAddress(userAddress)) {
@@ -53,7 +61,6 @@ export default async function handler(req, res) {
     const userKey = userAddress.toLowerCase();
 
     try {
-      // Query database for echoes
       const echoes = await getUserEchoes(userKey);
 
       // Query blockchain for NFTs
@@ -83,7 +90,6 @@ export default async function handler(req, res) {
 
             let metadata = {};
             try {
-              // Handle IPFS URLs (e.g., ipfs://<CID>)
               const url = tokenURI.startsWith('ipfs://')
                 ? `https://ipfs.io/ipfs/${tokenURI.replace('ipfs://', '')}`
                 : tokenURI;
@@ -98,7 +104,8 @@ export default async function handler(req, res) {
             nfts.push({
               id: tokenId.toString(),
               title: metadata.name || `Insight Token #${tokenId}`,
-              rarity: metadata.attributes?.find(attr => attr.trait_type === 'Rarity')?.value || 'common',
+              rarity:
+                metadata.attributes?.find((attr) => attr.trait_type === 'Rarity')?.value || 'common',
               minted_at: metadata.minted_at || new Date().toISOString(),
               image: metadata.image || 'https://your-cdn.com/default-nft.png',
             });
@@ -110,7 +117,6 @@ export default async function handler(req, res) {
         console.warn('NEXT_PUBLIC_NFT_CONTRACT_ADDRESS not set. Skipping blockchain NFT fetch.');
       }
 
-      // Query database for NFTs
       const storedNFTs = await getUserNFTs(userKey);
       const combinedNFTs = [...nfts, ...storedNFTs];
 
@@ -119,7 +125,7 @@ export default async function handler(req, res) {
         nfts: combinedNFTs,
         stats: {
           total_echoes: echoes.length,
-          counter_narratives: echoes.filter(e => e.type === 'counter_narrative').length,
+          counter_narratives: echoes.filter((e) => e.type === 'counter_narrative').length,
           nfts_minted: combinedNFTs.length,
         },
       });
@@ -130,7 +136,6 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    // Record a new echo
     const { castId, userAddress, type = 'standard', source = 'farcaster', trustedData } = req.body;
 
     if (!castId || !userAddress || !isAddress(userAddress)) {
@@ -141,15 +146,17 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid echo type' });
     }
 
-    // Validate Frame action
+    // ✅ Updated Frame validation for Neynar SDK v2
     if (trustedData?.messageBytes) {
       try {
         const result = await client.validateFrameAction({
           messageBytesInHex: trustedData.messageBytes,
         });
+
         if (!result.valid || result.action.interactor.fid !== Number(req.body.untrustedData?.fid)) {
           return res.status(401).json({ error: 'Invalid Frame action' });
         }
+
         const verifiedAddresses = result.action.interactor.verified_addresses.eth_addresses;
         if (!verifiedAddresses.includes(userAddress.toLowerCase())) {
           return res.status(401).json({ error: 'User address does not match Frame interactor' });
@@ -172,7 +179,6 @@ export default async function handler(req, res) {
         echoed_at: new Date().toISOString(),
       };
 
-      // Save to database
       await saveEcho(newEcho);
 
       return res.status(200).json({
