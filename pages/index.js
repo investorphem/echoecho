@@ -14,10 +14,11 @@ const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'),
 
 function ConnectMenu({ onConnected }) {
   const { isConnected, address } = useAccount();
-  const { connect, connectors } = useConnect();
+  const { connect, connectors, isLoading: isConnecting } = useConnect();
 
   useEffect(() => {
     if (isConnected && address) {
+      console.log('ConnectMenu: Wallet connected, address:', address);
       onConnected?.(address);
     }
   }, [isConnected, address, onConnected]);
@@ -36,18 +37,28 @@ function ConnectMenu({ onConnected }) {
       <button
         type="button"
         onClick={() => connect({ connector: connectors[0] })}
+        disabled={isConnecting || !connectors[0]}
         style={{
-          background: '#3b82f6',
+          background: isConnecting || !connectors[0] ? '#6b7280' : '#3b82f6',
           color: 'white',
           border: 'none',
           padding: '12px 24px',
           borderRadius: 8,
-          cursor: 'pointer',
+          cursor: isConnecting || !connectors[0] ? 'not-allowed' : 'pointer',
           fontSize: 16,
         }}
       >
-        Connect Wallet
+        {isConnecting ? 'Connecting...' : 'Connect Wallet'}
       </button>
+      <div style={{ marginTop: 12, fontSize: 14, color: '#9ca3af' }}>
+        Please open in a Farcaster client:
+        <a href="https://warpcast.com/~/apps/echoecho" style={{ color: '#3b82f6', marginLeft: 8, marginRight: 8 }}>
+          Warpcast
+        </a>
+        <a href="https://wallet.coinbase.com/base-app" style={{ color: '#3b82f6' }}>
+          Base App
+        </a>
+      </div>
     </div>
   );
 }
@@ -107,17 +118,22 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       console.log('Farcaster user data set:', {
         fid: data.fid,
         address: data.address,
+        token: data.token,
+        tier: data.tier,
+        subscription: data.subscription,
         clientFid: data.clientFid,
         platformType: data.platformType,
       });
     } else {
       // Fallback to cached address
       const cachedAddress = localStorage.getItem('wallet_address');
-      if (cachedAddress) {
+      const cachedToken = localStorage.getItem('jwt_token');
+      if (cachedAddress && cachedToken) {
         setFarcasterAddress(cachedAddress);
-        console.log('Using cached address:', cachedAddress);
+        setJwtToken(cachedToken);
+        console.log('Using cached address and token:', cachedAddress, cachedToken);
       } else {
-        setErrorMessage('Failed to fetch user data: Missing wallet address');
+        setErrorMessage('Failed to fetch user data: Missing wallet address or token');
         setLoading(false);
         // Load mock trends
         const mockData = {
@@ -135,6 +151,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
   }, []);
 
   const handleMiniAppReady = useCallback(() => {
+    console.log('handleMiniAppReady: MiniApp initialization complete');
     setLoading(false);
   }, []);
 
@@ -142,7 +159,55 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     setFarcasterAddress(address);
     localStorage.setItem('wallet_address', address);
     console.log('Wallet connected:', address);
-  }, []);
+    // Trigger re-authentication to refresh jwt_token
+    if (!jwtToken) {
+      console.log('No jwt_token found, triggering re-authentication');
+      authenticateUser(address);
+    }
+  }, [jwtToken]);
+
+  const authenticateUser = useCallback(async (address) => {
+    if (!address) {
+      console.error('authenticateUser: No address provided');
+      setErrorMessage('No wallet address provided for authentication');
+      return;
+    }
+    try {
+      console.log('Authenticating user with address:', address);
+      const message = `Login to EchoEcho for ${address} at ${new Date().toISOString()}`;
+      const { signMessageAsync } = wagmiConfig; // Note: This assumes wagmiConfig exposes signMessageAsync; adjust if needed
+      const signature = await signMessageAsync({ message });
+      const response = await fetch('/api/me', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          signature,
+          address,
+          username: 'wagmi_user',
+          fid: fid || null,
+        }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Authentication failed:', errorText);
+        setErrorMessage(`Authentication failed: HTTP ${response.status} - ${errorText}`);
+        return;
+      }
+      const data = await response.json();
+      console.log('Authentication successful:', data);
+      localStorage.setItem('jwt_token', data.token);
+      localStorage.setItem('wallet_address', data.address);
+      localStorage.setItem('tier', data.tier);
+      localStorage.setItem('subscription', JSON.stringify(data.subscription));
+      setJwtToken(data.token);
+      setUserTier(data.tier || 'free');
+      setSubscription(data.subscription || null);
+    } catch (error) {
+      console.error('Authentication error:', error);
+      setErrorMessage(`Authentication error: ${error.message}`);
+    }
+  }, [fid]);
 
   const checkUSDCBalance = useCallback(async (address) => {
     if (!address) {
@@ -151,6 +216,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       return;
     }
     try {
+      console.log('Checking USDC balance for:', address);
       const response = await fetch('/api/check-usdc-balance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -162,6 +228,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       const data = await response.json();
       setUsdcBalance(parseFloat(data.balance || 0));
     } catch (error) {
+      console.error('checkUSDCBalance error:', error);
       setUsdcBalance(0);
       setErrorMessage('Failed to check USDC balance. Please try again.');
     }
@@ -175,12 +242,14 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       return;
     }
     try {
+      console.log('Loading user subscription for:', address);
       const resp = await fetch('/api/user-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress: address, action: 'get_subscription' }),
       });
       if (!resp.ok) {
+        console.error('loadUserSubscription failed:', await resp.text());
         setUserTier('free');
         setSubscription(null);
         setErrorMessage('Failed to load subscription. Defaulting to free tier.');
@@ -190,8 +259,10 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       if (data.user) {
         setUserTier(data.user.tier);
         setSubscription(data.subscription);
+        console.log('User subscription loaded:', data);
       }
     } catch (error) {
+      console.error('loadUserSubscription error:', error);
       setUserTier('free');
       setSubscription(null);
       setErrorMessage('Failed to load subscription. Defaulting to free tier.');
@@ -203,7 +274,8 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     setErrorMessage(null);
     setApiWarning(null);
 
-    if (!farcasterAddress) {
+    if (!farcasterAddress || !jwtToken) {
+      console.warn('loadTrends: Missing farcasterAddress or jwtToken, using mock data');
       const mockData = {
         casts: [
           { text: 'Sample trend 1', body: 'This is a mock trend', hash: 'mock1', timestamp: new Date().toISOString() },
@@ -216,16 +288,23 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       })));
       setErrorMessage('Connect a Farcaster wallet in Warpcast to view real trends.');
       setLoading(false);
+      if (farcasterAddress && !jwtToken && retryCount < 1) {
+        console.log('Retrying authentication due to missing jwtToken');
+        authenticateUser(farcasterAddress);
+        setTimeout(() => loadTrends(retryCount + 1), 2000);
+      }
       return;
     }
 
     try {
+      console.log('Fetching trends with token:', jwtToken);
       const resp = await fetch(`/api/trending?userAddress=${farcasterAddress}`, {
-        headers: { Authorization: `Bearer ${jwtToken || localStorage.getItem('jwt_token')}` },
+        headers: { Authorization: `Bearer ${jwtToken}` },
       });
       const data = await resp.json();
       if (resp.status === 429) {
         if (retryCount < 2) {
+          console.log('Rate limit hit, retrying in 2s...');
           setTimeout(() => loadTrends(retryCount + 1), 2000);
           return;
         }
@@ -242,6 +321,15 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         setApiWarning('Trending data unavailable due to Neynar API rate limits. Upgrade your plan at https://dev.neynar.com/pricing.');
         setLoading(false);
         return;
+      }
+      if (resp.status === 401) {
+        console.warn('Unauthorized, retrying authentication...');
+        if (retryCount < 1) {
+          authenticateUser(farcasterAddress);
+          setTimeout(() => loadTrends(retryCount + 1), 2000);
+          return;
+        }
+        throw new Error('Authentication failed after retry');
       }
       if (resp.status === 402 || data.warning) {
         const mockData = {
@@ -262,8 +350,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
         throw new Error(`HTTP ${resp.status}: ${data.error || 'Unknown error'}`);
       }
       const trendsData = data.casts || [];
-      setTrends(trendsData);
-
+      console.log('Trends loaded:', trendsData);
       const enrichedTrends = await Promise.all(
         trendsData.slice(0, 10).map(async (trend) => {
           const text = trend.text || trend.body || '';
@@ -273,7 +360,10 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
           try {
             const aiResp = await fetch('/api/ai-analysis', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${jwtToken}`,
+              },
               body: JSON.stringify({ text, action: 'analyze_sentiment', userAddress: farcasterAddress }),
             });
             const aiData = await aiResp.json();
@@ -286,11 +376,11 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
             }
             return { ...trend, ai_analysis: aiData };
           } catch (error) {
+            console.error('AI analysis error for trend:', error);
             return { ...trend, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
           }
         })
       );
-
       setTrends(enrichedTrends);
       setLoading(false);
     } catch (error) {
@@ -299,7 +389,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
       setErrorMessage('Failed to load trends. Please try again or open in Warpcast.');
       setLoading(false);
     }
-  }, [farcasterAddress, jwtToken]);
+  }, [farcasterAddress, jwtToken, authenticateUser]);
 
   const loadTopicDetails = useCallback(async (topic) => {
     setSelectedTopic(topic);
@@ -307,7 +397,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     setErrorMessage(null);
     setApiWarning(null);
 
-    if (!farcasterAddress) {
+    if (!farcasterAddress || !jwtToken) {
       setCounterNarratives([]);
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
@@ -319,15 +409,22 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
     }
 
     try {
+      console.log('Loading topic details for:', topic.text || topic.body);
       const [twitterResp, newsResp] = await Promise.all([
         fetch('/api/cross-platform', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${jwtToken}`,
+          },
           body: JSON.stringify({ topic: topic.text || topic.body, source: 'twitter' }),
         }),
         fetch('/api/cross-platform', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${jwtToken}`,
+          },
           body: JSON.stringify({ topic: topic.text || topic.body, source: 'news' }),
         }),
       ]);
@@ -342,7 +439,10 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
 
       const counterResp = await fetch('/api/ai-analysis', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwtToken}`,
+        },
         body: JSON.stringify({ posts: allPosts, action: 'find_counter_narratives', userAddress: farcasterAddress }),
       });
 
@@ -358,30 +458,37 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
 
       const counterPosts = counterData.counter_posts?.map((index) => allPosts[index]) || [];
       setCounterNarratives(counterPosts);
+      console.log('Counter-narratives loaded:', counterPosts);
     } catch (error) {
+      console.error('loadTopicDetails error:', error);
       setCounterNarratives([]);
       setErrorMessage('Failed to load counter-narratives. Please try again.');
     }
-  }, [globalMode, farcasterAddress]);
+  }, [globalMode, farcasterAddress, jwtToken]);
 
   const loadUserEchoes = useCallback(async () => {
-    if (!farcasterAddress) {
+    if (!farcasterAddress || !jwtToken) {
+      console.warn('loadUserEchoes: Missing farcasterAddress or jwtToken');
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
       return;
     }
     try {
+      console.log('Loading user echoes for:', farcasterAddress);
       const response = await fetch(`/api/user-echoes?userAddress=${farcasterAddress}`, {
-        headers: { Authorization: `Bearer ${jwtToken || localStorage.getItem('jwt_token')}` },
+        headers: { Authorization: `Bearer ${jwtToken}` },
       });
       if (!response.ok) {
+        console.error('loadUserEchoes failed:', await response.text());
         setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
         setErrorMessage('Failed to load user echoes. Please try again.');
         return;
       }
       const data = await response.json();
       setUserEchoes(data);
+      console.log('User echoes loaded:', data);
     } catch (error) {
+      console.error('loadUserEchoes error:', error);
       setUserEchoes({ echoes: [], nfts: [], stats: { total_echoes: 0, counter_narratives: 0, nfts_minted: 0 } });
       setErrorMessage('Failed to load user echoes. Please try again.');
     }
@@ -389,7 +496,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
 
   const mintInsightToken = useCallback(
     async (narrative, trustedData = {}) => {
-      if (!farcasterAddress) {
+      if (!farcasterAddress || !jwtToken) {
         setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
         return;
       }
@@ -483,7 +590,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${jwtToken || localStorage.getItem('jwt_token')}`,
+            Authorization: `Bearer ${jwtToken}`,
           },
           body: JSON.stringify({
             narrative: { text: narrative.text, source: narrative.source },
@@ -527,16 +634,17 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
 
   const handleEcho = useCallback(
     async (cast, isCounterNarrative = false, trustedData = {}) => {
-      if (!farcasterAddress) {
+      if (!farcasterAddress || !jwtToken) {
         setErrorMessage('Please connect a Farcaster wallet in Warpcast.');
         return;
       }
       try {
+        console.log('Echoing cast:', cast.hash || cast.id, 'isCounterNarrative:', isCounterNarrative);
         const resp = await fetch('/api/user-echoes', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${jwtToken || localStorage.getItem('jwt_token')}`,
+            Authorization: `Bearer ${jwtToken}`,
           },
           body: JSON.stringify({
             castId: cast.hash || cast.id,
@@ -560,6 +668,7 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
           throw new Error(result.error || 'Unknown error');
         }
       } catch (error) {
+        console.error('handleEcho error:', error);
         setErrorMessage('Error echoing: ' + error.message);
       }
     },
@@ -567,15 +676,17 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
   );
 
   useEffect(() => {
-    if (farcasterAddress) {
+    if (farcasterAddress && jwtToken) {
+      console.log('useEffect: farcasterAddress and jwtToken set, loading data...');
       checkUSDCBalance(farcasterAddress);
       loadUserSubscription(farcasterAddress);
       loadTrends();
       loadUserEchoes();
     } else {
+      console.log('useEffect: No farcasterAddress or jwtToken, setting loading to false');
       setLoading(false);
     }
-  }, [farcasterAddress, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
+  }, [farcasterAddress, jwtToken, checkUSDCBalance, loadUserSubscription, loadTrends, loadUserEchoes]);
 
   const getSentimentColor = (sentiment, confidence) => {
     if (confidence < 0.6) return '#999';
@@ -671,28 +782,45 @@ export default function Home({ _fid, walletAddress: propWalletAddress }) {
             <div>{errorMessage}</div>
             <div>Context: {contextInfo.platformType}, Client FID: {contextInfo.clientFid || 'Unknown'}</div>
             {contextInfo.referrerDomain && <div>Launched from: {contextInfo.referrerDomain}</div>}
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                padding: '8px 16px',
-                borderRadius: 6,
-                cursor: 'pointer',
-              }}
-            >
-              Retry
-            </button>
-            <div>
-              <a
-                href="https://warpcast.com"
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => window.location.reload()}
                 style={{
-                  color: '#3b82f6',
-                  textDecoration: 'underline',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Retry
+              </button>
+              <a
+                href="https://warpcast.com/~/apps/echoecho"
+                style={{
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  textDecoration: 'none',
                 }}
               >
                 Open in Warpcast
+              </a>
+              <a
+                href="https://wallet.coinbase.com/base-app"
+                style={{
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: 6,
+                  textDecoration: 'none',
+                }}
+              >
+                Open in Base App
               </a>
             </div>
           </div>
@@ -1445,7 +1573,10 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
 
       const resp = await fetch('/api/user-subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
+        },
         body: JSON.stringify({
           walletAddress,
           action: 'create_subscription',
@@ -1501,7 +1632,10 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
           });
           const resp = await fetch('/api/user-subscription', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem('jwt_token')}`,
+            },
             body: JSON.stringify({
               walletAddress,
               action: 'create_subscription',
@@ -1612,7 +1746,7 @@ const PremiumView = ({ userTier, setUserTier, walletConnected, walletAddress, us
         }}
         disabled={paymentStatus === 'pending' || selectedTier === userTier}
       >
-        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + tier.slice(1)}`}
+        {paymentStatus === 'pending' ? 'Processing...' : selectedTier === userTier ? 'Current Plan' : `Upgrade to ${selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)}`}
       </button>
       {paymentStatus === 'success' && (
         <div style={{ color: '#4ade80', textAlign: 'center', marginTop: 12 }}>
