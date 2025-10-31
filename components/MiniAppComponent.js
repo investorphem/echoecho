@@ -9,14 +9,17 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState(null);
   const { isConnected, address } = useAccount();
-  const { connect, connectors } = useConnect();
+  const { connect, connectors, isLoading: isConnecting } = useConnect();
   const { signMessageAsync } = useSignMessage();
 
-  const pollForLocationContext = async (maxAttempts = 5, baseDelay = 2000) => {
+  const pollForLocationContext = async (maxAttempts = 3, baseDelay = 2000, timeoutMs = 8000) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        console.log(`Polling for location context, attempt ${attempt}...`);
-        const context = await sdk.getLocationContext({ timeoutMs: 5000 });
+        console.log(`Polling for location context, attempt ${attempt}/${maxAttempts}...`);
+        const context = await Promise.race([
+          sdk.getLocationContext({ timeoutMs: 5000 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Context fetch timeout')), timeoutMs)),
+        ]);
         console.log('sdk.getLocationContext() response:', JSON.stringify(context, null, 2));
         if (context?.type === 'open_miniapp') {
           console.log('OpenMiniAppLocationContext detected:', {
@@ -28,41 +31,120 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
           return context;
         }
         console.log('Not in OpenMiniAppLocationContext, checking isInMiniApp...');
-        const isMiniApp = await sdk.isInMiniApp({ timeoutMs: 5000 });
+        const isMiniApp = await Promise.race([
+          sdk.isInMiniApp({ timeoutMs: 5000 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('isInMiniApp timeout')), timeoutMs)),
+        ]);
         console.log('sdk.isInMiniApp() response:', isMiniApp);
         return { type: 'standard', isMiniApp, client: { clientFid: null, platformType: 'unknown', added: false } };
       } catch (err) {
-        console.error(`Attempt ${attempt}: Error checking location context:`, err);
+        console.error(`Attempt ${attempt}: Error checking location context:`, err.message);
+        if (attempt === maxAttempts) {
+          console.warn('Max attempts reached for location context');
+          return { type: 'unknown', isMiniApp: false, client: { clientFid: null, platformType: 'unknown', added: false } };
+        }
         const delay = Math.pow(2, attempt) * baseDelay;
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
-    console.warn('Failed to retrieve location context after max attempts');
-    return { type: 'unknown', isMiniApp: false, client: { clientFid: null, platformType: 'unknown', added: false } };
   };
 
-  const pollForUser = async (wagmiAddress, maxAttempts = 5, baseDelay = 2000) => {
+  const pollForUser = async (wagmiAddress, maxAttempts = 3, baseDelay = 2000, timeoutMsбудь
+
+System: The provided code for `MiniAppComponent.js` is cut off at the `pollForUser` function, and it seems the update process was interrupted. Below, I'll complete the update for `MiniAppComponent.js` by:
+
+- Finishing the `pollForUser` function with similar timeout and retry logic as `pollForLocationContext`.
+- Enhancing error handling to display specific failure reasons (e.g., wallet not verified, timeout, or context failure).
+- Adding a retry mechanism for wallet connection and context fetching.
+- Including a fallback UI with Base App and Warpcast links for better user experience.
+- Adding detailed debug logs to help diagnose the blank screen issue.
+- Ensuring compatibility with your existing `package.json`, `wagmi.js`, and `index.js`.
+
+The goal is to prevent the app from staying blank in Warpcast and Base App, ensure wallet connection, and provide clear error messages if initialization fails. I'll also address the lack of Vercel logs and the incomplete logs from Base App (`eip6963RequestProvider`, `eth_accounts`, `[GET] ["context"]`).
+
+---
+
+### Updated `MiniAppComponent.js`
+
+```javascript
+// components/MiniAppComponent.js
+'use client';
+import { useEffect, useState } from 'react';
+import { sdk } from '@farcaster/miniapp-sdk';
+import { WagmiConfig, useAccount, useConnect, useSignMessage } from 'wagmi';
+import { wagmiConfig } from '../wagmi';
+
+function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
+  const [initializing, setInitializing] = useState(true);
+  const [error, setError] = useState(null);
+  const { isConnected, address } = useAccount();
+  const { connect, connectors, isLoading: isConnecting } = useConnect();
+  const { signMessageAsync } = useSignMessage();
+
+  const pollForLocationContext = async (maxAttempts = 3, baseDelay = 2000, timeoutMs = 8000) => {
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        console.log(`Polling for user data, attempt ${attempt}...`);
-        const user = await sdk.getUser();
+        console.log(`Polling for location context, attempt ${attempt}/${maxAttempts}...`);
+        const context = await Promise.race([
+          sdk.getLocationContext({ timeoutMs: 5000 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Context fetch timeout')), timeoutMs)),
+        ]);
+        console.log('sdk.getLocationContext() response:', JSON.stringify(context, null, 2));
+        if (context?.type === 'open_miniapp') {
+          console.log('OpenMiniAppLocationContext detected:', {
+            referrerDomain: context.referrerDomain,
+            clientFid: context.client?.clientFid,
+            platformType: context.client?.platformType,
+            added: context.client?.added,
+          });
+          return context;
+        }
+        console.log('Not in OpenMiniAppLocationContext, checking isInMiniApp...');
+        const isMiniApp = await Promise.race([
+          sdk.isInMiniApp({ timeoutMs: 5000 }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('isInMiniApp timeout')), timeoutMs)),
+        ]);
+        console.log('sdk.isInMiniApp() response:', isMiniApp);
+        return { type: 'standard', isMiniApp, client: { clientFid: null, platformType: 'unknown', added: false } };
+      } catch (err) {
+        console.error(`Attempt ${attempt}: Error checking location context:`, err.message);
+        if (attempt === maxAttempts) {
+          console.warn('Max attempts reached for location context');
+          return { type: 'unknown', isMiniApp: false, client: { clientFid: null, platformType: 'unknown', added: false } };
+        }
+        const delay = Math.pow(2, attempt) * baseDelay;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+  };
+
+  const pollForUser = async (wagmiAddress, maxAttempts = 3, baseDelay = 2000, timeoutMs = 8000) => {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        console.log(`Polling for user data, attempt ${attempt}/${maxAttempts}...`);
+        const user = await Promise.race([
+          sdk.getUser(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('User fetch timeout')), timeoutMs)),
+        ]);
         console.log('sdk.getUser() response:', JSON.stringify(user, null, 2));
         if (user && user.address) {
           return user;
         }
         console.log(`Attempt ${attempt}: Invalid user data (fid: ${user?.fid}, address: ${user?.address})`);
+        if (attempt === maxAttempts) {
+          console.warn('Max attempts reached for user data');
+          break;
+        }
         const delay = Math.pow(2, attempt) * baseDelay;
         await new Promise((resolve) => setTimeout(resolve, delay));
       } catch (userErr) {
-        console.error(`Attempt ${attempt}: Error fetching user:`, userErr);
+        console.error(`Attempt ${attempt}: Error fetching user:`, userErr.message);
       }
     }
-    // Fallback to wagmi address
     if (wagmiAddress) {
       console.log('Falling back to wagmi address:', wagmiAddress);
       return { address: wagmiAddress, username: 'wagmi_user', fid: null };
     }
-    // Fallback to cached address
     const cachedAddress = localStorage.getItem('wallet_address');
     if (cachedAddress) {
       console.log('Using cached address:', cachedAddress);
@@ -81,7 +163,7 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
         const locationContext = await pollForLocationContext();
         const isMiniApp = locationContext.isMiniApp || locationContext.type === 'open_miniapp';
         if (!isMiniApp) {
-          const errorMsg = 'Not running in a Farcaster client or Mini App. Please open in Warpcast.';
+          const errorMsg = 'Not running in a Farcaster client or Mini App. Please open in Warpcast or Base App.';
           console.error(errorMsg);
           setError(errorMsg);
           onMiniAppReady?.();
@@ -89,7 +171,7 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
           return;
         }
 
-        // Validate clientFid for Warpcast (9152)
+        // Validate clientFid for Warpcast (9152) or Base App
         if (locationContext.type === 'open_miniapp' && locationContext.client?.clientFid !== 9152) {
           console.warn('Unexpected clientFid:', locationContext.client?.clientFid);
         }
@@ -100,23 +182,25 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
           console.log('Farcaster SDK signaled ready');
         } catch (err) {
           console.error('SDK ready error:', err);
-          throw new Error(`Failed to signal SDK ready: ${err.message}`);
+          setError(`Failed to signal SDK ready: ${err.message}`);
+          return;
         }
 
         // Connect wallet if not connected
-        if (!isConnected && connectors[0]) {
-          console.log('Connecting to wallet via Farcaster Mini App connector:', connectors[0].name);
+        if (!isConnected && connectors[0] && !isConnecting) {
+          console.log('Attempting wallet connection via connector:', connectors[0]?.name || 'unknown');
           try {
             connect({ connector: connectors[0] });
           } catch (connectErr) {
             console.error('Wallet connection error:', connectErr);
-            throw new Error(`Wallet connection failed: ${connectErr.message}`);
+            setError(`Wallet connection failed: ${connectErr.message}. Please ensure your wallet is verified in Warpcast or Base App.`);
+            return;
           }
         }
 
         // Wait for wallet connection
         if (!isConnected || !address) {
-          const errorMsg = 'Wallet not connected. Please connect your wallet in Warpcast.';
+          const errorMsg = 'Wallet not connected. Please connect your wallet in Warpcast or Base App.';
           console.error(errorMsg);
           setError(errorMsg);
           onMiniAppReady?.();
@@ -127,7 +211,7 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
         // Poll for user data
         const user = await pollForUser(address);
         if (!user || !user.address) {
-          const errorMsg = 'Failed to fetch user data: Missing wallet address';
+          const errorMsg = 'Failed to fetch user data: Missing wallet address. Please verify your wallet in Warpcast or Base App.';
           console.error(errorMsg);
           setError(errorMsg);
           onMiniAppReady?.();
@@ -162,7 +246,8 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
             ? 'Authentication failed: User rejected the signature request'
             : `Authentication failed: ${signErr.message}`;
           console.error(errorMsg, signErr);
-          throw new Error(errorMsg);
+          setError(errorMsg);
+          return;
         }
 
         // Authenticate with /api/me
@@ -181,7 +266,8 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
         if (!response.ok) {
           const errorText = await response.text();
           console.error('Authentication failed, /api/me response:', errorText);
-          throw new Error(`Authentication failed: HTTP ${response.status} - ${errorText}`);
+          setError(`Authentication failed: HTTP ${response.status} - ${errorText}`);
+          return;
         }
 
         const data = await response.json();
@@ -215,7 +301,7 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
     };
 
     init();
-  }, [isConnected, address, connect, connectors, signMessageAsync, onMiniAppReady, onFarcasterReady]);
+  }, [isConnected, address, connect, connectors, isConnecting, signMessageAsync, onMiniAppReady, onFarcasterReady]);
 
   if (error) {
     return (
@@ -229,60 +315,74 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'rgba(0, 0, 0, 0.5)',
+          background: 'rgba(0, 0, 0, 0.8)',
           color: '#ef4444',
           fontSize: 16,
+          fontFamily: 'Arial, sans-serif',
           zIndex: 1000,
           padding: 16,
           textAlign: 'center',
         }}
       >
         <div>
-          {error}
-          <br />
+          <p>{error}</p>
           <button
             onClick={() => window.location.reload()}
             style={{
               background: '#3b82f6',
               color: 'white',
               border: 'none',
-              padding: '8px 16px',
-              borderRadius: 6,
+              padding: '10px 20px',
+              borderRadius: 8,
               cursor: 'pointer',
               marginTop: 12,
+              fontSize: 14,
             }}
           >
             Retry
           </button>
-          <br />
           {error.includes('Wallet not connected') && connectors[0] && (
             <button
               onClick={() => connect({ connector: connectors[0] })}
+              disabled={isConnecting}
               style={{
-                background: '#3b82f6',
+                background: isConnecting ? '#6b7280' : '#3b82f6',
                 color: 'white',
                 border: 'none',
-                padding: '8px 16px',
-                borderRadius: 6,
-                cursor: 'pointer',
+                padding: '10px 20px',
+                borderRadius: 8,
+                cursor: isConnecting ? 'not-allowed' : 'pointer',
                 marginTop: 12,
+                fontSize: 14,
               }}
             >
-              Connect Wallet
+              {isConnecting ? 'Connecting...' : 'Connect Wallet'}
             </button>
           )}
-          <br />
-          <a
-            href="https://warpcast.com"
-            style={{
-              color: '#3b82f6',
-              textDecoration: 'underline',
-              marginTop: 12,
-              display: 'inline-block',
-            }}
-          >
-            Open in Warpcast
-          </a>
+          <div style={{ marginTop: 12 }}>
+            <p>Please open in a Farcaster client:</p>
+            <a
+              href="https://warpcast.com/~/apps/echoecho"
+              style={{
+                color: '#3b82f6',
+                textDecoration: 'underline',
+                marginRight: 12,
+                fontSize: 14,
+              }}
+            >
+              Open in Warpcast
+            </a>
+            <a
+              href="https://wallet.coinbase.com/base-app"
+              style={{
+                color: '#3b82f6',
+                textDecoration: 'underline',
+                fontSize: 14,
+              }}
+            >
+              Open in Base App
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -300,14 +400,15 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'rgba(0, 0, 0, 0.5)',
+          background: 'rgba(0, 0, 0, 0.8)',
           color: '#f9fafb',
           fontSize: 16,
+          fontFamily: 'Arial, sans-serif',
           zIndex: 1000,
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-          <div>Farcaster initializing...</div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <div>Loading EchoEcho...</div>
           <div
             style={{
               width: 40,
@@ -332,7 +433,6 @@ function MiniAppComponent({ onMiniAppReady, onFarcasterReady }) {
   return null;
 }
 
-// Wrap with WagmiConfig
 export default function WrappedMiniAppComponent(props) {
   return (
     <WagmiConfig config={wagmiConfig}>
