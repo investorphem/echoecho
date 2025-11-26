@@ -6,7 +6,8 @@ import { sdk } from '@farcaster/miniapp-sdk';
 
 // NOW safe to import wagmi — only runs after dynamic load
 import { WagmiConfig, useAccount, useConnect, useSignMessage } from 'wagmi';
-import { wagmiConfig } from '../wagmi';
+import { getWagmiConfig } from '../wagmi';
+const wagmiConfig = getWagmiConfig();
 
 export function MiniAppComponentInner({ onMiniAppReady, onFarcasterReady }) {
   const [initializing, setInitializing] = useState(true);
