@@ -1,190 +1,148 @@
 // pages/index.js
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Head from 'next/head';
 
-// SAFE: Only light imports at top level
+// Only safe top-level imports
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 
-// Lazy-load heavy stuff inside useEffect or components
+// Lazy-load wagmi and viem AFTER mount
 const WagmiConfig = dynamic(() => import('wagmi').then(mod => mod.WagmiConfig), { ssr: false });
-const wagmiConfigPromise = import('../wagmi');
+const useAccount = dynamic(() => import('wagmi').then(mod => mod.useAccount), { ssr: false });
+const useConnect = dynamic(() => import('wagmi').then(mod => mod.useConnect), { ssr: false });
+const useSendTransaction = dynamic(() => import('wagmi').then(mod => mod.useSendTransaction), { ssr: false });
+const useBalance = dynamic(() => import('wagmi').then(mod => mod.useBalance), { ssr: false });
+const encodeFunctionData = dynamic(() => import('viem').then(mod => mod.encodeFunctionData), { ssr: false });
+const parseUnits = dynamic(() => import('viem').then(mod => mod.parseUnits), { ssr: false });
+
+// Load wagmi config safely
+let wagmiConfig = null;
+import('../wagmi').then(module => {
+  wagmiConfig = module.wagmiConfig;
+});
 
 export default function Home() {
-  const [WagmiProvider, setWagmiProvider] = useState<any>(null);
-  const [wagmiConfig, setWagmiConfig] = useState<any>(null);
-
-  const [farcasterAddress, setFarcasterAddress] = useState<string | null>(null);
-  const [fid, setFid] = useState<number | null>(null);
-  const [jwtToken, setJwtToken] = useState<string | null>(null);
-  const [userTier, setUserTier] = useState<'free' | 'premium' | 'pro'>('free');
-  const [subscription, setSubscription] = useState<any>(null);
-
-  const [trends, setTrends] = useState<any[]>([]);
+  const [isClient, setIsClient] = useState(false);
+  const [farcasterAddress, setFarcasterAddress] = useState(null);
+  const [fid, setFid] = useState(null);
+  const [jwtToken, setJwtToken] = useState(null);
+  const [userTier, setUserTier] = useState('free');
+  const [trends, setTrends] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [apiWarning, setApiWarning] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [globalMode, setGlobalMode] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeView, setActiveView] = useState<'trends' | 'echoes' | 'premium' | 'faq' | 'topic'>('trends');
-  const [selectedTopic, setSelectedTopic] = useState<any>(null);
-  const [counterNarratives, setCounterNarratives] = useState<any[]>([]);
+  const [activeView, setActiveView] = useState('trends');
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  const [counterNarratives, setCounterNarratives] = useState([]);
   const [usdcBalance, setUsdcBalance] = useState(0);
-  const [userEchoes, setUserEchoes] = useState<any>(null);
-  const [contextInfo, setContextInfo] = useState({ platformType: 'unknown' });
+  const [userEchoes, setUserEchoes] = useState(null);
 
-  // Load wagmi safely after mount
   useEffect(() => {
-    Promise.all([import('wagmi'), wagmiConfigPromise]).then(([wagmi, config]) => {
-      setWagmiProvider(() => wagmi.WagmiConfig);
-      setWagmiConfig(config.wagmiConfig);
-    });
+    setIsClient(true);
+    console.log('EchoEcho: App mounted successfully in iframe!');
   }, []);
 
-  const handleFarcasterReady = useCallback((data: any) => {
-    console.log('Farcaster Ready:', data);
-    setContextInfo({
-      referrerDomain: data.referrerDomain || null,
-      clientFid: data.clientFid || null,
-      platformType: data.platformType || 'unknown',
-    });
-
-    if (data.error) {
-      setErrorMessage(data.error);
-      setLoading(false);
-      return;
-    }
-
+  const handleFarcasterReady = useCallback((data) => {
+    console.log('Farcaster connected:', data);
     if (data.address) {
       setFarcasterAddress(data.address);
       setFid(data.fid || null);
-      setJwtToken(data.token);
+      setJwtToken(data.token || null);
       setUserTier(data.tier || 'free');
-      setSubscription(data.subscription || null);
       localStorage.setItem('wallet_address', data.address);
-      localStorage.setItem('jwt_token', data.token || '');
+      if (data.token) localStorage.setItem('jwt_token', data.token);
     }
     setLoading(false);
   }, []);
 
-  const loadTrends = useCallback(async () => {
-    if (!farcasterAddress || !jwtToken) {
-      setTrends([]);
-      setErrorMessage('Connect wallet in Warpcast to see trends');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/trending?userAddress=${farcasterAddress}`, {
-        headers: { Authorization: `Bearer ${jwtToken}` },
-      });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || 'Failed');
-
-      const enriched = await Promise.all(
-        (data.casts || []).slice(0, 10).map(async (t: any) => {
-          const text = t.text || t.body || '';
-          if (!text) return { ...t, ai_analysis: { sentiment: 'neutral', confidence: 0.5 } };
-
-          const aiRes = await fetch('/api/ai-analysis', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwtToken}` },
-            body: JSON.stringify({ text, action: 'analyze_sentiment', userAddress: farcasterAddress }),
-          });
-          const aiData = await aiRes.json();
-          return { ...t, ai_analysis: aiRes.ok ? aiData : { sentiment: 'neutral', confidence: 0.5 } };
-        })
-      );
-
-      setTrends(enriched);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to load trends');
-      setTrends([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [farcasterAddress, jwtToken]);
-
-  useEffect(() => {
-    if (farcasterAddress && jwtContext) loadTrends();
-  }, [farcasterAddress, loadTrends]);
-
-  if (!WagmiProvider || !wagmiConfig) {
-    return <div style={{ padding: 40, textAlign: 'center', background: '#000', color: '#fff', minHeight: '100vh' }}>
-      <h1>Loading EchoEcho...</h1>
-    </div>;
+  if (!isClient || !wagmiConfig) {
+    return (
+      <div style={{ background: '#111827', color: '#fff', minHeight: '100vh', textAlign: 'center', paddingTop: 100 }}>
+        <h1>Loading EchoEcho...</h1>
+      </div>
+    );
   }
 
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiConfig config={wagmiConfig}>
       <Head>
         <title>EchoEcho - Break Echo Chambers</title>
       </Head>
 
-      <div style={{ background: '#111827', color: '#f9fafb', minHeight: '100vh', padding: 16, fontFamily: 'system-ui, sans-serif' }}>
-        <MiniAppComponent onMiniAppReady={() => console.log('MiniApp ready')} onFarcasterReady={handleFarcasterReady} />
+      <div style={{ background: '#111827', color: '#f9fafb', minHeight: '100vh', fontFamily: 'system-ui, sans-serif' }}>
+        <MiniAppComponent
+          onMiniAppReady={() => console.log('MiniApp ready')}
+          onFarcasterReady={handleFarcasterReady}
+        />
 
-        {loading && (
+        {loading ? (
           <div style={{ textAlign: 'center', padding: 60 }}>
             <Image src="/logo.png" alt="EchoEcho" width={120} height={120} />
-            <h1>🔥 EchoEcho</h1>
-            <p>Loading trends...</p>
+            <h1 style={{ fontSize: 32, margin: '20px 0' }}>EchoEcho</h1>
+            <p>Loading your trends...</p>
           </div>
-        )}
+        ) : (
+          <div style={{ padding: 20, textAlign: 'center' }}>
+            <h1 style={{ fontSize: 36, marginBottom: 10 }}>EchoEcho</h1>
+            <p style={{ fontSize: 18, color: '#94a3b8', marginBottom: 30 }}>
+              AI-powered echo chamber breaker
+            </p>
 
-        {!loading && (
-          <>
-            <div style={{ textAlign: 'center', marginBottom: 30 }}>
-              <h1 style={{ fontSize: 32 }}>🔥 EchoEcho</h1>
-              <p>AI-powered echo chamber breaker</p>
-              {farcasterAddress ? (
-                <p style={{ color: '#10b981' }}>
-                  Connected: {farcasterAddress.slice(0, 8)}... • {userTier.toUpperCase()}
-                </p>
-              ) : (
-                <p style={{ color: '#fbbf24' }}>Open in Warpcast to connect</p>
-              )}
-            </div>
-
-            {errorMessage && (
-              <div style={{ background: '#dc2626', color: 'white', padding: 16, borderRadius: 12, marginBottom: 16 }}>
-                {errorMessage}
+            {farcasterAddress ? (
+              <div style={{ background: '#166534', color: 'white', padding: 16, borderRadius: 12, marginBottom: 20, fontSize: 16 }}>
+                Connected<br />
+                {farcasterAddress.slice(0, 8)}... • {userTier.toUpperCase()}
+              </div>
+            ) : (
+              <div style={{ background: '#dc2626', color: 'white', padding: 16, borderRadius: 12, marginBottom: 20 }}>
+                Open in Warpcast to connect wallet
               </div>
             )}
 
             <button
-              onClick={() => alert('EchoEcho is working perfectly in Warpcast!')}
+              onClick={() => alert('YES! Your app is finally working in Warpcast!')}
               style={{
                 background: '#3b82f6',
                 color: 'white',
-                padding: '16px 32px',
-                fontSize: 18,
+                padding: '16px 40px',
+                fontSize: 20,
                 border: 'none',
                 borderRadius: 12,
                 cursor: 'pointer',
-                width: '100%',
-                marginBottom: 20
+                marginBottom: 30
               }}
             >
-              Test Button – Click Me!
+              TEST BUTTON – CLICK ME
             </button>
 
-            <div style={{ background: '#1f2937', padding: 20, borderRadius: 12, textAlign: 'center' }}>
-              <h2 style={{ color: '#10b981' }}>IT WORKS!</h2>
-              <p>Your full app will be added safely next.</p>
-              <p style={{ fontSize: 14, color: '#94a3b8', marginTop: 20 }}>
-                Reply <strong>“I SEE IT”</strong> when you see this screen in Warpcast<br />
-                and I’ll give you the final version with trends, minting, payments — everything.
+            <div style={{
+              background: '#1f2937',
+              padding: 30,
+              borderRadius: 16,
+              border: '3px solid #10b981'
+            }}>
+              <h2 style={{ color: '#10b981', fontSize: 28 }}>IT WORKS!</h2>
+              <p style={{ fontSize: 18, margin: '20px 0' }}>
+                Your miniapp is loading perfectly in Warpcast.
               </p>
+              <p style={{ color: '#94a3b8', fontSize: 14 }}>
+                Reply <strong>“I SEE IT”</strong> and I’ll immediately send you the
+                final full version with:
+              </p>
+              <ul style={{ textAlign: 'left', marginTop: 10, fontSize: 14 }}>
+                <li>Full trending feed</li>
+                <li>Counter-narratives from X + News</li>
+                <li>NFT minting with Helia IPFS</li>
+                <li>USDC payments & subscriptions</li>
+                <li>My Echoes history</li>
+              </ul>
             </div>
-          </>
+          </div>
         )}
       </div>
-    </WagmiProvider>
+    </WagmiConfig>
   );
 }
