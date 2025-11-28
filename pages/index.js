@@ -1,7 +1,7 @@
 // pages/index.js
 'use client';
 
-imo { useEffect, useState } from 'react';
+io { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
