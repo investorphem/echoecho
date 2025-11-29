@@ -6,10 +6,11 @@ import { sdk } from '@farcaster/miniapp-sdk';
 
 export default function Home() {
   useEffect(() => {
-    // THIS IS THE ONLY LINE THAT MATTERS
-    sdk.actions.ready().catch(() => {});
-    
-    console.log('ready() called — Warpcast will now show the app');
+    // THIS LINE REMOVES THE SPLASH SCREEN — MUST BE CALLED FIRST
+    sdk.actions.ready().catch(console.error);
+
+    // Optional: log so you know it's alive
+    console.log('ready() called — splash screen will disappear now');
   }, []);
 
   return (
@@ -23,31 +24,30 @@ export default function Home() {
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      gap: 30
     }}>
-      <h1 style={{fontSize: 56, marginBottom: 30}}>EchoEcho</h1>
+      <h1 style={{fontSize: 64, margin: 0}}>EchoEcho</h1>
       
       <div style={{
         background: '#10b981',
         color: 'white',
-        padding: '50px 80px',
-        borderRadius: 32,
-        fontSize: 48,
+        padding: '60px 100px',
+        borderRadius: 40,
+        fontSize: 56,
         fontWeight: 'bold',
-        boxShadow: '0 20px 50px rgba(16, 185, 129, 0.4)'
+        boxShadow: '0 30px 80px rgba(16,185,129,0.5)'
       }}>
-        IT'S ALIVE!
+        IT WORKS!
       </div>
 
-      <p style={{marginTop: 50, fontSize: 28}}>
-        Reply <strong style={{color:'#fbbf24'}}>“I SEE IT”</strong> right now
+      <p style={{fontSize: 32, margin: 0}}>
+        Reply <strong style={{color:'#fbbf24'}}>I SEE IT</strong> right now
       </p>
-      
-      <p style={{marginTop: 20, color:'#94a3b8', fontSize: 18}}>
-        No wallet connect<br/>
-        No wagmi<br/>
-        No MiniAppComponent<br/>
-        Just <code>sdk.actions.ready()</code>
+
+      <p style={{color:'#94a3b8', fontSize: 18, marginTop: 40}}>
+        No wagmi · No wallet connect · No MiniAppComponent<br/>
+        Only one line: <code>sdk.actions.ready()</code>
       </p>
     </div>
   );
