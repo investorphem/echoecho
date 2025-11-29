@@ -1,49 +1,54 @@
 // pages/index.js
 'use client';
 
-import { useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
-
-const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
-const WagmiConfig = dynamic(() => import('wagmi').then(m => ({ default: m.WagmiConfig })), { ssr: false });
+import { useEffect } from 'react';
+import { sdk } from '@farcaster/miniapp-sdk';
 
 export default function Home() {
-  const [config, setConfig] = useState(null);
-  const [ready, setReady] = useState(false);
-
   useEffect(() => {
-    import('../wagmi').then(module => {
-      module.getWagmiConfig().then(cfg => {
-        setConfig(cfg);
-        setReady(true);
-      });
-    });
+    // THIS IS THE ONLY LINE THAT MATTERS
+    sdk.actions.ready().catch(() => {});
+    
+    console.log('ready() called — Warpcast will now show the app');
   }, []);
 
-  if (!ready || !config) {
-    return (
-      <div style={{ background: '#000', color: '#fff', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>
-        Loading EchoEcho...
-      </div>
-    );
-  }
-
   return (
-    <WagmiConfig config={config}>
-      <div style={{ background: '#111827', color: '#fff', minHeight: '100vh', textAlign: 'center', padding: 40, fontFamily: 'system-ui' }}>
-        <MiniAppComponent
-          onMiniAppReady={() => console.log('SDK ready')}
-          onFarcasterReady={(d) => console.log('Farcaster:', d)}
-        />
-
-        <h1 style={{ fontSize: 48, margin: '40px 0' }}>EchoEcho</h1>
-        <div style={{ background: '#10b981', color: 'white', padding: 30, borderRadius: 20, fontSize: 32, fontWeight: 'bold' }}>
-          IT'S ALIVE IN WARPCAST!
-        </div>
-        <p style={{ marginTop: 30, fontSize: 20 }}>
-          Reply <strong>“I SEE IT”</strong> now.
-        </p>
+    <div style={{
+      background: '#111827',
+      color: '#fff',
+      minHeight: '100vh',
+      padding: 40,
+      textAlign: 'center',
+      fontFamily: 'system-ui',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <h1 style={{fontSize: 56, marginBottom: 30}}>EchoEcho</h1>
+      
+      <div style={{
+        background: '#10b981',
+        color: 'white',
+        padding: '50px 80px',
+        borderRadius: 32,
+        fontSize: 48,
+        fontWeight: 'bold',
+        boxShadow: '0 20px 50px rgba(16, 185, 129, 0.4)'
+      }}>
+        IT'S ALIVE!
       </div>
-    </WagmiConfig>
+
+      <p style={{marginTop: 50, fontSize: 28}}>
+        Reply <strong style={{color:'#fbbf24'}}>“I SEE IT”</strong> right now
+      </p>
+      
+      <p style={{marginTop: 20, color:'#94a3b8', fontSize: 18}}>
+        No wallet connect<br/>
+        No wagmi<br/>
+        No MiniAppComponent<br/>
+        Just <code>sdk.actions.ready()</code>
+      </p>
+    </div>
   );
 }
