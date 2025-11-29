@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { sdk } from '@faster/miniapp-sdk';
+import { sdk } from '@farster/miniapp-sdk';
 
 export default function Home() {
   useEffect(() => {
