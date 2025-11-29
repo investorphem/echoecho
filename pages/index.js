@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import dynamic from 'next/dynami';
+import dynamic from 'next/dynamic';
 
 const MiniAppComponent = dynamic(() => import('../components/MiniAppComponent'), { ssr: false });
 const WagmiConfig = dynamic(() => import('wagmi').then(m => ({ default: m.WagmiConfig })), { ssr: false });
