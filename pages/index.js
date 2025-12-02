@@ -6,7 +6,7 @@ import { sdk } from '@farcaster/miniapp-sdk';
 
 export default function Home() {
   useEffect(() => {
-    // THIS LINE REMOVES THE SPLASH SCREEN — MUST BE C
+    // THIS LINE REMOVES THE SPLASH SCREEN — MUST BE 
     sdk.actions.ready().catch(console.error);
 
     // Optional: log so you know it's alive
