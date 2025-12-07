@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { neon } from '@neondatabase/serverless';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: pcess.env.OPENAI_API_KEY,
 });
 
 const sql = oprocess.env.DATABASE_URL);
