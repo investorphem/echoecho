@@ -2,7 +2,7 @@ import { createPublicClient, http, isAddress } from 'viem';
 import { base } from 'viem/chains';
 import { saveNFT } from '../../lib/storage.js';
 // import { createHelia } from 'helia'; // REMOVED
-// import { json } from '@helia/json'; // REMOVED
+// import { json } from '@helia/json';REMOVED
 
 const _publicClient = createPublicClient({
   chain: basell
