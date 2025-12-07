@@ -16,7 +16,6 @@ const IPFS_API_SECRET = process.env.IPFS_API_SECRET;
 
 // Ml ABI for minting
 const _NFT_ABI = [
-  {
     name: 'mint',
     type: 'function',
     stateMutability: 'nonpayable',
