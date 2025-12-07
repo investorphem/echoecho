@@ -1,7 +1,7 @@
 import { createPublicClient, http, isAddress } from 'viem';
 import { base } from 'viem/chains';
-import { createHelia } from 'helia';
-import { json } from '@helia/json';
+// import { createHelia } from 'helia'; // REMOVED
+// import { json } from '@helia/json'; // REMOVED
 import { getUserSubscription, saveNFT } from '../../lib/storage.js';
 import { NeynarAPIClient } from '@neynar/nodejs-sdk';
 
@@ -64,11 +64,11 @@ export default async function handler(req, res) {
       return res.status(403).json({ error: `NFT minting limit reached for ${userTier} tier` });
     }
 
-    // Initialize Helia for IPFS
-    const helia = await createHelia();
-    const ipfs = json(helia);
+    // Initialize Helia for IPFS - LOGIC REMOVED
+    // const helia = await createHelia();
+    // const ipfs = json(helia);
 
-    // Create metadata
+    // Create metadata (Placeholder URI since IPFS upload is disabled)
     const metadata = {
       name: `EchoEcho Insight Token`,
       description: `Counter-narrative discovered: "${narrative.text.slice(0, 100)}..."`,
@@ -82,11 +82,13 @@ export default async function handler(req, res) {
       external_url: 'https://echoecho.app',
       animation_url: null,
     };
+    const metadataURI = `echoecho.app{tokenId}`; // Placeholder URI
+    const imageURI = `echoecho.app`; // Placeholder Image
 
-    // Upload metadata to IPFS
-    const cid = await ipfs.add(metadata);
-    const metadataURI = `ipfs://${cid.toString()}`;
-    const imageURI = `https://ipfs.io/ipfs/${cid.toString()}`;
+    // Upload metadata to IPFS - LOGIC REMOVED
+    // const cid = await ipfs.add(metadata);
+    // const metadataURI = `ipfs://${cid.toString()}`;
+    // const imageURI = `https://ipfs.io/ipfs/${cid.toString()}`;
 
     // Pricing from environment variables
     const rarityPricing = {
