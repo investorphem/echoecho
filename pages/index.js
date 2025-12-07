@@ -5,7 +5,7 @@ import { useEffect } fro'react';
 import { sdk } from '@farcaer/miniapp-sdk'
 export default function Home(
   useEffect(() => {
-    // THIS LINE REMOVES THE SPLAS
+    // THIS LINE REMOVES THE SPL
     sdk.actions.ready().catch(consoleerror);
 
     // Optional: log so you know it's alive
