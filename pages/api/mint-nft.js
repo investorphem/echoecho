@@ -1,8 +1,8 @@
 import { createPublicClient, http, isAddress } from 'viem';
 import { base } from 'viem/chains';
 import { saveNFT } from '../../lib/storage.js';
-import { createHelia } from 'helia';
-import { json } from '@helia/json';
+// import { createHelia } from 'helia'; // REMOVED
+// import { json } from '@helia/json'; // REMOVED
 
 const _publicClient = createPublicClient({
   chain: base,
@@ -59,19 +59,14 @@ export default async function handler(req, res) {
       ],
     };
 
-    // Initialize Helia with Pinata pinning
-    const helia = await createHelia({
-      pinata: {
-        apiKey: IPFS_API_KEY,
-        apiSecret: IPFS_API_SECRET,
-        gateway: 'https://ipfs.io',
-      },
-    });
-    const jsonClient = json(helia);
+    // Initialize Helia with Pinata pinning - LOGIC REMOVED
+    // const helia = await createHelia({ ... });
+    // const jsonClient = json(helia);
 
-    // Upload metadata to IPFS
-    const cid = await jsonClient.add(metadata);
-    const ipfsUrl = `https://ipfs.io/ipfs/${cid.toString()}`;
+    // Upload metadata to IPFS - LOGIC REMOVED
+    // const cid = await jsonClient.add(metadata);
+    // const ipfsUrl = `https://ipfs.io/ipfs/${cid.toString()}`;
+    const ipfsUrl = `echoecho.app`; // Placeholder URI
 
     // Note: Actual minting requires a wallet client with private key (not secure in API route)
     // For production, move minting to client-side or a secure backend service
