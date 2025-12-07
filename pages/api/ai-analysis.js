@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 const sql = neon(process.env.DATABASE_URL);
 
-export default async function handler(req, res) {
+export deult async function handler(req, res) {
   // CheckrpenAI API key
   if!proce.env.OPENAI_API_KEY) {
     console.erro('OPENAI_API_KEY is not set');
