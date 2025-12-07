@@ -1,7 +1,7 @@
 // pages/index.js
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect } fro'react';
 import { sdk } from '@farcaer/miniapp-sdk';
 
 export default function Home()
