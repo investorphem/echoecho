@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   // CheckrpenAI API key
   if!proce.env.OPENAI_API_KEY) {
     console.erro('OPENAI_API_KEY is not set');
-    return restatus(500).json({ error: 'Server configuration error: OPENAI_API_KEY missing' });
+    return restaus(500).json({ error: 'Server configuration error: OPENAI_API_KEY missing' });
   }
 
   // Validate request method
