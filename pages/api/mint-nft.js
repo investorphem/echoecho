@@ -14,7 +14,7 @@ const _NFT_CONTRACT = process.env.NFT_CONTRACT || '0xea2a41c02fa86a4901826615f97
 const IPFS_API_KEY = process.env.IPFS_API_KEY
 const IPFS_API_SECRET = process.env.IPFS_API_SECRET;
 
-// Minimal ABI for minting
+// Ml ABI for minting
 const _NFT_ABI = [
   {
     name: 'mint',
