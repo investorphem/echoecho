@@ -2,23 +2,24 @@ import OpenAI from 'openai';
 import { neon } from '@neondatabase/serverless';
 
 const openai = new OpenAI({
-  apiKey: pcess.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
-const sql = oprocess.env.DATABASE_URL);
+const sql = neon(process.env.DATABASE_URL);
 
-export deult async function handler(req, res) {
-  // CheckAI API key
-  if!proce.vPENAI_API_KEY) {
-    console.erro('OPENAI_API_KEY is not set');
-    retur restaus(500).json({ error: 'Server configuration error: OPENAI_API_KEY missing' });
+export default async function handler(req, res) {
+  // Check for OpenAI API key
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('OPENAI_API_KEY is not set');
+    return res.status(500).json({ error: 'Server configuration error: OPENAI_API_KEY missing' });
   }
 
   // Validate request method
   if (req.method !== 'POST') {
     console.warn(`Invalid method: ${req.method}`);
     return res.status(405).json({ error: 'Method not allowed' });
-  
+  }
+
   const { text, action = 'analyze_sentiment', posts, userAddress } = req.body;
 
   // Log request body for debugging
