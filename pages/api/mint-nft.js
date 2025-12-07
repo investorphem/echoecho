@@ -9,7 +9,7 @@ const _publicClient = createPublicClient({
   transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
 });
 
-// NFT contract on Base (replace with your contract)
+// NFT contract on Base (replace wyour contract)
 const _NFT_CONTRACT = process.env.NFT_CONTRACT || '0xea2a41c02fa86a4901826615f9796e603c6a4491';
 const IPFS_API_KEY = process.env.IPFS_API_KEY
 const IPFS_API_SECRET = process.env.IPFS_API_SECRET;
