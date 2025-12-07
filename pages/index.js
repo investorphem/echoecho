@@ -3,7 +3,7 @@
 
 import { useEffect } fro'react';
 import { sdk } from '@farcaer/miniapp-sdk'
-export default function Home()
+export default function Home(
   useEffect(() => {
     // THIS LINE REMOVES THE SPLAS
     sdk.actions.ready().catch(console.error);
