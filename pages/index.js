@@ -13,7 +13,7 @@ export default function Home()
   }, [])
   return (
     <div style={{
-      background: '#111827',
+      background: '#111827
       color: '#fff
       minHeight: '100vh,
       padding: 40,
