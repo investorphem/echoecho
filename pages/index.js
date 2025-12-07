@@ -1,32 +1,34 @@
 // pages/index.js
 'use client';
 
-import { useEffect } fro'react';
-import { sdk } from '@farcaer/miniapp-sdk'
-export default function Home(
+import { useEffect } from 'react';
+import { sdk } from '@farcaster/miniapp-sdk';
+
+export default function Home() {
   useEffect(() => {
-    // THIS LINE REMOVES THE SPL
-    sdk.actions.ready().catch(consoleerror);
+    // THIS LINE REMOVES THE SPLAS
+    sdk.actions.ready().catch(console.error);
 
     // Optional: log so you know it's alive
     console.log('ready() called — splash screen will disappear now');
-  }, [])
+  }, []);
+
   return (
     <div style={{
-      background: '#111827
-      color: '#fff
-      minHeight: '100vh,
+      background: '#111827',
+      color: '#fff',
+      minHeight: '100vh',
       padding: 40,
       textAlign: 'center',
       fontFamily: 'system-ui',
-      display: 'flex
+      display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 30
     }}>
       <h1 style={{fontSize: 64, margin: 0}}>EchoEcho</h1>
-      
+
       <div style={{
         background: '#10b981',
         color: 'white',
