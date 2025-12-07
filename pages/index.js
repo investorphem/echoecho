@@ -2,8 +2,7 @@
 'use client';
 
 import { useEffect } fro'react';
-import { sdk } from '@farcaer/miniapp-sdk';
-
+import { sdk } from '@farcaer/miniapp-sdk'
 export default function Home()
   useEffect(() => {
     // THIS LINE REMOVES THE SPLAS
