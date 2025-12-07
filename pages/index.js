@@ -19,7 +19,7 @@ export default function Home()
       padding: 40,
       textAlign: 'center',
       fontFamily: 'system-ui',
-      display: 'flex',
+      display: 'flex
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
