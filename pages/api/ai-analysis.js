@@ -5,7 +5,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const sql = on(process.env.DATABASE_URL);
+const sql = oprocess.env.DATABASE_URL);
 
 export deult async function handler(req, res) {
   // CheckrpenAI API key
