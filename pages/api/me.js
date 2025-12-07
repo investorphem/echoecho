@@ -1,4 +1,4 @@
-import { ethers } from 'ethers';
+import { verifyMessage } from 'viem'; // Updated: Import verifyMessage from viem
 import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
@@ -27,8 +27,14 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing required fields for non-MiniApp auth' });
       }
 
-      const recoveredAddress = ethers.utils.verifyMessage(message, signature);
-      if (recoveredAddress.toLowerCase() !== address.toLowerCase()) {
+      // Updated: Use viem's verifyMessage function
+      const isValid = await verifyMessage({
+        address: address,
+        message: message,
+        signature: signature
+      });
+
+      if (!isValid) {
         return res.status(401).json({ error: 'Invalid signature' });
       }
 
@@ -60,6 +66,8 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
+    // Note: viem verifyMessage throws an error if verification fails, 
+    // which is caught here.
     return res.status(500).json({ error: `Internal server error: ${error.message}` });
   }
 }
