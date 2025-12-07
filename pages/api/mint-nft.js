@@ -110,7 +110,7 @@ export default async function handler(req, res) {
       message: '🎉 Insight Token minting initiated! Check blockchain for confirmation.',
     });
   } catch (error) {
-    console.error('NFT minting error:', error);
+    console.error('NFT minting error:', error)
     return res.status(500).json({ error: `Failed to mint NFT: ${error.message}` });
   }
 }
