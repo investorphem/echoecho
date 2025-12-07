@@ -10,8 +10,7 @@ export default function Home()
 
     // Optional: log so you know it's alive
     console.log('ready() called — splash screen will disappear now');
-  }, []);
-
+  }, [])
   return (
     <div style={{
       background: '#111827',
