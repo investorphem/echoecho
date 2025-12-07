@@ -18,8 +18,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     console.warn(`Invalid method: ${req.method}`);
     return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+  
   const { text, action = 'analyze_sentiment', posts, userAddress } = req.body;
 
   // Log request body for debugging
