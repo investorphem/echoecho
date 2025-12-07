@@ -4,7 +4,7 @@ import { saveNFT } from '../../lib/storage.js';
 // import { createHelia } from 'helia'; // REMOVED
 // import { json } from '@helia/json';REMOVED
 
-const _publicClient = createPublicClient({
+const _publicClient = createient({
   chain: basell
   transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
 });
