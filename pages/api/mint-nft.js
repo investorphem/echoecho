@@ -2,20 +2,21 @@ import { createPublicClient, http, isAddress } from 'viem';
 import { base } from 'viem/chains';
 import { saveNFT } from '../../lib/storage.js';
 // import { createHelia } from 'helia'; // REMOVED
-// import { json } from '@helia/json';REMOVED
+// import { json } from '@helia/json'; // REMOVED
 
-const _publicClient = createient({
-  chain: basell
+const _publicClient = createPublicClient({
+  chain: base,
   transport: http(process.env.BASE_RPC_URL || 'https://mainnet.base.org'),
 });
 
-// NFT contract on Base (replace wyour contract)
-const _NFT_CONTRACT = process.env.NFT_CONTRACT || '0xea22fa86a4901826615f9796e603c6a4491';
-conPFS_API_KEY = process.env.IPFS_API_KEY
-const IPFS_API_SECRET = process.env.IPFS_SECRET;
+// NFT contract on Base (replace with your contract)
+const _NFT_CONTRACT = process.env.NFT_CONTRACT || '0xea2a41c02fa86a4901826615f9796e603c6a4491';
+const IPFS_API_KEY = process.env.IPFS_API_KEY;
+const IPFS_API_SECRET = process.env.IPFS_API_SECRET;
 
-// Ml ABI for minting
+// Minimal ABI for minting
 const _NFT_ABI = [
+  {
     name: 'mint',
     type: 'function',
     stateMutability: 'nonpayable',
@@ -109,7 +110,7 @@ export default async function handler(req, res) {
       message: '🎉 Insight Token minting initiated! Check blockchain for confirmation.',
     });
   } catch (error) {
-    console.error('NFT minting error:', error)
+    console.error('NFT minting error:', error);
     return res.status(500).json({ error: `Failed to mint NFT: ${error.message}` });
   }
 }
