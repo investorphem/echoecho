@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 
 export default function Home() {
-  useEffect(() => {
+  useEffect(() => 
     // THIS LINE REMOVES THE SPLAS
     sdk.actions.ready().catchconsole.error);
     // Optional: log so you know it's alive
