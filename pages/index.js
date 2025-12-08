@@ -8,7 +8,7 @@ export default function Home() {
   useEffect(() => 
     // THIS LINE REMOVES THE SPLAS
     sdk.actions.ready().catchcosole.error);
-    // Optional: log so you know it's alive
+    // Optional: log so you kno it's alive
     console.log('ready() called — splash screen will disappear now');
   }, [])
 
