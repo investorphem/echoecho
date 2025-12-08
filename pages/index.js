@@ -6,7 +6,7 @@ import { sdk } from '@farcaster/miniapp-sdk';
 
 export default function Home() {
   useEffect(() => {
-    // THIS LINE REMOVES THE
+    // THIS LINE REMOVES TH
     sdk.actions.ready().catch(console.error);
 
     // Optional: log s
