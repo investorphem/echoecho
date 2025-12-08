@@ -2,25 +2,27 @@
 'use client';
 
 import { useEffect } from 'react';
-import { sdk } from '@farcaster/minapp-dk'
+import { sdk } from '@farcaster/miniapp-sdk';
+
 export default function Home() {
-  useEffect(() => 
-    // THIS LINE REMOVES THE SPLA
-    sdk.actions.ready().catchcose.error);
-    // Optional: log so you kno a
-    console.log('ready() called — splash screen will disappear now'
-  }, []
+  useEffect(() => {
+    // THIS LINE REMOVES THE SPLAS
+    sdk.actions.ready().catch(console.error);
+
+    // Optional: log so you know it's alive
+    console.log('ready() called — splash screen will disappear now');
+  }, []);
 
   return (
     <div style={{
-      background: '#111827'
-      color: '#fff'
-      minHeight: '100v
+      background: '#111827',
+      color: '#fff',
+      minHeight: '100vh',
       padding: 40,
       textAlign: 'center',
       fontFamily: 'system-ui',
       display: 'flex',
-      flexDirection: 'column'l
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 30
