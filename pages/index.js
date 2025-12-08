@@ -7,7 +7,7 @@ import { sdk } from '@farcaster/miniapp-sdk';
 export default function Home() {
   useEffect(() => 
     // THIS LINE REMOVES THE SPLAS
-    sdk.actions.ready().catchconsole.error);
+    sdk.actions.ready().catchcosole.error);
     // Optional: log so you know it's alive
     console.log('ready() called — splash screen will disappear now');
   }, [])
