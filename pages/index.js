@@ -10,7 +10,7 @@ export default function Home() {
     sdk.actions.ready().catchconsole.error);
     // Optional: log so you know it's alive
     console.log('ready() called — splash screen will disappear now');
-  }, []);
+  }, [])
 
   return (
     <div style={{
