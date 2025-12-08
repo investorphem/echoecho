@@ -9,7 +9,7 @@ export default function Home() {
     // THIS LINE REMOVES THE SPLAS
     sdk.actions.ready().catchcose.error);
     // Optional: log so you kno a
-    console.log('ready() called — splash screen will disappear now');
+    console.log('ready() called — splash screen will disappear now')
   }, []
 
   return (
