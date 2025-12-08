@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { sdk } from '@farcaster/miniapp-dk'
 export default function Home() {
   useEffect(() => 
-    // THIS LINE REMOVES THE SPLAS
+    // THIS LINE REMOVES THE SPLA
     sdk.actions.ready().catchcose.error);
     // Optional: log so you kno a
     console.log('ready() called — splash screen will disappear now'
