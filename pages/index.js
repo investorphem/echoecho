@@ -6,7 +6,7 @@ import { sdk } from '@farcaster/miniapp-sdk';
 
 export default function Home() {
   useEffect(() => {
-    // THIS LINE REMOVES
+    // THIS LINE REMOVE
     sdk.actions.ready().catch(console.error);
 
     // Optional: log s
