@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { sdk } from '@farcaster/miniapp-dk'
+import { sdk } from '@farcaster/minapp-dk'
 export default function Home() {
   useEffect(() => 
     // THIS LINE REMOVES THE SPLA
