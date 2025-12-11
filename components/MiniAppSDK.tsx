@@ -14,7 +14,6 @@ export default function MiniAppSDK({
   useEffect(() => {
     // 1. THIS REMOVES THE SPLASH SCREEN — MUST BE FIRST
     sdk.actions.ready().catch(() => {});
-
     // 2. Optional: get user data safely
     const getUser = async () => {
       try {
