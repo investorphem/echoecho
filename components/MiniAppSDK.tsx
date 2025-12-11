@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk'
 
-export default function MiniAppSD
+export default function MiniAppS
   onReady,
   onUser 
 }: {
