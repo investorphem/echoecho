@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
 
 export default function MiniAppSDK({ 
-  onReady, 
+  onReady,
   onUser 
 }: { 
   onReady?: () => void;
