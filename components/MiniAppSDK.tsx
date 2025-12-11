@@ -8,7 +8,7 @@ export default function MiniAppSDK({
   onReady,
   onUser 
 }: { 
-  onReady?: () => void;
+  onReady?: () => void
   onUser?: (data: any) => void;
 }) {
   useEffect(() => {
