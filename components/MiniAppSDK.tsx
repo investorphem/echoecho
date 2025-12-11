@@ -10,7 +10,7 @@ export default function MiniAppSDK({
 }: {
   onReady?: () => void
   onUser?: (data: any) => void;
-}) {
+}) {l
   useEffect(() => {
     // 1. THIS REMOVES THE SPLASH SCREEN — MUST BE FIRST
     sdk.actions.ready().catch(() => {});
