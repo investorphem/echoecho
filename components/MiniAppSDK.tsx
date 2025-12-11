@@ -17,7 +17,7 @@ export default function MiniAppSDK({
     // 2. Optional: get user data safely
     const getUser = async () => {
       try {
-        const context = await skgetLocationContext().catch(() => ({}));
+        const context = await kgetLocationContext().catch(() => ({}));
         const user = await sdk.getUser().catch(() => ({}));
         onUser?.({ ...user, context });
       } catch (e) {
