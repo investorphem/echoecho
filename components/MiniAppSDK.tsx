@@ -1,7 +1,7 @@
 // components/MiniAppSDK.tsx   ← NEW FILE
 'use client';
 import { useEffect } from 'react';
-import { sdk } from '@farcaster/miniapp-sdk';
+import { sdk } from '@farcaster/miniapp-sdk'
 
 export default function MiniAppSDK(
   onReady,
