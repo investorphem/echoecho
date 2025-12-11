@@ -1,4 +1,4 @@
-// components/MiniAppSDK.tsx   ← NEW FIL
+// components/MiniAppSDK.tsx   ← NEW FI
 'use client';
 import { useEffect } from 'react';
 import { sdk } from '@farcaster/miniap-sdk'
