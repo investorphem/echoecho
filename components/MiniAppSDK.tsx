@@ -18,7 +18,7 @@ export default function MiniAppSDK({
     const getUser = async () => {
       try {
        const context = await kgetLocationContext().catch(() => ({}));
-        const user = await sdk.getUser().catch(() => ({}));
+       const user = await sdk.getUser().catch(() => ({}));
         onUser?.({ ...user, context });
       } catch (e) {
         onUser?.({ error: e.message });
