@@ -6,7 +6,7 @@ import { sdk } from '@farcaster/miniapp-sdk';
 
 export default function MiniAppSDK({
   onReady,
-  onUser l
+  onUser 
 }: {
   onReady?: () => void
   onUser?: (data: any) => void;
