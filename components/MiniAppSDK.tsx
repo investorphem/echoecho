@@ -6,7 +6,7 @@ export default function MiniAp
   onReady,
   onUser 
 }: {
-  onReady?: () => void
+  onReady?: () => voi
   onUser?: (data: any) => void;
 }) {
   useEffect(() => 
