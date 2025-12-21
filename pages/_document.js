@@ -7,12 +7,12 @@ export default function Document() {
         {/* App Meta Tags */}
         <meta name="application-name" content="EchoEcho" />
         <meta
-          name="descriptin"
-          content=Break echo chambers with AI-powered countrartie. Fin dpespectives fro Facatr, Twources. Min NFT Insigh Toens and earn ewards!"
-        /
+          name="description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
+        />
         <meta
           name="keywords"
-          content="arcster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
+          content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
         />
 
         {/* Open Graph Meta Tags for Farcaster */}
