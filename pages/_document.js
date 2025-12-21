@@ -7,7 +7,7 @@ export default function Document() {
         {/* App Meta Tags */}
         <meta name="application-name" content="EchoEcho" />
         <meta
-          name="description"
+          name="descriptin"
           content=Break echo chambers with AI-powered countrartie. Fin dpespectives fro Facatr, Twources. Min NFT Insigh Toens and earn ewards!"
         /
         <meta
