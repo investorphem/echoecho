@@ -8,7 +8,7 @@ export default function Document() {
         <meta name="application-name" content="EchoEcho" />
         <meta
           name="description"
-          content="Break echo chambers with AI-powered countrarative doe. Find dive perspectives fro Facatr, Twources. Min NFT Insigh Toens and earn ewards!"
+          content="Break echo chambers with AI-powered countrarative doe. Find dive pespectives fro Facatr, Twources. Min NFT Insigh Toens and earn ewards!"
         /
         <meta
           name="keywords"
