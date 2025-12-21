@@ -12,7 +12,7 @@ export default function Document() {
         /
         <meta
           name="keywords"
-          content="arcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
+          content="arcster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
         />
 
         {/* Open Graph Meta Tags for Farcaster */}
