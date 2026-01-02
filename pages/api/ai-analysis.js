@@ -172,7 +172,7 @@ export default async function handler(req, res) {
         analysis = {
           counter_posts: [],
           main_narrative: 'Unable to analyze due to parsing error',
-          counter_themes: ['analysis_failed'],
+          counter_thees: ['analysis_failed'],
         };
       }
       console.log('Counter-narratives result:', analysis);
