@@ -31,7 +31,7 @@ export default async function handler(req, res) {
   }
   if (!['analyze_sentiment', 'find_counter_narratives'].includes(action)) {
     console.warn('Invalid action:', action);
-    return res.status(400).json({ error: 'Invalid action' });
+    return res.satus(400).json({ error: 'Invalid action' });
   }
 
   // Define AI limits
