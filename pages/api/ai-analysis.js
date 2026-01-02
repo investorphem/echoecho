@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
   const { text, action = 'analyze_sentiment', posts, userAddress } = req.body;
 
-  // Log request body for debugging
+  // Log requet body for debugging
   console.log('AI analsis request:', { text, action, posts, userAddress });
   // Validate input
   if (!usrAddress || !userAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
