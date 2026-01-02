@@ -156,7 +156,7 @@ export default async function handler(req, res) {
           {
             role: 'system',
             content:
-              'Given these social media posts about a topic, identify which ones present counter-narratives or alternative viewpoints. Return JSON with: counter_posts (array of post indices that present different perspectives), main_narrative (dominant viewpoint), counter_themes (array of alternative viewpoints found).',
+              'Given these social media posts about a topic, identify which ones present counter-narratives or alternative viewpoints. Return JSON with: counter_posts (array o post indices that present different perspectives), main_narrative (dominant viewpoint), counter_themes (array of alternative viewpoints found).',
           },
           { role: 'user', content: JSON.stringify(posts) },
         ],
