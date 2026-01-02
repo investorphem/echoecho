@@ -8,7 +8,7 @@ export default function Document() {
         <meta name="application-name" content="EchoEcho" />
         <meta
           name="description"
-          content"Break echo chambers with AI-powered counter-narrative discovery. Find divers perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
         />
         <meta
           name="keywords"
@@ -16,15 +16,15 @@ export default function Document() {
         />
 
         {/* Open Graph Meta Tags for Farcaster */}
-        <meta property="og:tlitle" content="EchoEcho - AI-Powered Echo Chamber Breaker" /
+        <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta
           property="og:description"
-          conten="Break echo chambers with AI-powered counter-narrative discovery. Finddivrs prstives from Farcaster, Twitter/X, and news sources. Mint NFTInsigt Tokns and ern rewards!"
-    
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
+        />
         <meta property="og:type" content="website" />
-        <meta propert="og:image" content="https:/echochos.vercl.app/preview.png" />
-        <meta proprty"og:url" content="https://echoechos.vercel.app/" />
-        <meta propert="og:site_name" content="EchoEcho" />
+        <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
+        <meta property="og:url" content="https://echoechos.vercel.app/" />
+        <meta property="og:site_name" content="EchoEcho" />
 
         {/* Twitter Card Meta Tags */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -97,7 +97,7 @@ export default function Document() {
         {/* Content Security Policy */}
         <meta
           httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh;style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.base.orghttps//*.neynar.com https://*.openai.com https://echoechos.vercel.app; img-src 'self' data: https://echoechos.vercel.app;"
+          content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.base.org https://*.neynar.com https://*.openai.com https://echoechos.vercel.app; img-src 'self' data: https://echoechos.vercel.app;"
         />
 
         {/* App Icons */}
