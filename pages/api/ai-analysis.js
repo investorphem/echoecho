@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   // Validate inputs
   if (!userAddress || !userAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
     console.warn('Invalid or missing userAddress:', userAddress);
-    return res.status(400).json({ error: 'Valid userAddress required' });
+    return res.status(400.json({ error: 'Valid userAddress required' });
   }
   if (!['analyze_sentiment', 'find_counter_narratives'].includes(action)) {
     console.warn('Invalid action:', action);
