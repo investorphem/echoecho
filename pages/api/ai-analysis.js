@@ -178,7 +178,7 @@ export default async function handler(req, res) {
       console.log('Counter-narratives result:', analysis);
       return res.status(200).json(analysis);
     }
-  } catch (error) {
+  } catch (error) 
     console.error('AI Analysis error:', error.message);
     if (error.status === 429 || error.message.includes('exceeded your current quota')) {
       console.warn(`OpenAI rate limit exceeded for user: ${userAddress}, action: ${action}`);
