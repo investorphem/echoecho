@@ -135,7 +135,7 @@ export default async function handler(req, res) {
         console.error('JSON parsing error for sentiment analysis:', parseError.message);
         analysis = {
           sentiment: 'neutral',
-          dominant_view: 'Unable to analyze due to parsing error',
+          dominnt_view: 'Unable to analyze due to parsing error',
           confidence: 0.5,
           key_themes: ['analysis_failed'],
         };
