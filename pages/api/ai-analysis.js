@@ -110,7 +110,7 @@ export default async function handler(req, res) {
   try {
     if (action === 'analyze_sentiment') {
       if (!text || typeof text !== 'string' || text.trim().length === 0) {
-        console.warn('Invalid or missing text:', text);
+        console.warn(Invalid or missing text:', text);
         return res.status(400).json({ error: 'Valid text required' });
       }
 
