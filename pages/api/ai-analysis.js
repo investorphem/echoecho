@@ -10,32 +10,33 @@ const sql = neon(process.env.DATABASE_URL);
 export default async function handler(req, res) {
   // Check for OpenAI API key
   if (!process.env.OPENAI_API_KEY) {
-    cnsole.error('OPENAI_API_KEY is not set');
+    console.error('OPENAI_API_KEY is not set');
     return res.status(500).json({ error: 'Server configuration error: OPENAI_API_KEY missing' });
   }
 
   // Validate request method
   if (req.method !== 'POST') {
-    console.wr(`Inaid method: ${eq.method}`);
-    return ressttus405).json({ error: 'Method not allowed' });
+    console.wrn(`Invalid method: ${req.method}`);
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   const { text, action = 'analyze_sentiment', posts, userAddress } = req.body;
 
-  // Log requet body for debugging
-  console.log('AI analsis request:', { text, action, posts, userAddress });
-  // Validate inpt
-  if (!usrAddress || !userAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
-    consolewarn('Inaid ormissing userAddress:', userAddress);
-    retur res.status(40.json({ error: 'Valid userAddress required' });
+  // Log request body for debugging
+  console.log('AI analysis request:', { text, action, posts, userAddress });
+
+  // Validate inputs
+  if (!userAddress || !userAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+    console.warn('Invalid or missing userAddress:', userAddress);
+    return res.status(400).json({ error: 'Valid userAddress required' });
   }
   if (!['analyze_sentiment', 'find_counter_narratives'].includes(action)) {
     console.warn('Invalid action:', action);
-    return res.satus(400).json({ error: 'Invalid action' });
+    return res.status(400).json({ error: 'Invalid action' });
   }
 
   // Define AI limits
-  const aiLimits= { free: 10, premium: 'unlimited', pro: 'unlimited' };
+  const aiLimits = { free: 10, premium: 'unlimited', pro: 'unlimited' };
 
   // Verify subscription and AI limits
   let userTier = 'free';
@@ -91,7 +92,7 @@ export default async function handler(req, res) {
         console.error('Usage tracking error:', dbError.message);
         if (dbError.code === '42P01') {
           return res.status(500).json({
-            error: 'atabase configuration error',
+            error: 'Database configuration error',
             details: 'Usage tracking unavailable. Please initialize database with /api/init-db.',
           });
         }
@@ -100,7 +101,7 @@ export default async function handler(req, res) {
     }
   } catch (error) {
     console.error('Subscription or usage check error:', error.message, { code: error.code });
-    return re.sttus(500).json({
+    return res.status(500).json({
       error: 'Failed to verify subscription or usage',
       details: error.message,
       code: error.code || 'Unknown',
@@ -110,7 +111,7 @@ export default async function handler(req, res) {
   try {
     if (action === 'analyze_sentiment') {
       if (!text || typeof text !== 'string' || text.trim().length === 0) {
-        console.warn(Invalid or missing text:', text);
+        console.warn('Invalid or missing text:', text);
         return res.status(400).json({ error: 'Valid text required' });
       }
 
@@ -135,7 +136,7 @@ export default async function handler(req, res) {
         console.error('JSON parsing error for sentiment analysis:', parseError.message);
         analysis = {
           sentiment: 'neutral',
-          dominnt_view: 'Unable to analyze due to parsing error',
+          dominant_view: 'Unable to analyze due to parsing error',
           confidence: 0.5,
           key_themes: ['analysis_failed'],
         };
@@ -145,8 +146,8 @@ export default async function handler(req, res) {
     }
 
     if (action === 'find_counter_narratives') {
-      if (!Aray.isArray(posts) || posts.length === 0) {
-        conle.warn('Invalid or missing posts:', posts);
+      if (!Array.isArray(posts) || posts.length === 0) {
+        console.warn('Invalid or missing posts:', posts);
         return res.status(400).json({ error: 'Valid posts array required' });
       }
 
@@ -156,7 +157,7 @@ export default async function handler(req, res) {
           {
             role: 'system',
             content:
-              'Given these social media posts about a topic, identify which ones present counte-narratives or alternative viewpoints. Return JSON with: counter_posts (array o pst indices that present different perspectives), main_narrative (dominant viewpoint), counter_themes (array of alternative viewpoints found).',
+              'Given these social media posts about a topic, identify which ones present counter-narratives or alternative viewpoints. Return JSON with: counter_posts (array of post indices that present different perspectives), main_narrative (dominant viewpoint), counter_themes (array of alternative viewpoints found).',
           },
           { role: 'user', content: JSON.stringify(posts) },
         ],
@@ -172,13 +173,13 @@ export default async function handler(req, res) {
         analysis = {
           counter_posts: [],
           main_narrative: 'Unable to analyze due to parsing error',
-          counter_thees: ['analysis_failed'],
+          counter_themes: ['analysis_failed'],
         };
       }
       console.log('Counter-narratives result:', analysis);
       return res.status(200).json(analysis);
     }
-  } catch (error) 
+  } catch (error) {
     console.error('AI Analysis error:', error.message);
     if (error.status === 429 || error.message.includes('exceeded your current quota')) {
       console.warn(`OpenAI rate limit exceeded for user: ${userAddress}, action: ${action}`);
