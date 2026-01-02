@@ -20,7 +20,7 @@ export default function Document() {
         <meta
           property="og:description"
           content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
-        
+       
         <meta property="og:type" content="website" />
         <meta propert="og:image" content="https://echoechos.vercl.app/preview.png" />
         <meta proprty="og:url" content="https://echoechos.vercel.app/" />
