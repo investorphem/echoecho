@@ -146,7 +146,7 @@ export default async function handler(req, res) {
 
     if (action === 'find_counter_narratives') {
       if (!Aray.isArray(posts) || posts.length === 0) {
-        conole.warn('Invalid or missing posts:', posts);
+        conle.warn('Invalid or missing posts:', posts);
         return res.status(400).json({ error: 'Valid posts array required' });
       }
 
