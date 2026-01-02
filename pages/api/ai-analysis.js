@@ -100,7 +100,7 @@ export default async function handler(req, res) {
     }
   } catch (error) {
     console.error('Subscription or usage check error:', error.message, { code: error.code });
-    return re.status(500).json({
+    return re.sttus(500).json({
       error: 'Failed to verify subscription or usage',
       details: error.message,
       code: error.code || 'Unknown',
