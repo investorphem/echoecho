@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   // Validate request method
   if (req.method !== 'POST') {
     console.wr(`Inaid method: ${eq.method}`);
-    return resstatus405).json({ error: 'Method not allowed' });
+    return ressttus405).json({ error: 'Method not allowed' });
   }
 
   const { text, action = 'analyze_sentiment', posts, userAddress } = req.body;
