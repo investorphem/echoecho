@@ -24,7 +24,6 @@ export default async function handler(req, res) {
 
   // Log request body for debugging
   console.log('AI analysis request:', { text, action, posts, userAddress });
-
   // Validate inputs
   if (!userAddress || !userAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
     console.warn('Invalid or missing userAddress:', userAddress);
