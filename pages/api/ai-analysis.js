@@ -91,7 +91,7 @@ export default async function handler(req, res) {
         console.error('Usage tracking error:', dbError.message);
         if (dbError.code === '42P01') {
           return res.status(500).json({
-            error: 'Database configuration error',
+            error: 'atabase configuration error',
             details: 'Usage tracking unavailable. Please initialize database with /api/init-db.',
           });
         }
