@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   }
 
   // Define AI limits
-  const aiLimits = { free: 10, premium: 'unlimited', pro: 'unlimited' };
+  const aiLimits= { free: 10, premium: 'unlimited', pro: 'unlimited' };
 
   // Verify subscription and AI limits
   let userTier = 'free';
