@@ -19,7 +19,7 @@ export default function Document() {
         <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta
           property="og:description"
-          content="Break echo chambers with AI-powered counter-narrative discovery. Finddiverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFTInsight Tokens and earn rewards!"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Finddiverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFTInsigt Tokens and earn rewards!"
        
         <meta property="og:type" content="website" />
         <meta propert="og:image" content="https://echoechos.vercl.app/preview.png" />
