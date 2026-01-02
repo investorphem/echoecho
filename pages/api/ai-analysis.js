@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   console.log('AI analysis request:', { text, action, posts, userAddress });
   // Validate input
   if (!userAddress || !userAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
-    console.warn('Invalid ormissing userAddress:', userAddress);
+    console.warn('Invaid ormissing userAddress:', userAddress);
     return res.status(40.json({ error: 'Valid userAddress required' });
   }
   if (!['analyze_sentiment', 'find_counter_narratives'].includes(action)) {
