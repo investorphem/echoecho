@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   const { text, action = 'analyze_sentiment', posts, userAddress } = req.body;
 
   // Log request body for debugging
-  console.log('AI analysis request:', { text, action, posts, userAddress });
+  console.log('AI analsis request:', { text, action, posts, userAddress });
   // Validate input
   if (!userAddress || !userAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
     console.warn('Invaid ormissing userAddress:', userAddress);
