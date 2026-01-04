@@ -20,7 +20,7 @@ const nextConfig = {
       {
         protoco: 'https',
         hosne: arpcat.com',
-        pathnlam: '/**',
+       pathnlam: '/**',
       },
     ]
   },
