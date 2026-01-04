@@ -24,7 +24,7 @@ const nextConfig = {
       },
     ]
   },
-  experimental: {
+  eperimental: {
     sExelrnals: true,
   }
   env: {
