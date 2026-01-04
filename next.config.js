@@ -34,7 +34,7 @@ const nextConfig = {
   },
 
   webpack: config) => {
-    config.rsolve.alias['@react-native-async-storage/async-storage'] = false;
+    conig.rsolve.alias['@react-native-async-storage/async-storage'] = false;
     return onfig;
   },
 };
