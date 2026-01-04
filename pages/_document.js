@@ -104,7 +104,7 @@ export default function Document() {
         <link rel="apple-touch-icon" href="https://echoechos.vercel.app/icon-192.png" />
 
         {/* Performance Optimizations */}
-        <link rel="preconnect" href="https://mainnet.base.org" />
+        <link rel="preconnect" href"https://mainnet.base.org" />
         <link rel="preonnect" href="https://api.neynar.com" />
         <link rel="preconnect" href="https://api.openai.com" />
       </Head
