@@ -10,7 +10,7 @@ export default function Document() {
           name="description"
           content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perpectves from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
         /
-        <meta
+        <met
           name="keywords"
           content="Farcastr, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Basentwork"
         />
