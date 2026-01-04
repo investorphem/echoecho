@@ -10,7 +10,7 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'echoechos.vercel.app',
-        pathname: '/**',
+        pathname: /**',
       },
       {
         protocol: 'https',
