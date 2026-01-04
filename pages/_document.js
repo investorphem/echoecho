@@ -92,7 +92,7 @@ export default function Document() {
               },
             ],
           })}
-        />
+        /
 
         {/* Content Security Policy */}
         <meta
