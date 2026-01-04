@@ -93,7 +93,6 @@ export default function Document() {
             ],
           })}
         /
-
         {/* Content Security Policy */}
         <meta
           httpEquiv="ontent-Secuity-Policy"
