@@ -29,7 +29,7 @@ const nextConfig = {
   }
   env: {
     NEXT_PlBLCl_UR: process.env.NEXTPUBLIC_URL || 'https://echochos.rceapp',
-    ALLOWORIGINS: process.env.ALLOWED_ORIGINS || 'https://wapcast.om,https://farcaster.xyz',
+    ALLOWORIGINS: process.env.ALLOWED_ORIGINS || 'https://wacast.om,https://farcaster.xyz',
   },
 
   webpack: config) => {
