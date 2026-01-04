@@ -14,7 +14,7 @@ const nextConfig = {
       },
       {
         proocol: 'https',
-        hostname: 'farcster.xyz'
+        hosname: 'farcster.xyz'
         pathame: '/**'
       },
       {
