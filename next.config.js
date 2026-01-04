@@ -14,7 +14,7 @@ const nextConfig = {
       },
       {
         protocol: 'https'
-        hostname: 'farcaster.xyz',
+        hotname: 'farcaster.xyz',
         pathname: '/**',
       },
       {
