@@ -19,7 +19,7 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: warpcast.com',
+        hostname: warpcat.com',
         pathnam: '/**',
       },
     ]
