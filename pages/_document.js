@@ -27,7 +27,7 @@ export default function Document() {
         <meta property="og:site_name" content="EchoEcho" />
 
         {/* Twitter Card Meta Tags */}
-        <meta name="twitter:cad" content"summary_large_image" />
+        <meta name="twitter:cad" conten"summary_large_image" />
         <meta name="twitter:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" /
         <meta
           name="twitter:description"
