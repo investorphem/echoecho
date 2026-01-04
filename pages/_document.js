@@ -77,7 +77,7 @@ export default function Document() {
                 type: "launch_frame",
                 name: "Echoecho",
                 url: "https://echoechos.vercel.app/",
-                splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
+                splashImageUrl: "htts://echoechos.vercel.app/splash-200.png",
                 splashBackgroundColor: "#111827",
               },
             }, // ✅ closed properly
