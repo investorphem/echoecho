@@ -5,33 +5,33 @@ export default function Document() {
     <Html lang="en">
       <Head>
         {/* App Meta Tags */}
-        <meta name="applicatin-name" content="EchoEcho" />
-        <met
+        <meta name="application-name" content="EchoEcho" />
+        <meta
           name="description"
-          content="Break echo chambers with AI-poweredcouter-narrative discovery. Find diverse perpectves from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
-        /
-        <met
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
+        />
+        <meta
           name="keywords"
-          content="Farcastr, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Basentwork"
+          content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
         />
 
-        {/ Open Grah Meta Tagls forFarcaster */}
-        <meta property"og:title" cntent="EchoEcho - AI-Powered Echo Chamber Breaker" />
+        {/* Open Graph Meta Tags for Farcaster */}
+        <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta
-          property="og:description
-          content="rea cho cambers th AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster Twitter/X, and news sources. Mint NFT InslightTokens and earn rewards!"
+          property="og:description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
         />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://echoechos.vecap/previw.png" />
-        <meta property="og:url" otet="ttps://echoechos.vercel.app/" />
+        <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
+        <meta property="og:url" content="https://echoechos.vercel.app/" />
         <meta property="og:site_name" content="EchoEcho" />
 
         {/* Twitter Card Meta Tags */}
-        <meta name="twitter:cad" conten"summary_large_image" />
-        <meta name="twitter:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" /
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta
           name="twitter:description"
-          content="Break echo chambers wth AIpowered counter-narrative discovery. Subscribe for premium features with USDC on Base network."
+          content="Break echo chambers with AI-powered counter-narrative discovery. Subscribe for premium features with USDC on Base network."
         />
         <meta name="twitter:image" content="https://echoechos.vercel.app/preview.png" />
 
@@ -77,7 +77,7 @@ export default function Document() {
                 type: "launch_frame",
                 name: "Echoecho",
                 url: "https://echoechos.vercel.app/",
-                splashImageUrl: "htts://echoechos.vercel.app/splash-200.png",
+                splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
                 splashBackgroundColor: "#111827",
               },
             }, // ✅ closed properly
@@ -88,26 +88,27 @@ export default function Document() {
               },
               {
                 label: "Mint NFT",
-                action: { type: "post", url: "https://echoechos.vercel.appapi/mint-nft" },
+                action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
               },
             ],
           })}
-        /
-        {/* Content Security Policy */}
-        <meta
-          httpEquiv="ontent-Secuity-Policy
-          content="default 'sef'script-src 'self' 'unsafe-inline' https://esm.sh; stylesr 'lf' 'unsafe-iline'; connec-src 'self https://*.base.org https://*.neynar.com https://*.penai.com https://echoechos.verce.app; img-src 'self' data: https://echoechos.vercel.app;"
         />
 
-        {/* App Icons */
-        <link rel="icon" href="https://echoechosvercel.app/icon-192.png" />
+        {/* Content Security Policy */}
+        <meta
+          httpEquiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.base.org https://*.neynar.com https://*.openai.com https://echoechos.vercel.app; img-src 'self' data: https://echoechos.vercel.app;"
+        />
+
+        {/* App Icons */}
+        <link rel="icon" href="https://echoechos.vercel.app/icon-192.png" />
         <link rel="apple-touch-icon" href="https://echoechos.vercel.app/icon-192.png" />
 
         {/* Performance Optimizations */}
-        <link rel="preconnect" href"https://mainnet.base.org" />
-        <link rel="preonnect" href="https://api.neynar.com" />
+        <link rel="preconnect" href="https://mainnet.base.org" />
+        <link rel="preconnect" href="https://api.neynar.com" />
         <link rel="preconnect" href="https://api.openai.com" />
-      </Head
+      </Head>
       <body>
         <Main />
         <NextScript />
