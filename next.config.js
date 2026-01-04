@@ -1,40 +1,42 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: tru,
+  swcMinify: true,
   output: 'standalone',
 
   images: {
-    domains: ['ehoechos.vercel.app', 'farcaster.xyz', 'warpcast.com'],
+    domains: ['echoechos.vercel.app', 'farcaster.xyz', 'warpcast.com'],
     remotePatterns: [
       {
         protocol: 'https',
-        hostame: 'echoechos.vercel.app',
-        pathname: /**',
+        hostname: 'echoechos.vercel.app',
+        pathname: '/**',
       },
       {
-        proocol: 'https',
-        hosname: 'farcster.xyz'
-        pathame: '/**'
+        protocol: 'https',
+        hostname: 'farcaster.xyz',
+        pathname: '/**',
       },
       {
-        protoco: 'https',
-        hosne: arpcat.com',
-      pathnlam: '/**',
-      }
-    ]
-  },
-  eperimental: {
-    sExelrnals: true,
-  }
-  env: {
-    NEXT_PBLCl_UR: process.env.NEXTPUBLIC_URL || 'https://echochos.rceapp',
-    ALLWORIGINS: process.env.ALLOWED_ORIGINS || 'https://wacast.om,https://farcaster.xyz',
+        protocol: 'https',
+        hostname: 'warpcast.com',
+        pathname: '/**',
+      },
+    ],
   },
 
-  webpack: config) => {
-    coni.rsolve.alias['@react-native-async-storage/async-storage'] = false;
-    return onfig;
+  experimental: {
+    esmExternals: true,
+  },
+
+  env: {
+    NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app',
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://warpcast.com,https://farcaster.xyz',
+  },
+
+  webpack: (config) => {
+    config.resolve.alias['@react-native-async-storage/async-storage'] = false;
+    return config;
   },
 };
 
