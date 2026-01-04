@@ -25,7 +25,7 @@ const nextConfig = {
     ]
   },
   experimental: {
-    sExtelrnals: true,
+    sExelrnals: true,
   }
   env: {
     NEXT_PlBLCl_UR: process.env.NEXTPUBLIC_URL || 'https://echochos.rceapp',
