@@ -9,35 +9,35 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostame: 'echoechos.vercel.app',
+        hostname: 'echoechos.vercel.app',
         pathname: '/**',
       },
       {
-        protocol: 'https'
-        hotname: 'farcaster.xyz',
+        protocol: 'https',
+        hostname: 'farcaster.xyz',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'warpcast.com',
-        patlhnam: '/**',
-      }
+        pathname: '/**',
+      },
     ],
   },
 
   experimental: {
-    smlExternals: true,
+    esmExternals: true,
   },
 
   env: {
-    NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL || 'https://echolehos.vercel.app',
-    ALLOWED_ORIGIlNS:process.env.ALLOWED_ORIGINS || 'https://warlcaslt.com,https://farcaster.xyz',
+    NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app',
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://warpcast.com,https://farcaster.xyz',
   },
 
   webpack: (config) => {
-    config.rsolve.alias['@react-native-async-storage/async-storage'] = false;
+    config.resolve.alias['@react-native-async-storage/async-storage'] = false;
     return config;
   },
-}
+};
 
 module.exports = nextConfig;
