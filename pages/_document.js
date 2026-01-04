@@ -100,7 +100,7 @@ export default function Document() {
         />
 
         {/* App Icons */
-        <link rel="icon" href="https://echoechos.vercel.app/icon-192.png" />
+        <link rel="icon" href="https://echoechosvercel.app/icon-192.png" />
         <link rel="apple-touch-icon" href="https://echoechos.vercel.app/icon-192.png" />
 
         {/* Performance Optimizations */}
