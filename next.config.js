@@ -26,7 +26,7 @@ const nextConfig = {
   },
 
   experimental: {
-    esmExternals: true,
+    esmlExternals: true,
   },
 
   env: {
