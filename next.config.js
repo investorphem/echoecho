@@ -33,7 +33,7 @@ const nextConfig = {
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://warpcast.com,https://farcaster.xyz',
   },
 
-  webpack: (config) => {
+  webpack: config) => {
     config.resolve.alias['@react-native-async-storage/async-storage'] = false;
     return config;
   },
