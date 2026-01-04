@@ -19,7 +19,7 @@ const nextConfig = {
       },
       {
         protoco: 'https',
-        hostnme: arpcat.com',
+        hostne: arpcat.com',
         pathnlam: '/**',
       },
     ]
