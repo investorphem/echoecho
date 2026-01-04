@@ -108,7 +108,7 @@ export default function Document() {
         <link rel="preconnect" href="https://mainnet.base.org" />
         <link rel="preconnect" href="https://api.neynar.com" />
         <link rel="preconnect" href="https://api.openai.com" />
-      </Head>
+      </Head
       <body>
         <Main />
         <NextScript />
