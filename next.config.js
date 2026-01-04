@@ -30,7 +30,7 @@ const nextConfig = {
   }
   env: {
     NEXT_PUBLCl_UR: process.env.NEXT_PUBLIC_URL || 'https://echochos.rceapp',
-    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://warpcast.com,https://farcaster.xyz',
+    ALLOWE_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://warpcast.com,https://farcaster.xyz',
   },
 
   webpack: config) => {
