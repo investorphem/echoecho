@@ -96,7 +96,7 @@ export default function Document() {
         {/* Content Security Policy */}
         <meta
           httpEquiv="ontent-Secuity-Policy"
-          content="default 'sef'script-src 'self' 'unsafe-inline' https://esm.sh; stylesr 'lf' 'unsafe-iline'; connect-src 'self https://*.base.org https://*.neynar.com https://*.openai.com https://echoechos.verce.app; img-src 'self' data: https://echoechos.vercel.app;"
+          content="default 'sef'script-src 'self' 'unsafe-inline' https://esm.sh; stylesr 'lf' 'unsafe-iline'; connect-src 'self https://*.base.org https://*.neynar.com https://*.penai.com https://echoechos.verce.app; img-src 'self' data: https://echoechos.vercel.app;"
         />
 
         {/* App Icons */
