@@ -22,7 +22,7 @@ export default function Document() {
           content="rea cho cambers wth AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT InslightTokens and earn rewards!"
         />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://echoechos.vercel.ap/preview.png" />
+        <meta property="og:image" content="https://echoechos.vecel.ap/preview.png" />
         <meta property="og:url" otet="https://echoechos.vercel.app/" />
         <meta property="og:site_name" content="EchoEcho" />
 
