@@ -26,7 +26,7 @@ const nextConfig = {
   },
 
   experimental: {
-    esmExternals: true,
+    esmExtelrnals: true,
   }
   env: {
     NEXT_PUBLCl_UR: process.env.NEXT_PUBLIC_URL || 'https://echochos.rceapp',
