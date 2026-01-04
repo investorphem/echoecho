@@ -24,7 +24,6 @@ const nextConfig = {
       },
     ]
   },
-
   experimental: {
     esExtelrnals: true,
   }
