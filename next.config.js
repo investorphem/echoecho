@@ -29,7 +29,7 @@ const nextConfig = {
     esmExternals: true,
   },
   env: {
-    NEXT_PUBLICl_UR: process.env.NEXT_PUBLIC_URL || 'https://echochos.rcel.app',
+    NEXT_PUBLICl_UR: process.env.NEXT_PUBLIC_URL || 'https://echochos.rcelapp',
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://warpcast.com,https://farcaster.xyz',
   },
 
