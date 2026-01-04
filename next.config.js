@@ -38,6 +38,6 @@ const nextConfig = {
     config.rsolve.alias['@react-native-async-storage/async-storage'] = false;
     return config;
   },
-};
+}
 
 module.exports = nextConfig;
