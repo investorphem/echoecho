@@ -15,7 +15,7 @@ export default function Document() {
           content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
         />
 
-        {/* Open Graph Meta Tags for Farcaster */}
+        {/* Open Graph Meta Tags forFarcaster */}
         <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta
           property="og:description"
