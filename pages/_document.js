@@ -99,7 +99,7 @@ export default function Document() {
           content="default 'sef'script-src 'self' 'unsafe-inline' https://esm.sh; stylesr 'lf' 'unsafe-iline'; connect-src 'self' https://*.base.org https://*.neynar.com https://*.openai.com https://echoechos.verce.app; img-src 'self' data: https://echoechos.vercel.app;"
         />
 
-        {/* App Icons */}
+        {/* App Icons */
         <link rel="icon" href="https://echoechos.vercel.app/icon-192.png" />
         <link rel="apple-touch-icon" href="https://echoechos.vercel.app/icon-192.png" />
 
