@@ -22,7 +22,7 @@ const nextConfig = {
         hostname: 'warpcast.com',
         pathname: '/**',
       },
-    ],
+    ]
   },
 
   experimental: {
