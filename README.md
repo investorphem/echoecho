@@ -228,18 +228,104 @@ clarinet deployments generate --mainnet
 
 ## 🤝 Contributing
 
-### Development Guidelines
-1. **Comprehensive Testing**: All features must have complete test coverage
-2. **Gas Optimization**: Consider efficiency in all implementations
-3. **Security First**: Implement proper validation and access controls
-4. **Documentation**: Maintain clear and comprehensive documentation
+We welcome contributions to the EchoEcho Protocol project! Here's how you can help:
 
-### Pull Request Process
-1. **Fork** the repository
-2. **Create** a feature branch
-3. **Implement** changes with tests
-4. **Submit** pull request with detailed description
-5. **Code Review** and approval process
+### Ways to Contribute
+
+- **Core Features**: Enhance bulk messaging, token transfers, or echo chain functionality
+- **Farcaster Integration**: Add more Farcaster features like frame interactions and cast engagement
+- **Protocol Extensions**: Implement new bulk operation types or message protocols
+- **Performance Optimization**: Improve gas efficiency and bulk operation throughput
+- **User Experience**: Enhance the Farcaster miniApp interface and user workflows
+- **Security**: Audit and improve smart contract security, add new safety mechanisms
+- **Testing**: Add comprehensive test coverage for contracts and frontend
+- **Documentation**: Improve docs, add tutorials, create developer guides
+- **Multi-Chain**: Add support for additional blockchain networks beyond Stacks
+- **AI Integration**: Enhance OpenAI and social media integrations
+
+### Development Workflow
+
+1. **Fork the repository**
+2. **Create a feature branch** (`git checkout -b feature/amazing-feature`)
+3. **Make your changes** following the guidelines below
+4. **Write tests** for new functionality
+5. **Update documentation** for any API or user-facing changes
+6. **Commit your changes** (`git commit -m 'Add amazing feature'`)
+7. **Push to the branch** (`git push origin feature/amazing-feature`)
+8. **Open a Pull Request** with a clear description
+
+### Development Guidelines
+
+#### Smart Contracts (Clarity)
+- Use OpenZeppelin contracts for security
+- Add comprehensive NatSpec documentation
+- Write Foundry tests for all functions
+- Optimize for gas efficiency
+- Include proper error handling with custom errors
+- Follow the Checks-Effects-Interactions pattern
+
+#### Frontend (Next.js/React)
+- Use TypeScript for all new code
+- Follow React best practices and hooks patterns
+- Ensure mobile-first responsive design for Farcaster Frames
+- Test on multiple wallet connections (MetaMask, Coinbase Wallet, etc.)
+- Handle error states gracefully with user-friendly messages
+- Use the existing component library and design patterns
+
+#### Backend (Next.js API Routes)
+- Use TypeScript for type safety
+- Validate all inputs with Zod schemas
+- Implement proper error handling
+- Add request/response logging for debugging
+- Use Neon Database for data persistence
+- Follow REST API best practices
+
+#### Farcaster Integration
+- Use Farcaster MiniApp SDK properly
+- Handle frame validation and signatures
+- Implement proper error handling for frame interactions
+- Test on both mobile and desktop Farcaster clients
+- Follow Farcaster best practices for miniApps
+
+### Code Standards
+
+- **Linting**: Use ESLint with the configured rules
+- **Formatting**: Code is automatically formatted with Prettier
+- **Commits**: Use conventional commit format
+- **Branches**: Use descriptive branch names (`feature/`, `fix/`, `docs/`, etc.)
+- **PRs**: Include screenshots for UI changes, test coverage for code changes
+
+### Testing Requirements
+
+- **Unit Tests**: All functions and components must have unit tests
+- **Integration Tests**: API routes and contract interactions need integration tests
+- **E2E Tests**: Critical user flows should have end-to-end tests
+- **Test Coverage**: Maintain >80% test coverage for new features
+- **Contract Tests**: All smart contract functions need Foundry tests
+
+### Security Considerations
+
+- **Smart Contracts**: Never modify audited code without security review
+- **API Keys**: Never commit sensitive keys or credentials
+- **Input Validation**: Validate all user inputs on frontend and backend
+- **Reentrancy**: All contract functions must be protected against reentrancy
+- **Access Control**: Implement proper role-based access controls
+- **Farcaster Frames**: Validate frame signatures and prevent frame injection attacks
+
+### Code of Conduct
+
+- **Be Respectful**: Treat all contributors with respect and kindness
+- **Inclusive**: Welcome contributors from all backgrounds and experience levels
+- **Constructive**: Focus on constructive feedback and solutions
+- **Helpful**: Assist newcomers in getting started with the project
+- **Ethical**: Report security issues privately and responsibly
+
+### Reporting Issues
+
+- **Bug Reports**: Use the issue template with steps to reproduce
+- **Security Issues**: Report privately to security@echoecho.network
+- **Feature Requests**: Use the feature request template with detailed rationale
+- **Performance Issues**: Include profiling data and steps to reproduce
 
 ## 📄 License
 
