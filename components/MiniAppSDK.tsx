@@ -15,7 +15,7 @@ export default function MiniAppSDK({
     // 
     sdk.actions.ready().catch(() => {});
 
-    // 2. Optional: 
+    // 2. Optional:
     const getUser = async () => {
       try {
         const context = await sdk.getLocationContext().catch(() => ({}));
