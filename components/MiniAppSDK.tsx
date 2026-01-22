@@ -12,7 +12,7 @@ export default function MiniAppSDK({
   onUser?: (data: any) => void;
 }) {
   useEffect(() => {
-    // 1. THIS 
+    // 1. THIS
     sdk.actions.ready().catch(() => {});
 
     // 2. Optional: get user data safel
