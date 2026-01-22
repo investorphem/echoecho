@@ -1,0 +1,70 @@
+# EchoEcho Protocol - Docker Compose
+
+version: '3.8'
+
+services:
+  # Main application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - NEXT_PUBLIC_APP_URL=http://localhost:3000
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - echoecho-network
+    restart: unless-stopped
+
+  # PostgreSQL database (for Neon replacement in development)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=echoecho
+      - POSTGRES_USER=echoecho_user
+      - POSTGRES_PASSWORD=echoecho_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - echoecho-network
+    restart: unless-stopped
+
+  # Redis (for caching if needed)
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - echoecho-network
+    restart: unless-stopped
+
+  # Stacks node (for local development)
+  stacks-node:
+    image: hirosystems/stacks-node:latest
+    ports:
+      - "20443:20443"
+      - "20444:20444"
+    environment:
+      - STACKS_LOG_DEBUG=1
+    volumes:
+      - stacks_data:/stacks
+    networks:
+      - echoecho-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  stacks_data:
+
+networks:
+  echoecho-network:
+    driver: bridge
