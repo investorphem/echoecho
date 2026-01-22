@@ -12,7 +12,7 @@ export default function MiniAppSDK({
   onUser?: (data: any) => void;
 }) {
   useEffect(() => {
-    // 1. THIS REMOVES THE
+    // 1. THIS REMOVES TH
     sdk.actions.ready().catch(() => {});
 
     // 2. Optional: get user data safel
