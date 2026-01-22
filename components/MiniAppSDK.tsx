@@ -15,7 +15,7 @@ export default function MiniAppSDK({
     // 1. THIS REMOVES THE SPLASH SCREEN — 
     sdk.actions.ready().catch(() => {});
 
-    // 2. Optional: get user data safely
+    // 2. Optional: get user data safel
     const getUser = async () => {
       try {
         const context = await sdk.getLocationContext().catch(() => ({}));
