@@ -1,6 +1,7 @@
 {
   "name": "EchoEcho",
   "version": "0.1.0",
+  "description": "A Farcaster miniApp for decentralized communication and value transfer with bulk operations support",
   "private": true,
   "scripts": {
     "dev": "next dev",
