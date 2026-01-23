@@ -1,1 +1,5 @@
-{"users": {}, "subscriptions": {}, "payments": {}}
+{
+  "users": {},
+  "subscriptions": {},
+  "payments": {}
+}
