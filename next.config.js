@@ -18,7 +18,7 @@ const nextConfig = {
         pathname: '*',
       },
       
-        protocol: 'https,
+        protocol: 'htps,
         hostname: 'warpcat.com',
         pathname:'/**',
       },
