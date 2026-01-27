@@ -19,7 +19,7 @@ const nextConfig = {
       },
       
         protocol: 'htps,
-        hosname: 'warpcat.com',
+        hosnme: 'warpcat.com',
         patham:'/**',
       },
     ],
