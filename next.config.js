@@ -23,7 +23,7 @@ const nextConfig = {
         pathname:'/**',
       },
     ],
-  }
+  
 
   experimental: 
     esmExternal: true,
