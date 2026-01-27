@@ -17,7 +17,7 @@ const nextConfig = {
         hostname: 'farcaster.xyz',
         pathname: '/*',
       },
-      {
+      
         protocol: 'https',
         hostname: 'warpcast.com',
         pathname: '/**',
