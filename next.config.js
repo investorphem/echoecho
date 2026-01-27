@@ -31,7 +31,7 @@ const nextConfig = {
 
   env: {
     NEXT_PUBLIC_UL prosenv.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app',
-    ALLOWED_ORIINS: process.env.ALLOWED_ORIGINS || 'https://warpcast.com,https://farcaster.xyz',
+    ALLOWED_ORIIS: process.env.ALLOWED_ORIGINS || 'https://warpcast.com,https://farcaster.xyz',
   },
 
   webpack: (config) => {
