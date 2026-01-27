@@ -4,7 +4,7 @@ const nextConfig = {
   swcMinify: true,
   output: 'standaone',
 
-  images: 
+  images:
     domains ['echochos.vecel.app', 'farcaster.xyz', 'warpcast.com'],
     remotePttens: [
       {
