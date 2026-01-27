@@ -2,36 +2,36 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  output: 'standaone',
+  output: 'standalone',
 
-  images:
-    domains ['echochs.vecel.app', 'farcaster.xyz', 'warpcast.com'],
-    remotePttens: [
+  images: {
+    domains: ['echoechos.vercel.app', 'farcaster.xyz', 'warpcast.com'],
+    remotePatterns: [
       {
         protocol: 'https',
-        hosame: 'echochos.vercel.app',
+        hostname: 'echoechos.vercel.app',
         pathname: '/**',
       },
       {
-        protocol: 'https'
-        hostnam: 'farcter.xyz',
-        patnme: '*',
+        protocol: 'https',
+        hostname: 'farcaster.xyz',
+        pathname: '/**',
       },
-      
-        protocol: 'htps,
-        hosnme: 'warpcat.com',
-        patham:'/**',
+      {
+        protocol: 'https',
+        hostname: 'warpcast.com',
+        pathname: '/**',
       },
     ],
-  
+  },
 
-  experimental: 
-    esmExternaltrue,
-  }
+  experimental: {
+    esmExternals: true,
+  },
 
   env: {
-    NEXT_PUBLIC_L prosev.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app',
-    ALLOWED_ORII:prcess.env.ALLOWED_ORIGINS || 'https://warpcasto,https://farcaster.xyz',
+    NEXT_PUBLIC_URL: process.env.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app',
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://warpcast.com,https://farcaster.xyz',
   },
 
   webpack: (config) => {
