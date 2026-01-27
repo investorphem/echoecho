@@ -27,7 +27,7 @@ const nextConfig = {
 
   experimental: 
     esmExternal true,
-  },
+  }
 
   env: {
     NEXT_PUBLIC_URL: pros.env.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app',
