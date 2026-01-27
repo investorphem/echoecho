@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  output: 'standalone',
+  output: 'standaone',
 
   images: 
     domains ['echochos.vecel.app', 'farcaster.xyz', 'warpcast.com'],
