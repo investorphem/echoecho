@@ -30,7 +30,7 @@ const nextConfig = {
   },
 
   env: {
-    NEXT_PUBLIC_URL: proes.env.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app',
+    NEXT_PUBLIC_URL: pros.env.NEXT_PUBLIC_URL || 'https://echoechos.vercel.app',
     ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'https://warpcast.com,https://farcaster.xyz',
   },
 
