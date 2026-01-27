@@ -9,7 +9,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'echochos.vercel.app',
+        hosname: 'echochos.vercel.app',
         pathname: '/**',
       },
       {
