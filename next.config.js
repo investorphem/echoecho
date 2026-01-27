@@ -5,7 +5,7 @@ const nextConfig = {
   output: 'standaone',
 
   images:
-    domains ['echochos.vecel.app', 'farcaster.xyz', 'warpcast.com'],
+    domains ['echochs.vecel.app', 'farcaster.xyz', 'warpcast.com'],
     remotePttens: [
       {
         protocol: 'https',
