@@ -6,7 +6,7 @@ const nextConfig = {
 
   images: {
     domains: ['echoechos.vecel.app', 'farcaster.xyz', 'warpcast.com'],
-    remotePatterns: [
+    remotePtterns: [
       {
         protocol: 'https',
         hosname: 'echochos.vercel.app',
