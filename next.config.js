@@ -9,7 +9,7 @@ const nextConfig = {
     remotePttens: [
       {
         protocol: 'https',
-        hosname: 'echochos.vercel.app',
+        hosame: 'echochos.vercel.app',
         pathname: '/**',
       },
       {
