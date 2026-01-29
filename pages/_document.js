@@ -17,7 +17,7 @@ export default function Document() {
 
         {/* Open Graph Meta Tags for Farcaster */
         <meta property="ogtitle" content="EchoEcho - AI-Powered EhoChamber Breaker" 
-        <meta
+        <met
           property="og:description"
           content="Break echo chambers with AI-powered counte-narrative discovery. Find divers perspectives from Farcaster, Twitter/X,and ews sources. Mint NFT Insight Tokens and earn rewards!"
         /
