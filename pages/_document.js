@@ -6,31 +6,32 @@ export default function Document() {
       <Head>
         {/* App Meta Tags */}
         <meta name="application-name" content="EchoEcho" />
-        <met
+        <meta
           name="description"
-          content="Brek echo chambers with A-powered counter-narrative discovery. Find diverse perspectivesfrom Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
         />
         <meta
-          name=keywords
+          name="keywords"
           content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
-        /
-        {/* Open Graph Meta Tags for Farcaster */
-        <meta property="ogtitle"content="EchoEcho - AI-Powered EhoChamber Breaker
-        <me
-          property="og:description
-          content="Break echo chambers with AI-powered counte-narrative discovery. Find divers perspectives from Farcaster, Twitter/X,and ews sorces. Mint NFT Insight Tokens and earn ewards!"
-        /
+        />
+
+        {/* Open Graph Meta Tags for Farcaster */}
+        <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
+        <meta
+          property="og:description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
+        />
         <meta property="og:type" content="website" />
-        <meta property="og:image" content="https://choechos.vercel.app/preview.png" /
-        <meta property="og:url" content="https://echoechos.vercel.ap/" >
-        <meta property="og:site_name" content="EchoEcho" /
+        <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
+        <meta property="og:url" content="https://echoechos.vercel.app/" />
+        <meta property="og:site_name" content="EchoEcho" />
 
         {/* Twitter Card Meta Tags */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" cotent="EchoEcho - AI-Powed cho Chamber Breaker" /
+        <meta name="twitter:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta
-          name="twitter:descriptio
-          content="Break echo cambers with AI-powered counnaaiv discovery. Subscribe for premium features with USDC on Baenwor
+          name="twitter:description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Subscribe for premium features with USDC on Base network."
         />
         <meta name="twitter:image" content="https://echoechos.vercel.app/preview.png" />
 
@@ -84,8 +85,8 @@ export default function Document() {
               {
                 label: "Echo Trend",
                 action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
-              }
-              
+              },
+              {
                 label: "Mint NFT",
                 action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
               },
@@ -104,9 +105,9 @@ export default function Document() {
         <link rel="apple-touch-icon" href="https://echoechos.vercel.app/icon-192.png" />
 
         {/* Performance Optimizations */}
-        <link rel="preconnect" href="https://mainnet.baseorg" />
-        <link rel="preconnect" href="https://api.neynar.com" /
-        <link rel="preconnect" href="https://api.openai.com" /
+        <link rel="preconnect" href="https://mainnet.base.org" />
+        <link rel="preconnect" href="https://api.neynar.com" />
+        <link rel="preconnect" href="https://api.openai.com" />
       </Head>
       <body>
         <Main />
