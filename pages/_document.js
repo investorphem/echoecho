@@ -6,7 +6,7 @@ export default function Document() {
       <Head>
         {/* App Meta Tags */}
         <meta name="application-name" content="EchoEcho" />
-        <meta
+        <met
           name="description"
           content="Brek echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!
         />
