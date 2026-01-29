@@ -24,7 +24,7 @@ export default function Document() {
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://echoechos.vercel.app/preview.png" />
         <meta property="og:url" content="https://echoechos.vercel.app/" />
-        <meta property="og:site_name" content="EchoEcho" />
+        <meta property="og:site_name" content="EchoEcho" /
 
         {/* Twitter Card Meta Tags */}
         <meta name="twitter:card" content="summary_large_image" />
