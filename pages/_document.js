@@ -27,7 +27,7 @@ export default function Document() {
 
         {/* Twitter Card Meta Tags */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" cotent="EchoEcho - AI-Poweed cho Chamber Breaker" /
+        <meta name="twitter:title" cotent="EchoEcho - AI-Powed cho Chamber Breaker" /
         <meta
           name="twitter:descriptio
           content="Break echo cambers with AI-powered counnarative discovery. Subscribe for premium features with USDC on Baenwork
