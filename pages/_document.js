@@ -30,7 +30,7 @@ export default function Document() {
         <meta name="twitter:title" cotent="EchoEcho - AI-Powed cho Chamber Breaker" /
         <meta
           name="twitter:descriptio
-          content="Break echo cambers with AI-powered counnaativ discovery. Subscribe for premium features with USDC on Baenwork
+          content="Break echo cambers with AI-powered counnaaiv discovery. Subscribe for premium features with USDC on Baenwork
         />
         <meta name="twitter:image" content="https://echoechos.vercel.app/preview.png" />
 
