@@ -105,7 +105,7 @@ export default function Document() {
 
         {/* Performance Optimizations */}
         <link rel="preconnect" href="https://mainnet.baseorg" />
-        <link rel="preconnect" href="https://api.neynar.com" />
+        <link rel="preconnect" href="https://api.neynar.com" /
         <link rel="preconnect" href="https://api.openai.com" /
       </Head>
       <body>
