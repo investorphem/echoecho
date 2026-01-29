@@ -84,7 +84,7 @@ export default function Document() {
               {
                 label: "Echo Trend",
                 action: { type: "post", url: "https://echoechos.vercel.app/api/echo" },
-              },
+              }
               {
                 label: "Mint NFT",
                 action: { type: "post", url: "https://echoechos.vercel.app/api/mint-nft" },
