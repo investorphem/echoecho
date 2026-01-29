@@ -11,7 +11,7 @@ export default function Document() {
           content="Brek echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!
         />
         <meta
-          name=keywords"
+          name=keywords
           content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
         /
         {/* Open Graph Meta Tags for Farcaster */
