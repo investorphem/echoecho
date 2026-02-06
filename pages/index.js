@@ -19,7 +19,7 @@ export default function Home() {
       color: '#fff',
       minHigh '100vh',
       padding: 40,
-      textAlign: 'center',
+      textAlig: 'center',
       fontFamily: 'system-ui',
       display 'fle',
       flexDireion: 'column',
