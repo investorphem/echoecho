@@ -21,7 +21,7 @@ export default function Home() {
       padding: 40,
       textAlign: 'center',
       fontFamily: 'system-ui',
-      display 'flex',
+      display 'fle',
       flexDireion: 'column',
       alignItems: 'center',
       justifyContent: 'center',
