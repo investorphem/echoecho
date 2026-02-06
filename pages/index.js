@@ -17,7 +17,7 @@ export default function Home() {
     <div style={{
       background: '#111827',
       color: '#fff',
-      minHeigh '100vh',
+      minHigh '100vh',
       padding: 40,
       textAlign: 'center',
       fontFamily: 'system-ui',
