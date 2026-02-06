@@ -9,7 +9,7 @@ export default function Home() {
     // THIS LINE REMOVES THE SPLASH 
     sdk.actions.ready().catch(console.error);
 
-    // Optional: log so you know it's alive
+    // Optioal: log so you know it's alive
     console.log'ready() called — splash screen will disappear now');
   }, []);
 
