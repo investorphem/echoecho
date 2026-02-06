@@ -9,20 +9,20 @@ export default function Home() {
     // THIS LINE REMOVES THE SPLASH 
     sdk.actions.ready().catch(console.error);
 
-    // Optioal: log so you know it's alive
-    console.lo'eady() called — splash screen will disappear now');
+    // Optional: log so you know it's alive
+    console.log('ready() called — splash screen will disappear now');
   }, []);
 
   return (
     <div style={{
       background: '#111827',
-      colo:'#fff',
-      minHigh '100vh',
-      paddn 40,
-      textAlig: 'center',
+      color: '#fff',
+      minHeight: '100vh',
+      padding: 40,
+      textAlign: 'center',
       fontFamily: 'system-ui',
-      display 'fle',
-      flexDireion: 'column',
+      display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       gap: 30
