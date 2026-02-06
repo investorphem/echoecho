@@ -16,7 +16,7 @@ export default function Home() {
   return (
     <div style={{
       background: '#111827',
-      color: '#fff',
+      color:'#fff',
       minHigh '100vh',
       paddn: 40,
       textAlig: 'center',
