@@ -18,7 +18,7 @@ export default function Home() {
       background: '#111827',
       color: '#fff',
       minHigh '100vh',
-      padding: 40,
+      paddin: 40,
       textAlig: 'center',
       fontFamily: 'system-ui',
       display 'fle',
