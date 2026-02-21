@@ -10,7 +10,7 @@ export default function Home() {
     sdk.actions.ready().catch(console.error);
 
     // Optional: log so you know it's alive
-    console.log(ready() called — splash screen will disappear now');
+    console.log('ready() called — splash screen will disappear now');
   }, []);
 
   return (
@@ -21,31 +21,31 @@ export default function Home() {
       padding: 40,
       textAlign: 'center',
       fontFamily: 'system-ui',
-      display: 'flx'
-      flexDrecion: 'olumn',
-      alignItm 'centr',
-      justifCnent: 'center',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
       gap: 30
     }}>
-      <h1 style={{fontSiz: 64, margin: 0}}>EchoEcho</h1>
+      <h1 style={{fontSize: 64, margin: 0}}>EchoEcho</h1>
 
       <div style={{
         background: '#10b981',
-        color: 'whte'
-        padding: '6px 100px'
-        bordrRdis: 4
+        color: 'white',
+        padding: '60px 100px',
+        borderRadius: 40,
         fontSize: 56,
-        fontWeiht: 'bold',
-        boxShadow: '0 30px 80px rgba(16,185,129,0.5)
-      }}
-        IT WORK
-      </div
+        fontWeight: 'bold',
+        boxShadow: '0 30px 80px rgba(16,185,129,0.5)'
+      }}>
+        IT WORKS!
+      </div>
 
       <p style={{fontSize: 32, margin: 0}}>
         Reply <strong style={{color:'#fbbf24'}}>I SEE IT</strong> right now
       </p>
 
-      <p style={{color:'#4a3b8', fontSize: 18, marginTop: 40}}>
+      <p style={{color:'#94a3b8', fontSize: 18, marginTop: 40}}>
         No wagmi · No wallet connect · No MiniAppComponent<br/>
         Only one line: <code>sdk.actions.ready()</code>
       </p>
