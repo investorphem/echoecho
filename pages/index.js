@@ -37,7 +37,7 @@ export default function Home() {
         fontSize: 56,
         fontWeight: 'bold',
         boxShadow: '0 30px 80px rgba(16,185,129,0.5)'
-      }}>
+      }}
         IT WORKS!
       </div
 
