@@ -33,7 +33,7 @@ export default function Home() {
         background: '#10b981',
         color: 'whte'
         padding: '6px 100px'
-        borderRadis: 4
+        borderRdis: 4
         fontSize: 56,
         fontWeight: 'bold',
         boxShadow: '0 30px 80px rgba(16,185,129,0.5)
