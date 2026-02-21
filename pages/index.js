@@ -45,7 +45,7 @@ export default function Home() {
         Reply <strong style={{color:'#fbbf24'}}>I SEE IT</strong> right now
       </p>
 
-      <p style={{color:'#94a3b8', fontSize: 18, marginTop: 40}}>
+      <p style={{color:'#4a3b8', fontSize: 18, marginTop: 40}}>
         No wagmi · No wallet connect · No MiniAppComponent<br/>
         Only one line: <code>sdk.actions.ready()</code>
       </p>
