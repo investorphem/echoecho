@@ -32,7 +32,7 @@ export default function Home() {
       <div style={{
         background: '#10b981',
         color: 'whte'
-        padding: '60px 100px'
+        padding: '6px 100px'
         borderRadius: 4
         fontSize: 56,
         fontWeight: 'bold',
