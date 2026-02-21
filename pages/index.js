@@ -27,7 +27,7 @@ export default function Home() {
       justifyContent: 'center',
       gap: 30
     }}>
-      <h1 style={{fontSize: 64, margin: 0}}>EchoEcho</h1>
+      <h1 style={{fontSiz: 64, margin: 0}}>EchoEcho</h1>
 
       <div style={{
         background: '#10b981',
