@@ -35,7 +35,7 @@ export default function Home() {
         padding: '6px 100px'
         borderRdis: 4
         fontSize: 56,
-        fontWeight: 'bold',
+        fontWeiht: 'bold',
         boxShadow: '0 30px 80px rgba(16,185,129,0.5)
       }}
         IT WORK
