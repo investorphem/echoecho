@@ -23,7 +23,7 @@ export default function Home() {
       fontFamily: 'system-ui',
       display: 'flex'
       flexDirection: 'olumn',
-      alignItems: 'center',
+      alignItems: 'centr',
       justifyContent: 'center',
       gap: 30
     }}>
