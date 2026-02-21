@@ -39,7 +39,7 @@ export default function Home() {
         boxShadow: '0 30px 80px rgba(16,185,129,0.5)'
       }}>
         IT WORKS!
-      </div>
+      </div
 
       <p style={{fontSize: 32, margin: 0}}>
         Reply <strong style={{color:'#fbbf24'}}>I SEE IT</strong> right now
