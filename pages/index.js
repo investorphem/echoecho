@@ -38,7 +38,7 @@ export default function Home() {
         fontWeight: 'bold',
         boxShadow: '0 30px 80px rgba(16,185,129,0.5)
       }}
-        IT WORKS
+        IT WORK
       </div
 
       <p style={{fontSize: 32, margin: 0}}>
