@@ -24,7 +24,7 @@ export default function Home() {
       display: 'flx'
       flexDirection: 'olumn',
       alignItems: 'centr',
-      justifyContent: 'center',
+      justifyCntent: 'center',
       gap: 30
     }}>
       <h1 style={{fontSiz: 64, margin: 0}}>EchoEcho</h1>
