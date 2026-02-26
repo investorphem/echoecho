@@ -15,7 +15,7 @@ export default function Document() {
           content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
         />
 
-        {/* Open Graph Meta Tags for Farcaster */}
+        {/* Open Graph Meta Tags */}
         <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta
           property="og:description"
@@ -51,7 +51,7 @@ export default function Document() {
                 splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
                 splashBackgroundColor: "#111827",
               },
-            }, // ✅ closed properly
+            },
             buttons: [
               {
                 label: "Echo Trend",
@@ -65,8 +65,9 @@ export default function Document() {
           })}
         />
 
+        {/* Backward Compatibility Frame Tag */}
         <meta
-          name="fc:frame" // Backward compatibility
+          name="fc:frame"
           content={JSON.stringify({
             version: "1",
             id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
@@ -80,7 +81,7 @@ export default function Document() {
                 splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
                 splashBackgroundColor: "#111827",
               },
-            }, // ✅ closed properly
+            },
             buttons: [
               {
                 label: "Echo Trend",
@@ -92,6 +93,12 @@ export default function Document() {
               },
             ],
           })}
+        />
+
+        {/* Talent Protocol Domain Verification */}
+        <meta
+          name="talentapp:project_verification"
+          content="f14d69ebc058515cf542410d149ecc69cd6a1ce233513586cf8422d7e473b4dfb7f6f56a77dbcf38da94b50561310b332f0ab9879a217e7d9ae1d6ce0add30d2"
         />
 
         {/* Content Security Policy */}
@@ -109,6 +116,7 @@ export default function Document() {
         <link rel="preconnect" href="https://api.neynar.com" />
         <link rel="preconnect" href="https://api.openai.com" />
       </Head>
+
       <body>
         <Main />
         <NextScript />
