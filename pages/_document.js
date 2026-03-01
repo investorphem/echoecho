@@ -4,7 +4,9 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
-        {/* App Meta Tags */}
+
+        {/* Primary Meta */}
+        <meta charSet="utf-8" />
         <meta name="application-name" content="EchoEcho" />
         <meta
           name="description"
@@ -15,7 +17,13 @@ export default function Document() {
           content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
         />
 
-        {/* Open Graph Meta Tags */}
+        {/* Talent Protocol Domain Verification */}
+        <meta
+          name="talentapp:project_verification"
+          content="f14d69ebc058515cf542410d149ecc69cd6a1ce233513586cf8422d7e473b4dfb7f6f56a77dbcf38da94b50561310b332f0ab9879a217e7d9ae1d6ce0add30d2"
+        />
+
+        {/* Open Graph */}
         <meta property="og:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta
           property="og:description"
@@ -26,7 +34,7 @@ export default function Document() {
         <meta property="og:url" content="https://echoechos.vercel.app/" />
         <meta property="og:site_name" content="EchoEcho" />
 
-        {/* Twitter Card Meta Tags */}
+        {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="EchoEcho - AI-Powered Echo Chamber Breaker" />
         <meta
@@ -35,7 +43,7 @@ export default function Document() {
         />
         <meta name="twitter:image" content="https://echoechos.vercel.app/preview.png" />
 
-        {/* Farcaster Miniapp Meta Tag */}
+        {/* Farcaster Mini App */}
         <meta
           name="fc:miniapp"
           content={JSON.stringify({
@@ -43,10 +51,10 @@ export default function Document() {
             id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
             imageUrl: "https://echoechos.vercel.app/preview.png",
             button: {
-              title: "Open Echoecho",
+              title: "Open EchoEcho",
               action: {
                 type: "launch_frame",
-                name: "Echoecho",
+                name: "EchoEcho",
                 url: "https://echoechos.vercel.app/",
                 splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
                 splashBackgroundColor: "#111827",
@@ -65,7 +73,7 @@ export default function Document() {
           })}
         />
 
-        {/* Backward Compatibility Frame Tag */}
+        {/* Backward Compatibility */}
         <meta
           name="fc:frame"
           content={JSON.stringify({
@@ -73,10 +81,10 @@ export default function Document() {
             id: process.env.FARCASTER_MINIAPP_ID || "0199409c-b991-9a61-b1d8-fef2086f7533",
             imageUrl: "https://echoechos.vercel.app/preview.png",
             button: {
-              title: "Open Echoecho",
+              title: "Open EchoEcho",
               action: {
                 type: "launch_frame",
-                name: "Echoecho",
+                name: "EchoEcho",
                 url: "https://echoechos.vercel.app/",
                 splashImageUrl: "https://echoechos.vercel.app/splash-200.png",
                 splashBackgroundColor: "#111827",
@@ -93,12 +101,6 @@ export default function Document() {
               },
             ],
           })}
-        />
-
-        {/* Talent Protocol Domain Verification */}
-        <meta
-          name="talentapp:project_verification"
-          content="f14d69ebc058515cf542410d149ecc69cd6a1ce233513586cf8422d7e473b4dfb7f6f56a77dbcf38da94b50561310b332f0ab9879a217e7d9ae1d6ce0add30d2"
         />
 
         {/* Content Security Policy */}
@@ -107,14 +109,15 @@ export default function Document() {
           content="default-src 'self'; script-src 'self' 'unsafe-inline' https://esm.sh; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.base.org https://*.neynar.com https://*.openai.com https://echoechos.vercel.app; img-src 'self' data: https://echoechos.vercel.app;"
         />
 
-        {/* App Icons */}
+        {/* Icons */}
         <link rel="icon" href="https://echoechos.vercel.app/icon-192.png" />
         <link rel="apple-touch-icon" href="https://echoechos.vercel.app/icon-192.png" />
 
-        {/* Performance Optimizations */}
+        {/* Performance */}
         <link rel="preconnect" href="https://mainnet.base.org" />
         <link rel="preconnect" href="https://api.neynar.com" />
         <link rel="preconnect" href="https://api.openai.com" />
+
       </Head>
 
       <body>
