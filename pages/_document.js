@@ -20,7 +20,7 @@ export default function Document() {
         {/* Talent Protocol Domain Verification */}
         <meta
           name="talentapp:project_verification"
-          content="f14d69ebc058515cf542410d149ecc69cd6a1ce233513586cf8422d7e473b4dfb7f6f56a77dbcf38da94b50561310b332f0ab9879a217e7d9ae1d6ce0add30d2"
+          content="e7a8736fe16966aab9a32ce46cd66e10a386f7493096bc5c58569cb56aea2818a0a0c452832e9c5fcf3c064baadf477c729e48c663fbc1c585f6ccc3e9bd400a"
         />
 
         {/* Open Graph */}
