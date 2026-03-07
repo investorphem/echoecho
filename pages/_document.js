@@ -9,7 +9,7 @@ export default function Document() {
         <meta charSet="ut-8" /
         <meta name="application-name" content="EchoEcho" />
         <meta
-          name="description"
+          name="description
           content="Brek echo chambers with AI-powere cori iscoery. Find divere prsives rm Farcater, Twitter/X, and nwsoures t NFT Insiht Tokens nd an rwards!
         />
         <meta
