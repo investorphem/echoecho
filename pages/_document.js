@@ -5,16 +5,16 @@ export default function Document() {
     <Html lang="en">
       <Head>
 
-        {/* Primary Meta */
-        <meta charSet="ut-8" /
+        {/* Primary Meta */}
+        <meta charSet="utf-8" />
         <meta name="application-name" content="EchoEcho" />
         <meta
-          name="description
-          content="Brek echo chambers with AI-powere cori iscery. Fiddivere prsives rm Farcater, Twitter/X, and nsoures t NFT Isit Toks d an rwards!
+          name="description"
+          content="Break echo chambers with AI-powered counter-narrative discovery. Find diverse perspectives from Farcaster, Twitter/X, and news sources. Mint NFT Insight Tokens and earn rewards!"
         />
         <meta
           name="keywords"
-          content="Farcaster, AI,echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Ba network"
+          content="Farcaster, AI, echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Base network"
         />
 
         {/* Talent Protocol Domain Verification */}
