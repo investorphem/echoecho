@@ -14,7 +14,7 @@ export default function Document() {
         />
         <meta
           name="keywords"
-          content="Farcaster, AI,echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Bae network"
+          content="Farcaster, AI,echo chamber, counter-narrative, social media, blockchain, NFT, USDC, Ba network"
         />
 
         {/* Talent Protocol Domain Verification */}
