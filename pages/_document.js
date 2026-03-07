@@ -6,7 +6,7 @@ export default function Document() {
       <Head>
 
         {/* Primary Meta */}
-        <meta charSet="utf-8" />
+        <meta charSet="utf-8" /
         <meta name="application-name" content="EchoEcho" />
         <meta
           name="description"
