@@ -10,7 +10,7 @@ export default function Document() {
         <meta name="application-name" content="EchoEcho" />
         <meta
           name="description"
-          content="Brek echo chambers with AI-powered cori iscovery. Find divere prsives rm Farcater, Twitter/X, and nwsoures int NFT Insight Tokens nd an rwards!
+          content="Brek echo chambers with AI-powered cori iscovery. Find divere prsives rm Farcater, Twitter/X, and nwsoures int NFT Insiht Tokens nd an rwards!
         />
         <meta
           name="keywords"
